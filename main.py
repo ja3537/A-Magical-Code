@@ -24,7 +24,13 @@ if __name__ == '__main__':
         default = "messages.txt",
         help = "name of file holding messages to encode"
     )
-    #TODO: timeout, null interleaving rate
+    parser.add_argument(
+        "--output",
+        "-o",
+        default = "output.txt"
+        help = "name of the output file where decoded messages and scores are stored"
+    )
+    #TODO: timeout, null interleaving rate, printing results
 
 
 args = parser.parse_args()
