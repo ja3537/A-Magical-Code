@@ -30,7 +30,12 @@ if __name__ == '__main__':
         default = "output.txt",
         help = "name of the output file where decoded messages and scores are stored"
     )
-    #TODO: timeout, null interleaving rate, printing results
+    parser.add_argument(
+        "-n",
+        default = 10,
+        help = "set number of shuffles per deck for this mission"
+    )
+    #TODO: timeout, null interleaving rate, printing results, set shuffle number n
 
 
 args = parser.parse_args()
