@@ -21,7 +21,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "--messages",
         "-m",
-        default = "messages.txt",
+        default = "messages/default/example.txt",
         help = "name of file holding messages to encode"
     )
     parser.add_argument(
@@ -35,11 +35,18 @@ if __name__ == '__main__':
         default = 10,
         help = "set number of shuffles per deck for this mission"
     )
-    #TODO: timeout, null interleaving rate, printing results, set shuffle number n
+    parser.add_argument(
+        "-null_rate",
+        "-nr",
+        default = 0,
+        help = "set the probablility (between 0 and 1) of giving agent a random deck instead of a message"
+    )
+    #TODO: timeout, null interleaving rate, printing results, set shuffle number n, random shuffle numbers
 
 
 args = parser.parse_args()
-print(args)
+assert float(args.null_rate) >= 0 and float(args.null_rate) < 1, "null rate must be between 0 (inclusive) and 1 (exclusive)"
+
 
 mission = Mission(args)
 mission.execute_mission()
