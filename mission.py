@@ -26,8 +26,9 @@ class Mission:
         self.encoded_decks = []
         self.decoded = [None]*len(self.messages)
         self.scores = [None]*len(self.messages)
+        self.total_score = 0
         self.messages_index = list(range(len(self.messages))) #indexes of messages not yet used in mission
-        self.rng.shuffle(self.messages_index) #determines random order for messages
+        self.rng.shuffle(self.messages_index) #determines random order for messages during decoding
 
     def execute_mission(self):
         for m in self.messages: #encode stage
@@ -47,6 +48,7 @@ class Mission:
             decoded_m = self.agent.decode(self.encoded_decks[i])
             score = self.score_message(self.messages[i], decoded_m)
             self.scores[i] = score
+            self.total_score = self.total_score + score
             self.decoded[i] = decoded_m
 
         self.make_output_file()
@@ -75,6 +77,7 @@ class Mission:
                 f.write(self.decoded[i] + '\n')
                 f.write(str(self.scores[i]) + '\n')
                 f.write('\n')
+            f.write('total score for agent: {}/{}'.format(self.total_score, len(self.messages)))
 
 
 
