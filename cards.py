@@ -5,4 +5,6 @@ def generate_deck(rng, random=False):
     return deck
 
 def valid_deck(deck):
-    return True
+    valid = list(range(52))
+    deck.sort()
+    return valid == deck
