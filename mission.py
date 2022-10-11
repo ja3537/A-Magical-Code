@@ -45,7 +45,8 @@ class Mission:
 
         for i in range(len(self.encoded_decks)): #shuffling stage
             d = self.encoded_decks[i]
-            self.encoded_decks[i] = self.s(self.n, d)
+            if cards.valid_deck(d):
+                self.encoded_decks[i] = self.s(self.n, d)
 
 
 
