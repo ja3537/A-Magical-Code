@@ -9,7 +9,6 @@ class Mission:
         #self.agent = args.agent[0]
         self.agent = default_agent()
         self.n = int(args.n)
-        print(self.n)
         self.null_rate = float(args.null_rate)
         self.output = args.output
         self.messages = []
