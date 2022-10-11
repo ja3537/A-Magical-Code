@@ -6,5 +6,6 @@ def generate_deck(rng, random=False):
 
 def valid_deck(deck):
     valid = list(range(52))
-    deck.sort()
-    return valid == deck
+    new_deck = deck.copy()
+    new_deck.sort()
+    return valid == new_deck
