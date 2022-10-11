@@ -9,6 +9,7 @@ class Mission:
         #self.agent = args.agent[0]
         self.agent = default_agent()
         self.n = int(args.n)
+        print(self.n)
         self.null_rate = float(args.null_rate)
         self.output = args.output
         self.messages = []
@@ -43,8 +44,10 @@ class Mission:
                 d = cards.generate_deck(self.rng, random = True)
             self.encoded_decks.append(d)
 
-        for d in self.encoded_decks: #shuffling stage
-            d = self.s(self.n, d)
+        for i in range(len(self.encoded_decks)): #shuffling stage
+            d = self.encoded_decks[i]
+            self.encoded_decks[i] = self.s(self.n, d)
+
 
 
         for i in self.messages_index:
