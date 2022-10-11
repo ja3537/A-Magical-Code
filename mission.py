@@ -45,11 +45,17 @@ class Mission:
 
 
         for i in self.messages_index:
-            decoded_m = self.agent.decode(self.encoded_decks[i])
-            score = self.score_message(self.messages[i], decoded_m)
+            e_deck = self.encoded_decks[i]
+            if cards.valid_deck(e_deck):
+                decoded_m = self.agent.decode(self.encoded_decks[i])
+                score = self.score_message(self.messages[i], decoded_m)
+                self.decoded[i] = decoded_m
+            else:
+                score = 0
+                self.decoded[i] = "invalid deck: {}".format(e_deck)
             self.scores[i] = score
             self.total_score = self.total_score + score
-            self.decoded[i] = decoded_m
+
 
         self.make_output_file()
 
