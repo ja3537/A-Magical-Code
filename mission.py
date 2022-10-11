@@ -16,6 +16,9 @@ class Mission:
             text_lines = f.read().splitlines()
             i = 0
             while i < len(text_lines):
+                if(text_lines[i] == ''):
+                    i = i + 1
+                    continue
                 null_roll = self.rng.random()
                 if null_roll > (1-self.null_rate):
                     self.messages.append("NULL")
