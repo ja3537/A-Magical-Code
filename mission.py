@@ -5,6 +5,7 @@ from agents.default import Agent as default_agent
 class Mission:
     def __init__(self, args):
         self.seed = args.seed
+        self.verbose = args.verbose
         self.rng = np.random.default_rng(self.seed)
         #self.agent = args.agent[0]
         self.agent = default_agent()
@@ -27,6 +28,7 @@ class Mission:
                     i = i + 1
 
         self.encoded_decks = []
+        self.shuffled_decks = []
         self.decoded = [None]*len(self.messages)
         self.scores = [None]*len(self.messages)
         self.total_score = 0
@@ -46,21 +48,21 @@ class Mission:
         for i in range(len(self.encoded_decks)): #shuffling stage
             d = self.encoded_decks[i]
             if cards.valid_deck(d):
-                self.encoded_decks[i] = self.s(self.n, d)
+                self.shuffled_decks.append(self.s(self.n, d))
 
 
 
         for i in self.messages_index:
-            e_deck = self.encoded_decks[i]
-            if cards.valid_deck(e_deck):
-                decoded_m = self.agent.decode(self.encoded_decks[i])
+            s_deck = self.shuffled_decks[i]
+            if cards.valid_deck(s_deck):
+                decoded_m = self.agent.decode(s_deck)
                 score = self.score_message(self.messages[i], decoded_m)
                 self.decoded[i] = decoded_m
             else:
                 score = 0
                 self.decoded[i] = "invalid deck: {}".format(e_deck)
             self.scores[i] = score
-            self.total_score = self.total_score + score
+            self.total_score += score
 
 
         self.make_output_file()
@@ -86,6 +88,9 @@ class Mission:
         with open(self.output, 'w+') as f:
             for i in range(len(self.messages)):
                 f.write(self.messages[i] + '\n')
+                if(self.verbose):
+                    f.write('encoded deck: ' + str(self.encoded_decks[i]) + '\n')
+                    f.write('shuffled deck: ' + str(self.shuffled_decks[i]) + '\n')
                 f.write(self.decoded[i] + '\n')
                 f.write(str(self.scores[i]) + '\n')
                 f.write('\n')

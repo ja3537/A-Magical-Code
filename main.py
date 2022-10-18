@@ -36,10 +36,18 @@ if __name__ == '__main__':
         help = "set number of shuffles per deck for this mission"
     )
     parser.add_argument(
-        "-null_rate",
+        "--null_rate",
         "-nr",
         default = 0,
         help = "set the probablility (between 0 and 1) of giving agent a random deck instead of a message"
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        default = False,
+        action="store_true",
+        help = "verbose mode includes encrypted and shuffled decks in output"
+
     )
     #TODO: timeout, null interleaving rate, printing results, set shuffle number n, random shuffle numbers
 
