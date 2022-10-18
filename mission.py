@@ -6,7 +6,10 @@ class Mission:
     def __init__(self, args):
         self.seed = args.seed
         self.verbose = args.verbose
-        self.rng = np.random.default_rng(self.seed)
+        if(self.seed != 0):
+            self.rng = np.random.default_rng(self.seed)
+        else:
+            self.rng = np.random.default_rng()
         #self.agent = args.agent[0]
         self.agent = default_agent()
         self.n = int(args.n)
