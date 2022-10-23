@@ -29,6 +29,7 @@ class Mission:
             print("error loading agent ", args.agent[0])
             exit()
         self.n = int(args.n)
+        self.rand_n = args.rand_n
         self.null_rate = float(args.null_rate)
         self.output = args.output
         self.messages = []
@@ -48,6 +49,7 @@ class Mission:
 
         self.encoded_decks = []
         self.shuffled_decks = []
+        self.n_values = []
         self.decoded = [None]*len(self.messages)
         self.scores = [None]*len(self.messages)
         self.total_score = 0
@@ -67,7 +69,12 @@ class Mission:
         for i in range(len(self.encoded_decks)): #shuffling stage
             d = self.encoded_decks[i]
             if cards.valid_deck(d):
-                self.shuffled_decks.append(self.s(self.n, d))
+                if(self.rand_n):
+                    n = self.rng.integers(1, self.n + 1, 1)[0]
+                else:
+                    n = self.n
+                self.n_values.append(n)
+                self.shuffled_decks.append(self.s(n, d))
 
 
 
@@ -109,6 +116,7 @@ class Mission:
                 f.write(self.messages[i] + '\n')
                 if(self.verbose):
                     f.write('encoded deck: ' + str(self.encoded_decks[i]) + '\n')
+                    f.write('n value: ' + str(self.n_values[i]) + '\n')
                     f.write('shuffled deck: ' + str(self.shuffled_decks[i]) + '\n')
                 f.write(self.decoded[i] + '\n')
                 f.write(str(self.scores[i]) + '\n')

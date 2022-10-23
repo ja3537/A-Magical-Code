@@ -49,12 +49,18 @@ if __name__ == '__main__':
         help = "verbose mode includes encrypted and shuffled decks in output"
 
     )
+    parser.add_argument(
+        "--rand_n",
+        "-rn",
+        default = False,
+        action = "store_true",
+        help = "sets n to be a random value up to n for each deck"
+    )
     #TODO: timeout, null interleaving rate, printing results, set shuffle number n, random shuffle numbers
 
 
 args = parser.parse_args()
 assert float(args.null_rate) >= 0 and float(args.null_rate) < 1, "null rate must be between 0 (inclusive) and 1 (exclusive)"
-
 
 mission = Mission(args)
 mission.execute_mission()
