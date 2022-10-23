@@ -1,0 +1,1 @@
+possible_agents = ["d"] + list(map(str, range(1,9)))

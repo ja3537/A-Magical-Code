@@ -1,6 +1,15 @@
 import numpy as np
 import cards
+import constants
 from agents.default import Agent as default_agent
+from agents.agent1 import Agent as agent1
+from agents.agent2 import Agent as agent2
+from agents.agent3 import Agent as agent3
+from agents.agent4 import Agent as agent4
+from agents.agent5 import Agent as agent5
+from agents.agent6 import Agent as agent6
+from agents.agent7 import Agent as agent7
+from agents.agent8 import Agent as agent8
 
 class Mission:
     def __init__(self, args):
@@ -10,8 +19,15 @@ class Mission:
             self.rng = np.random.default_rng(self.seed)
         else:
             self.rng = np.random.default_rng()
-        #self.agent = args.agent[0]
-        self.agent = default_agent()
+        if args.agent[0] in constants.possible_agents:
+            if args.agent[0] == 'd':
+                self.agent = default_agent()
+            else:
+                agent_name = "agent{}".format(args.agent[0])
+                self.agent = eval(agent_name + "()")
+        else:
+            print("error loading agent ", args.agent[0])
+            exit()
         self.n = int(args.n)
         self.null_rate = float(args.null_rate)
         self.output = args.output
@@ -21,14 +37,14 @@ class Mission:
             i = 0
             while i < len(text_lines):
                 if(text_lines[i] == ''):
-                    i = i + 1
+                    i += 1
                     continue
                 null_roll = self.rng.random()
                 if null_roll > (1-self.null_rate):
                     self.messages.append("NULL")
                 else:
                     self.messages.append(text_lines[i])
-                    i = i + 1
+                    i += 1
 
         self.encoded_decks = []
         self.shuffled_decks = []
