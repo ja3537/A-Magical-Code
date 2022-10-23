@@ -56,7 +56,6 @@ if __name__ == '__main__':
         action = "store_true",
         help = "sets n to be a random value up to n for each deck"
     )
-    #TODO: timeout, null interleaving rate, printing results, set shuffle number n, random shuffle numbers
 
 
 args = parser.parse_args()
