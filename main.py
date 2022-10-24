@@ -54,7 +54,7 @@ if __name__ == '__main__':
         "-rn",
         default = False,
         action = "store_true",
-        help = "sets n to be a random value up to n for each deck"
+        help = "(boolean) sets n to be a random value up to N for each deck"
     )
 
 
