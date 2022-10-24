@@ -94,9 +94,13 @@ class Mission:
         self.make_output_file()
 
 
-
+    def score_partial(self, m, decoded_m):
+        #print(decoded_m.removeprefix("PARTIAL: "))
+        return 0
 
     def score_message(self, m, decoded_m):
+        if decoded_m.startswith("PARTIAL: "):
+            return self.score_partial(m, decoded_m)
         if m == decoded_m:
             return 1
         else:
