@@ -1,7 +1,19 @@
+import logging
 from typing import List, Optional
 
 from dahuffman import load_shakespeare, HuffmanCodec
 from bitstring import Bits
+
+
+log_level = logging.DEBUG
+log_file = 'log/agent3.log'
+
+logger = logging.getLogger('Agent 3')
+logger.setLevel(log_level)
+logger.addHandler(logging.FileHandler(log_file))
+
+def debug(*args):
+    logger.info(' '.join(args))
 
 
 class Huffman:
@@ -13,14 +25,17 @@ class Huffman:
             self.codec = load_shakespeare()
 
     def encode(self, msg: str) -> Bits:
-        print(f'[ Huffman.encode ] msg: {msg}')
         bytes = self.codec.encode(msg)
         bits = Bits(bytes=bytes)
 
+        debug('[ Huffman.encode ]', f'msg: {msg} -> bits: {bits.bin}')
         return bits
 
     def decode(self, bits: Bits) -> str:
-        return self.codec.decode(bits.tobytes())
+        decoded = self.codec.decode(bits.tobytes())
+
+        debug('[ Huffman.decode ]', f'bits: {bits.bin} -> msg: {decoded}')
+        return decoded
 
 
 class Agent:
