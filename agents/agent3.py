@@ -12,6 +12,7 @@ logger = logging.getLogger('Agent 3')
 logger.setLevel(log_level)
 logger.addHandler(logging.FileHandler(log_file))
 
+
 def debug(*args):
     logger.info(' '.join(args))
 
@@ -46,15 +47,16 @@ class Agent:
     def encode(self, message):
         encoded_message = []
 
-        useless_cards = [card for card in range(0, 32) if card not in encoded_message]
-        deck = self.trash_cards + useless_cards + [self.stop_card] + encoded_message
+        useless_cards = [card for card in range(
+            0, 32) if card not in encoded_message]
+        deck = self.trash_cards + useless_cards + \
+            [self.stop_card] + encoded_message
         return deck
 
     def decode(self, deck):
         deck = self.remove_trash_cards(deck)
         deck = self.get_encoded_message(deck)
         return "NULL"
-
 
     def remove_trash_cards(self, deck):
         for i in self.trash_cards:
@@ -71,7 +73,7 @@ class Agent:
 # -----------------------------------------------------------------------------
 
 def test_huffman_codec():
-    # Note: the shakespeare codec doesn't seem to be able to handle punctuations
+    # Note: shakespeare codec doesn't seem to be able to handle punctuations
     cases = ['group 3', 'magic code']
 
     huffman = Huffman()
@@ -80,7 +82,8 @@ def test_huffman_codec():
         encoded = huffman.encode(orig)
         decoded = huffman.decode(encoded)
 
-        assert type(encoded) == Bits, 'error: encoded message is not of type Bits!'
+        assert type(
+            encoded) == Bits, 'error: encoded message is not of type Bits!'
         assert orig == decoded, 'error: decoded message is not the same as the original'
 
     print('PASSED: Huffman codec using pre-traind shakespeare text')
@@ -92,7 +95,8 @@ def test_huffman_codec():
         encoded = huffman.encode(orig)
         decoded = huffman.decode(encoded)
 
-        assert type(encoded) == Bits, 'error: encoded message is not of type Bits!'
+        assert type(
+            encoded) == Bits, 'error: encoded message is not of type Bits!'
         assert orig == decoded, 'error: decoded message is not the same as the original'
 
     print('PASSED: Huffman codec using dictionary')
