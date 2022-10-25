@@ -1,2 +1,4 @@
 output.txt
 *.pyc
+
+**/log
