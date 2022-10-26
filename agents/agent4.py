@@ -9,8 +9,6 @@ import binascii
 class Agent:
     def __init__(self):
         self.rng = np.random.default_rng(seed=42)
-        self.start_marker = 1
-        self.encoded_cards = 26
 
     def string_to_binary(self, message):
         return ''.join(format(ord(i), 'b') for i in message)
@@ -22,15 +20,13 @@ class Agent:
         # message_cards: cards for message
         result = []
         for i in range(52):
-            if i != self.start_marker and i not in message_cards:
+            if i not in message_cards:
                 result.append(i)
-        result.append(self.start_marker)
         result.extend(message_cards)
         return result
 
     def get_encoded_cards(self, deck, start_idx):
-        marker_indx = deck.index(self.start_marker)
-        return [c for c in deck[marker_indx:] if c >= start_idx]
+        return [c for c in deck[start_idx:]]
 
     def cards_to_num(self, cards: List[int]) -> int:
         num_cards = len(cards)
