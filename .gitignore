@@ -1,2 +1,4 @@
 output.txt
 *.pyc
+**/__pycache__
+**/log
