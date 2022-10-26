@@ -21,7 +21,6 @@ class Agent:
         for i in range(52):
             if i != self.start_marker and i not in message_cards:
                 result.append(i)
-
         result.append(self.start_marker)
         result.extend(message_cards)
         return result
@@ -30,20 +29,19 @@ class Agent:
         marker_indx = deck.index(self.start_marker)
         return [c for c in deck[marker_indx:] if c >= marker_indx]
 
-    def cards_to_num(self, cards: List[int]):
+    def cards_to_num(self, cards: List[int]) -> int:
         num_cards = len(cards)
 
         if num_cards == 1:
             return 0
 
         ordered_cards = sorted(cards)
-        permutations = math.factorial(num_cards)
-        sub_list_size = permutations / num_cards
+        sub_list_size = math.factorial(num_cards - 1)
         sub_list_indx = sub_list_size * ordered_cards.index(cards[0])
 
         return sub_list_indx + self.cards_to_num(cards[1:])
 
-    def num_to_cards(self, num: int, cards: List[int]):
+    def num_to_cards(self, num: int, cards: List[int]) -> List[int]:
         num_cards = len(cards)
 
         if num_cards == 1:
@@ -51,8 +49,8 @@ class Agent:
 
         ordered_cards = sorted(cards)
         permutations = math.factorial(num_cards)
-        sub_list_size = permutations / num_cards
-        sub_list_indx = math.floor(float(num) / sub_list_size)
+        sub_list_size = math.factorial(num_cards - 1)
+        sub_list_indx = math.floor(num / sub_list_size)
         sub_list_start = sub_list_indx * sub_list_size
 
         if sub_list_start >= permutations:
@@ -60,14 +58,18 @@ class Agent:
 
         first_card = ordered_cards[sub_list_indx]
         ordered_cards.remove(first_card)
+
         return [first_card, *self.num_to_cards(num - sub_list_start, ordered_cards)]
 
     def encode(self, message):
         deck = generate_deck(self.rng)
 
+        num_cards_to_encode = 26
+        message_start_idx = len(deck) - num_cards_to_encode
         binary_repr = self.string_to_binary(message)
-        integer_repr = int(str(binary_repr), 2)
-        message_cards = self.num_to_cards(integer_repr, deck[26:])
+        integer_repr = int(binary_repr, 2)
+        message_cards = self.num_to_cards(integer_repr, deck[message_start_idx:])
+
         return self.deck_encoded(message_cards)
 
     def decode(self, deck):
