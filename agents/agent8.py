@@ -245,7 +245,7 @@ random.shuffle(pearson_table)
 
 def pearson_checksum(bits: list[int]) -> int:
     checksum = 0
-    for off in range(len(bits), 8):
+    for off in range(0, len(bits), 8):
         byte = bits[off : off + 8]
         byte_val = from_bit_list(byte)
         checksum = pearson_table[checksum ^ byte_val]
@@ -265,16 +265,27 @@ def add_checksum(bits: list[int]) -> list[int]:
 
 def check_and_remove(bits: list[int]) -> list[int]:
     message_length = from_bit_list(bits[-8:])
-    checksum = bits[-16:-8]
-    print("Checksum", checksum)
+    message_checksum = bits[-16:-8]
     message = bits[:-16]
+    print("message length", message_length)
+    # print("checksum", checksum)
     message = [0] * (message_length - len(message)) + message
+    print("decoded message bits", message)
     # message = ([0] * 100 + bits)[-(message_length + 16) : -16]
-    print("Message length", message_length)
-    print("Message:", message)
     # checked_checksum = findChecksum("".join(map(str, message)))
-    checked_checksum = pearson_checksum(message)
-    return checked_checksum == checksum, message
+
+    padding = 8 - (len(message) % 8)
+    padded_bits = [0] * padding + message
+    checksum = pearson_checksum(padded_bits)
+    checksum_bits = to_bit_list(checksum)
+    checked_checksum = [0] * (8 - len(checksum_bits)) + checksum_bits
+
+    print("checked_checksum", checked_checksum)
+    # same = True
+    # for checksum_bit in range(8):
+    #     if checksum[checksum_bit] != checked_checksum[checksum_bit]:
+    #         same = False
+    return checked_checksum == message_checksum, message
     # message_checksum = bits[-8:]
     # message = bits[:-8]
     # checked_checksum = pearson_checksum(message)
@@ -317,11 +328,42 @@ class Agent:
             "y": 0.01974,
             "z": 0.00074,
         }
+        self.encoding = make_encoding(self.frequencies)
 
     def encode(self, message):
-        return list(range(52))
+        print("Message to encode:", message)
+        huffman_coded = encode_message(message, self.encoding)
+
+        bits = [int(bit) for bit in huffman_coded]
+        print("Message bits", bits)
+
+        message_length = length_byte(bits)
+        # print("Message:    ", bits)
+        with_checksum = add_checksum(bits)
+        # print("W/ Checksum:", with_checksum)
+        with_length = with_checksum + message_length
+        print("W/ Length   ", with_length)
+
+        n = find_n_for_message(with_length)
+        print("n:          ", n)
+        encoded = bottom_cards_encode(from_bit_list(with_length), n)
+        print("As cards:", encoded)
+        return list(range(n, 52)) + encoded
 
     def decode(self, deck):
+        print(deck)
+        for n in range(52):
+            encoded = [card for card in deck if card < n]
+            decoded = to_bit_list(bottom_cards_decode(encoded, n))
+            # print("Raw decoded", decoded)
+            passes_checksum, message = check_and_remove(decoded)
+            print(passes_checksum, message)
+            if passes_checksum:
+                # print("Passes:     ", passes_checksum)
+                # print("Decoded:    ", message)
+                out_message = decode_message("".join(map(str, message)), self.encoding)
+                # print("Message:    ", out_message)
+                return out_message
         return "NULL"
 
 
@@ -371,30 +413,3 @@ if __name__ == "__main__":
             "z": 0.00074,
         }
     )
-    huffman_coded = encode_message("hello", encoding)
-
-    bits = [int(bit) for bit in huffman_coded]
-
-    message_length = length_byte(bits)
-    print("Message:    ", bits)
-    with_checksum = add_checksum(bits)
-    print("W/ Checksum:", with_checksum)
-    with_length = with_checksum + message_length
-    print("W/ Length   ", with_length)
-
-    n = find_n_for_message(with_length)
-    print("n:          ", n)
-    encoded = bottom_cards_encode(from_bit_list(with_length), n)
-    print("Encoded:    ", encoded)
-    decoded = to_bit_list(bottom_cards_decode(encoded, n))
-    print("Raw decoded", decoded)
-    passes_checksum, message = check_and_remove(decoded)
-    print("Passes:     ", passes_checksum)
-    print("Decoded:    ", message)
-
-    # recv_value = from_bit_list(message)
-
-    out_message = decode_message("".join(map(str, message)), encoding)
-
-    # recv_msg = recv_value.to_bytes((recv_value.bit_length() + 7) // 8, "big").decode()
-    print("Message:    ", out_message)
