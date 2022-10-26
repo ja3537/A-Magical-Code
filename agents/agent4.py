@@ -2,6 +2,8 @@ from cards import generate_deck
 import numpy as np
 from typing import List
 import math
+from pearhash import PearsonHasher
+import binascii
 
 
 class Agent:
@@ -26,9 +28,9 @@ class Agent:
         result.extend(message_cards)
         return result
 
-    def get_encoded_cards(self, deck):
+    def get_encoded_cards(self, deck, start_idx):
         marker_indx = deck.index(self.start_marker)
-        return [c for c in deck[marker_indx:] if c >= self.encoded_cards]
+        return [c for c in deck[marker_indx:] if c >= start_idx]
 
     def cards_to_num(self, cards: List[int]) -> int:
         num_cards = len(cards)
@@ -62,12 +64,25 @@ class Agent:
 
         return [first_card, *self.num_to_cards(num - sub_list_start, ordered_cards)]
 
+    def get_hash(self, bit_string: str) -> str:
+        hasher = PearsonHasher(1)
+        hex_hash = hasher.hash(str(int(bit_string, 2)).encode()).hexdigest()
+        return bin(int(hex_hash, 16))[2:].zfill(8)
+
     def encode(self, message):
         deck = generate_deck(self.rng)
 
-        message_start_idx = len(deck) - self.encoded_cards
         binary_repr = self.string_to_binary(message)
+        binary_repr = binary_repr + self.get_hash(binary_repr)
         integer_repr = int(binary_repr, 2)
+
+        num_cards_to_encode = 1
+        for n in range(1, 52):
+            if math.log2(math.factorial(n)) > len(binary_repr):
+                num_cards_to_encode = n
+                break
+        message_start_idx = len(deck) - num_cards_to_encode
+        
         message_cards = self.num_to_cards(integer_repr, deck[message_start_idx:])
 
         return self.deck_encoded(message_cards)
@@ -75,12 +90,19 @@ class Agent:
     def decode(self, deck):
         # return "NULL" if this is a random deck (no message)
 
-        encoded_cards = self.get_encoded_cards(deck)
-        integer_repr = self.cards_to_num(encoded_cards)
-        binary_repr = bin(int(integer_repr))[2:]
-        message = self.binary_to_string(binary_repr)
+        message = ''
+        for n in reversed(range(1, 52)):
+            encoded_cards = self.get_encoded_cards(deck, n)
+            integer_repr = self.cards_to_num(encoded_cards)
+            binary_repr = bin(int(integer_repr))[2:]
+            message_bits = binary_repr[:-8]
+            hash_bits = binary_repr[-8:]
+            
+            if len(hash_bits) == 8 and len(message_bits) and hash_bits == self.get_hash(message_bits):
+                message = self.binary_to_string(message_bits)
+                break
 
-        if not all(ord(c) < 128 and ord(c) > 33 for c in message):
+        if not all(ord(c) < 128 and ord(c) > 33 for c in message) or message == '':
             return 'NULL'
 
         return message
