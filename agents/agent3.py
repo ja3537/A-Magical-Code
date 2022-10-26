@@ -56,28 +56,36 @@ class Agent:
         self.stop_card = 51
         self.trash_cards = list(range(32, 51))
         self.rng = np.random.default_rng(seed=42)
-        self.huff = Huffman()
+        self.huff = Huffman()  # Create huffman object
 
     def encode(
             self,
-            message
+            msg: str
     ) -> List[int]:
-        encoded_message = []
+        encode_msg = []
 
-        print(f'this is the message:\t{message}')
-        debug('[ Agent.encode ]', f'this is the message:\t{message}')
-        print(self.huff.encode(message))
+        # Convert Huffman to binary
+        bin = self.huff.encode(msg).bin
+
+        # Split binary into chunks -> Convert to string to do this
+        parts = [str(bin)[i:i+5] for i in range(0, len(str(bin)), 5)]
+
+        # For each binary string convert to binary then int using int()
+        # and append to encode_msg
+        for i in parts:
+            # print(int(Bits(bin=i).bin, 2))
+            encode_msg.append(int(Bits(bin=i).bin, 2))
 
         useless_cards = [card for card in range(0, 32)
-                         if card not in encoded_message]
-        deck = self.trash_cards + useless_cards + [self.stop_card] + encoded_message
+                         if card not in encode_msg]
+        deck = self.trash_cards + useless_cards + [self.stop_card] + encode_msg
 
         return deck
 
     def decode(
             self,
             deck
-    ) -> str:
+    ):
         deck = self.remove_trash_cards(deck)
         deck = self.get_encoded_message(deck)
         return "NULL"
