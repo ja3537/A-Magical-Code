@@ -2,6 +2,7 @@ import math
 
 class EncoderDecoder:
     def __init__(self, n=26):
+        self.encoding_len = n
         characters = " 1234567890abcdefghijklmnopqrstuvwxyz"
         self.char_dict, self.bin_dict = self.binary_encoding_dicts(characters)
         self.perm_zero = list(range(50-n, 50))
@@ -75,16 +76,19 @@ class EncoderDecoder:
 
         ret = ''
         for i in range(0, len(binary_string) - 5, 6):
+            if binary_string[i:i + 6] not in self.bin_dict:
+                return 'PARTIAL: '
             ret += self.bin_dict[binary_string[i:i + 6]]
         return ret
 
 
 class Agent:
-    def __init__(self):
-        self.ed = EncoderDecoder(26)
+    def __init__(self, encoding_len=26):
+        self.encoding_len = encoding_len
+        self.ed = EncoderDecoder(self.encoding_len)
 
     def encode(self, message):
-        return list(range(24)) + self.ed.str_to_perm(message) + [50, 51]
+        return list(range(50 - self.encoding_len)) + self.ed.str_to_perm(message) + [50, 51]
 
     def decode(self, deck):
         perm = []
