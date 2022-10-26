@@ -1,6 +1,7 @@
 import logging
 from typing import List, Optional
 from cards import valid_deck
+
 from dahuffman import load_shakespeare, HuffmanCodec
 from bitstring import Bits
 import numpy as np
@@ -24,7 +25,6 @@ def debug(*args) -> None:
 
 MAX_CHUNK_SIZE = 6
 
-
 # -----------------------------------------------------------------------------
 #   Codec
 # -----------------------------------------------------------------------------
@@ -44,6 +44,7 @@ class Huffman:
 
         padding_bits = '{0:b}'.format(0).zfill(padding_len) if padding_len > 0 else ''
         padded_msg_bin = '0b{}{}'.format(padding_bits, msg.bin)
+
         padded_msg = Bits(bin=padded_msg_bin)
 
         debug('[ Huffman._add_padding ]',
@@ -58,6 +59,7 @@ class Huffman:
 
         debug('[ Huffman._remove_padding ]',
                 f'original encoding: {original_encoding.bin}')
+
         return original_encoding
 
     def encode(
@@ -78,7 +80,6 @@ class Huffman:
             padding_len: int = 5
     ) -> str:
         bits = self._remove_padding(bits, padding_len)
-
         decoded = self.codec.decode(bits.tobytes())
         debug('[ Huffman.decode ]', f'bits: {bits.bin} -> msg: {decoded}')
 
@@ -132,7 +133,6 @@ class Agent:
         deck = self.trash_cards + useless_cards + [self.stop_card] + encode_msg
 
         return deck if valid_deck(deck) else list(range(52))
-
     def decode(
             self,
             deck
