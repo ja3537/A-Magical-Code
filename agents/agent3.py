@@ -42,7 +42,7 @@ class Huffman:
     def decode(
             self,
             bits: Bits
-    ) -> str:
+    ):
         decoded = self.codec.decode(bits.tobytes())
 
         debug('[ Huffman.decode ]', f'bits: {bits.bin} -> msg: {decoded}')
@@ -62,8 +62,6 @@ class Agent:
             self,
             msg: str
     ) -> List[int]:
-        encode_msg = []
-
         # Convert Huffman to binary
         bin = self.huff.encode(msg).bin
 
@@ -71,10 +69,11 @@ class Agent:
         parts = [str(bin)[i:i+5] for i in range(0, len(str(bin)), 5)]
 
         # For each binary string convert to binary then int using int()
-        # and append to encode_msg
-        for i in parts:
-            # print(int(Bits(bin=i).bin, 2))
-            encode_msg.append(int(Bits(bin=i).bin, 2))
+        # and then convert list of duplicates to dict to remove duplicates
+        # and then back to list
+        encode_msg = list(dict.fromkeys(
+                            [int(Bits(bin=i).bin, 2) for i in parts]
+                            ))
 
         useless_cards = [card for card in range(0, 32)
                          if card not in encode_msg]
@@ -85,10 +84,16 @@ class Agent:
     def decode(
             self,
             deck
-    ):
+    ) -> str:
         deck = self.remove_trash_cards(deck)
         deck = self.get_encoded_message(deck)
-        return "NULL"
+        msg = ''
+        for i in deck:
+            msg = msg + str(Bits(uint=i, length=5).bin)
+        msg_final = str(self.huff.decode(Bits(bin=msg)))
+        if len(msg_final) == 0:
+            return "NULL"
+        return msg_final
 
     def remove_trash_cards(
             self,
@@ -120,8 +125,7 @@ def test_huffman_codec():
         encoded = huffman.encode(orig)
         decoded = huffman.decode(encoded)
 
-        assert type(
-            encoded) == Bits, 'error: encoded message is not of type Bits!'
+        assert type(encoded) == Bits, 'error: encoded message is not of type Bits!'
         assert orig == decoded, 'error: decoded message is not the same as the original'
 
     print('PASSED: Huffman codec using pre-traind shakespeare text')
