@@ -8,6 +8,7 @@ class Agent:
     def __init__(self):
         self.rng = np.random.default_rng(seed=42)
         self.start_marker = 1
+        self.encoded_cards = 26
 
     def string_to_binary(self, message):
         return ''.join(format(ord(i), 'b') for i in message)
@@ -27,7 +28,7 @@ class Agent:
 
     def get_encoded_cards(self, deck):
         marker_indx = deck.index(self.start_marker)
-        return [c for c in deck[marker_indx:] if c >= marker_indx]
+        return [c for c in deck[marker_indx:] if c >= self.encoded_cards]
 
     def cards_to_num(self, cards: List[int]) -> int:
         num_cards = len(cards)
@@ -64,8 +65,7 @@ class Agent:
     def encode(self, message):
         deck = generate_deck(self.rng)
 
-        num_cards_to_encode = 26
-        message_start_idx = len(deck) - num_cards_to_encode
+        message_start_idx = len(deck) - self.encoded_cards
         binary_repr = self.string_to_binary(message)
         integer_repr = int(binary_repr, 2)
         message_cards = self.num_to_cards(integer_repr, deck[message_start_idx:])
