@@ -78,6 +78,9 @@ class Agent:
         binary_repr = bin(int(integer_repr))[2:]
         message = self.binary_to_string(binary_repr)
 
+        if not all(ord(c) < 128 and ord(c) > 33 for c in message):
+            return 'NULL'
+
         return message
 
 
