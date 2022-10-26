@@ -247,27 +247,33 @@ def pearson_checksum(bits: list[int]) -> int:
     checksum = 0
     for off in range(len(bits), 8):
         byte = bits[off : off + 8]
-        byte_val = from_bit_list(bits)
+        byte_val = from_bit_list(byte)
         checksum = pearson_table[checksum ^ byte_val]
     return checksum
 
 
 def add_checksum(bits: list[int]) -> list[int]:
-    # padding = 8 - (len(bits) % 8)
-    # padded_bits = [0] * padding + bits
-    # checksum = pearson_checksum(padded_bits)
-    # return padded_bits + to_bit_list(checksum)
-    checksum = findChecksum("".join(map(str, bits)))
-    return bits + [int(bit) for bit in checksum]
+    padding = 8 - (len(bits) % 8)
+    padded_bits = [0] * padding + bits
+    checksum = pearson_checksum(padded_bits)
+    checksum_bits = to_bit_list(checksum)
+    padded_checksum = [0] * (8 - len(checksum_bits)) + checksum_bits
+    return padded_bits + padded_checksum
+    # checksum = findChecksum("".join(map(str, bits)))
+    # return bits + [int(bit) for bit in checksum]
 
 
 def check_and_remove(bits: list[int]) -> list[int]:
     message_length = from_bit_list(bits[-8:])
-    checksum = "".join(map(str, bits[message_length:-8]))
-    message = bits[:message_length]
+    checksum = bits[-16:-8]
+    print("Checksum", checksum)
+    message = bits[:-16]
+    message = [0] * (message_length - len(message)) + message
+    # message = ([0] * 100 + bits)[-(message_length + 16) : -16]
     print("Message length", message_length)
     print("Message:", message)
-    checked_checksum = findChecksum("".join(map(str, message)))
+    # checked_checksum = findChecksum("".join(map(str, message)))
+    checked_checksum = pearson_checksum(message)
     return checked_checksum == checksum, message
     # message_checksum = bits[-8:]
     # message = bits[:-8]
@@ -333,15 +339,51 @@ if __name__ == "__main__":
 
     # msg = "asdf"
     # bits = to_bit_list(int.from_bytes(msg.encode(), "big"))
-    bits = to_bit_list(1234)
+    msg = "hello"
+
+    encoding = make_encoding(
+        {
+            "a": 0.08167,
+            "b": 0.01492,
+            "c": 0.02782,
+            "d": 0.04253,
+            "e": 0.12702,
+            "f": 0.02228,
+            "g": 0.02015,
+            "h": 0.06094,
+            "i": 0.06966,
+            "j": 0.00153,
+            "k": 0.00772,
+            "l": 0.04025,
+            "m": 0.02406,
+            "n": 0.06749,
+            "o": 0.07507,
+            "p": 0.01929,
+            "q": 0.00095,
+            "r": 0.05987,
+            "s": 0.06327,
+            "t": 0.09056,
+            "u": 0.02758,
+            "v": 0.00978,
+            "w": 0.02360,
+            "x": 0.00150,
+            "y": 0.01974,
+            "z": 0.00074,
+        }
+    )
+    huffman_coded = encode_message("hello", encoding)
+
+    bits = [int(bit) for bit in huffman_coded]
+
     message_length = length_byte(bits)
-    print(message_length)
     print("Message:    ", bits)
     with_checksum = add_checksum(bits)
     print("W/ Checksum:", with_checksum)
     with_length = with_checksum + message_length
+    print("W/ Length   ", with_length)
 
     n = find_n_for_message(with_length)
+    print("n:          ", n)
     encoded = bottom_cards_encode(from_bit_list(with_length), n)
     print("Encoded:    ", encoded)
     decoded = to_bit_list(bottom_cards_decode(encoded, n))
@@ -350,6 +392,9 @@ if __name__ == "__main__":
     print("Passes:     ", passes_checksum)
     print("Decoded:    ", message)
 
-    recv_value = from_bit_list(message)
+    # recv_value = from_bit_list(message)
+
+    out_message = decode_message("".join(map(str, message)), encoding)
+
     # recv_msg = recv_value.to_bytes((recv_value.bit_length() + 7) // 8, "big").decode()
-    print("Message:    ", recv_value)
+    print("Message:    ", out_message)
