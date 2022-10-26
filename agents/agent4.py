@@ -54,7 +54,7 @@ class Agent:
         ordered_cards = sorted(cards)
         permutations = math.factorial(num_cards)
         sub_list_size = permutations / num_cards
-        sub_list_indx = math.floor(num / sub_list_size)
+        sub_list_indx = math.floor(float(num) / sub_list_size)
         sub_list_start = sub_list_indx * sub_list_size
 
         if sub_list_start >= permutations:
@@ -67,7 +67,7 @@ class Agent:
     def encode(self, message):
         deck = generate_deck(self.rng)
 
-        integer_repr = string_to_binary(message)
+        integer_repr = self.string_to_binary(message)
         message_cards = self.num_to_cards(integer_repr, deck[26:])
         return self.deck_encoded(message_cards)
 
@@ -76,22 +76,14 @@ class Agent:
 
         encoded_cards = self.get_encoded_cards(deck)
         integer_repr = self.cards_to_num(encoded_cards)
-        message = binary_to_string(integer_repr)
+        message = self.binary_to_string(integer_repr)
 
         return message
 
 
-def string_to_binary(message):
-    return ''.join(format(ord(i), 'b') for i in message)
-
-
-def binary_to_string(binary):
-    return ''.join(chr(int(binary[i * 7:i * 7 + 7], 2)) for i in range(len(binary) // 7))
-
-
 if __name__ == "__main__":
     agent = Agent()
-    message = "Hello World"
+    message = "Hello"
     # print(string_to_binary("abc"))
     # print(binary_to_string(string_to_binary("abc")))
     deck = agent.encode(message)
