@@ -70,6 +70,9 @@ class Huffman:
         return padded_msg
 
     def _remove_padding(self, msg: Bits) -> Bits:
+        if len(msg) == 0:
+            return msg
+
         pad_bits_size = int(msg.bin[:self.pad_metadata_size], 2)
         msg_start_idx = self.pad_metadata_size + pad_bits_size
         original_encoding = Bits(bin=f'0b{msg.bin[msg_start_idx:]}')
