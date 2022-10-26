@@ -67,7 +67,8 @@ class Agent:
     def encode(self, message):
         deck = generate_deck(self.rng)
 
-        integer_repr = self.string_to_binary(message)
+        binary_repr = self.string_to_binary(message)
+        integer_repr = int(str(binary_repr), 2)
         message_cards = self.num_to_cards(integer_repr, deck[26:])
         return self.deck_encoded(message_cards)
 
@@ -76,7 +77,8 @@ class Agent:
 
         encoded_cards = self.get_encoded_cards(deck)
         integer_repr = self.cards_to_num(encoded_cards)
-        message = self.binary_to_string(integer_repr)
+        binary_repr = bin(int(integer_repr))[2:]
+        message = self.binary_to_string(binary_repr)
 
         return message
 
@@ -84,8 +86,6 @@ class Agent:
 if __name__ == "__main__":
     agent = Agent()
     message = "Hello"
-    # print(string_to_binary("abc"))
-    # print(binary_to_string(string_to_binary("abc")))
     deck = agent.encode(message)
     print(deck)
     print(agent.decode(deck))
