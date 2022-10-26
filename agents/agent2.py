@@ -43,7 +43,7 @@ def perm_decode(value, n):
 class Agent:
     def __init__(self):
         self.codec = load_shakespeare()
-        self.N = 20 # only modify bottom N cards
+        self.N = 15 # only modify bottom N cards
 
     def encode(self, message):
         encoded = self.codec.encode(message)
@@ -59,13 +59,24 @@ class Agent:
         ordered_deck = [card-(52-self.N) for card in deck[-self.N:]]
 
         # hardcoded check for a random deck
-        if len(set(ordered_deck).intersection(set(range(self.N)))) < 10:
+        lost_cards = list(set(range(self.N)) - set(ordered_deck))
+        if len(lost_cards) >= self.N / 2:
             return 'NULL'
+
+        # replace inserted cards (remove error when shuffling)
+        temp_deck = []
+        insert_i = 0
+        for card in ordered_deck:
+            if not card in set(range(self.N)):
+                temp_deck.append(lost_cards[insert_i])
+                insert_i += 1
+            else:
+               temp_deck.append(card) 
+        ordered_deck = temp_deck
 
         # decode last N cards
         perm = perm_encode(ordered_deck)
         byte_length = (max(perm.bit_length(), 1) + 7) // 8
         b = (perm).to_bytes(byte_length, byteorder='big')
         msg = self.codec.decode(b)
-        print(msg)
         return msg
