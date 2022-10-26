@@ -98,7 +98,6 @@ class Huffman:
             bits: Bits
     ) -> str:
         bits = self._remove_padding(bits)
-        agent_v1
         decoded = self.codec.decode(bits.tobytes())
         debug('[ Huffman.decode ]', f'bits: {bits.bin} -> msg: {decoded}')
 
