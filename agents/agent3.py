@@ -1,7 +1,4 @@
-from base64 import encode
-import chunk
 import logging
-import math
 from typing import List, Optional
 from cards import valid_deck
 from dahuffman import load_shakespeare, HuffmanCodec
@@ -103,9 +100,6 @@ class Agent:
             msg: str
         ) -> List[int]:
 
-        # For each binary string convert to binary then int using int()
-        # and then convert list of duplicates to dict to remove duplicates
-        # and then back to list
 
         bit_len = len(self.huff.encode(msg, padding_len=0).bin)
 
@@ -117,10 +111,10 @@ class Agent:
             encode_msg = [int('{0:b}'.format(chunk_size).zfill(3) + '{0:b}'.format(padding).zfill(3), 2)]
 
             # Convert Huffman to binary
-            bin = self.huff.encode(msg, padding_len=padding).bin
+            bit_str = self.huff.encode(msg, padding_len=padding).bin
             
             # Split binary into chunks -> Convert to string to do this
-            parts = [str(bin)[i:i+chunk_size] for i in range(0, len(str(bin)), chunk_size)]
+            parts = [str(bit_str)[i:i+chunk_size] for i in range(0, len(str(bit_str)), chunk_size)]
 
             # Convert each chunk to int and add to encode_msg
             for i in parts:
@@ -153,13 +147,13 @@ class Agent:
         chunk_size, padding = int(metadata[:3], 2), int(metadata[3:], 2)
         encoded_message = encoded_message[1:]
 
-        binString = ''
+        bit_str = ''
         for card in encoded_message:
             while card >= 2**chunk_size:
                 card -= 2**chunk_size
-            binString += '{0:b}'.format(card).zfill(chunk_size)
+            bit_str += '{0:b}'.format(card).zfill(chunk_size)
 
-        decoded_message = self.huff.decode(Bits(bin=binString), padding_len=padding)
+        decoded_message = self.huff.decode(Bits(bin=bit_str), padding_len=padding)
 
         return decoded_message
 
