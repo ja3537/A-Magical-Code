@@ -23,7 +23,7 @@ def debug(*args) -> None:
 #   Agent Parameters
 # -----------------------------------------------------------------------------
 
-MAX_CHUNK_SIZE = 6
+MAX_CHUNK_SIZE = 5
 
 # -----------------------------------------------------------------------------
 #   Codec
@@ -91,7 +91,8 @@ class Agent:
             self
     ) -> None:
         self.stop_card = 51
-        self.trash_cards = list(range(32, 51))
+        self.trash_card_start_idx = 32
+        self.trash_cards = list(range(self.trash_card_start_idx, 51))
         self.rng = np.random.default_rng(seed=42)
         self.huff = Huffman()  # Create huffman object
         self.max_chunk_size = MAX_CHUNK_SIZE
@@ -125,10 +126,10 @@ class Agent:
                 encode_msg.append(card)
 
             # Check if encode_msg is valid
-            if max(encode_msg) < 32 and len(set(encode_msg)) == len(encode_msg):
+            if max(encode_msg) < self.trash_card_start_idx and len(set(encode_msg)) == len(encode_msg):
                 break
 
-        useless_cards = [card for card in range(0, 32)
+        useless_cards = [card for card in range(0, self.trash_card_start_idx)
                          if card not in encode_msg]
         deck = self.trash_cards + useless_cards + [self.stop_card] + encode_msg
 
