@@ -27,10 +27,8 @@ class Agent:
         return result
 
     def get_encoded_cards(self, deck):
-        for i in range(52):
-            if deck[i] == self.start_marker and i != (len(deck) - 1):
-                return deck[i + 1:]
-        return []
+        marker_indx = deck.index(self.start_marker)
+        return [c for c in deck[marker_indx:] if c >= marker_indx]
 
     def cards_to_num(self, cards: List[int]):
         num_cards = len(cards)
