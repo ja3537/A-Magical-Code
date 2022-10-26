@@ -89,15 +89,15 @@ class Agent:
     def decode(self, deck):
         perm = []
         for card in deck:
-            if 22 <= card <= 51:
+            if 24 <= card <= 51:
                 perm.append(card)
         print(perm)
         if perm[-2:] != [50, 51]:
             return "NULL"
-        if perm[:2] != [22, 23]:
-            return "PARTIAL:"
+        # if perm[:2] != [22, 23]:
+        #     return "PARTIAL:"
 
-        return self.ed.perm_to_str(perm[2:-2])
+        return self.ed.perm_to_str(perm[:-2])
 
 # ed = EncoderDecoder(26)
 # p = ed.str_to_perm('')
