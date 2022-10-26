@@ -43,7 +43,7 @@ class Huffman:
             self.codec = load_shakespeare()
 
         self.chunk_size = chunk_size
-        self.pad_metadata_size = math.ceil(math.log2(chunk_size -1))
+        self.pad_metadata_size = math.ceil(math.log2(chunk_size))
 
     def _add_padding(self, msg: Bits) -> Bits:
         need_pad_size = self.chunk_size - (len(msg) % self.chunk_size)
