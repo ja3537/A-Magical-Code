@@ -167,10 +167,12 @@ for length in collected_results:
     ys = [recovery_rate for _, recovery_rate in sorted(collected_results[length])]
     plt.plot(shuffle_amounts, ys, label=str(length))
 
-plt.legend()
+# https://stackoverflow.com/questions/4700614/how-to-put-the-legend-outside-the-plot
+plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
 plt.title(f"Shuffle Count vs. Recovery Rate (Agent {pargs.agent})")
 plt.xlabel("Number of shuffles")
 plt.ylabel("Recovery rate")
+plt.tight_layout()
 plt.savefig("benchmark.png", dpi=300)
 # print(
 #     f"{round((agent.decoding_errors / agent.total_decode) * 100, 2)}% ({agent.decoding_errors}/{agent.total_decode}) decoding errors"
