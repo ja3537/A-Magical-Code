@@ -39,7 +39,8 @@ class PermutationGenerator:
         ''' Encode the given cards into a permutation of the given rank '''
         base = ''.join(list([str(num) for num in range(len(cards))]))
         permutation = self._perm_unrank(rank, base)
-
+        if permutation is None:
+            print("trying to create permuation for number ", rank)
         return [cards[int(i)] for i in permutation]
 
     def decode(self, cards):
@@ -354,7 +355,7 @@ class Agent:
         cards = [str(card) for card in cards]
 
         metadata = step_size + start_padding + end_padding + lengths
-
+        print("length of message ", len(lengths))
         last_5_cards = cards[-9:]
         permutation = self.permuter.encode(last_5_cards, int(metadata, 2))
 
