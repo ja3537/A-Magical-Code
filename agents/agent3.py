@@ -10,6 +10,9 @@ from bitstring import Bits
 from importlib.metadata import metadata
 import numpy as np
 import math
+from math import factorial as fac
+from itertools import groupby
+
 
 log_level = logging.DEBUG
 log_file = 'log/agent3.log'
@@ -28,6 +31,63 @@ def debug(*args) -> None:
 # -----------------------------------------------------------------------------
 
 MAX_CHUNK_SIZE = 6
+
+class PermutationGenerator:
+    # From https://codegolf.stackexchange.com/questions/114883/i-give-you-nth-permutation-you-give-me-n
+
+    def encode(self, cards, rank):
+        ''' Encode the given cards into a permutation of the given rank '''
+        base = ''.join(list([str(num) for num in range(len(cards))]))
+        permutation = self._perm_unrank(rank, base)
+
+        return [cards[int(i)] for i in permutation]
+
+    def decode(self, cards):
+        ''' Decode the given permuted cards into a rank '''
+        sortedCards = sorted(cards)
+
+        target = ''.join([str(sortedCards.index(card)) for card in cards])
+        base = ''.join(list([str(num) for num in range(len(cards))]))
+        return self._perm_rank(target, base)
+
+    def perm_count(self, s):
+        ''' Count the total number of permutations of sorted sequence `s` '''
+        n = fac(len(s))
+        for _, g in groupby(s):
+            n //= fac(sum(1 for u in g))
+        return n
+
+    def _perm_rank(self, target, base):
+        ''' Determine the permutation rank of string `target`
+            given the rank zero permutation string `base`,
+            i.e., the chars in `base` are in lexicographic order.
+        '''
+        if len(target) < 2:
+            return 0
+        total = 0
+        head, newtarget = target[0], target[1:]
+        for i, c in enumerate(base):
+            newbase = base[:i] + base[i+1:]
+            if c == head:
+                return total + self._perm_rank(newtarget, newbase)
+            elif i and c == base[i-1]:
+                continue
+            total += self.perm_count(newbase)
+    def _perm_unrank(self, rank, base, head=''):
+        ''' Determine the permutation with given rank of the 
+            rank zero permutation string `base`.
+        '''
+        if len(base) < 2:
+            return head + ''.join(base)
+
+        total = 0
+        for i, c in enumerate(base):
+            if i < 1 or c != base[i-1]:
+                newbase = base[:i] + base[i+1:]
+                newtotal = total + self.perm_count(newbase)
+                if newtotal > rank:
+                    return self._perm_unrank(rank - total, newbase, head + c)
+                total = newtotal
 
 # -----------------------------------------------------------------------------
 #   Codec
@@ -99,7 +159,7 @@ class Agent:
         self.trash_cards = list(range(self.trash_card_start_idx, 51))
         self.rng = np.random.default_rng(seed=42)
         self.huff = Huffman()  # Create huffman object
-
+        self.permuter = PermutationGenerator()
         self.max_chunk_size = 6
 
     def encode(
@@ -145,7 +205,6 @@ class Agent:
 
         deck = self.trash_cards + useless_cards + metadata_cards + [self.stop_card] + encode_msg
 
-        print(end_padding, start_padding, step_size, lengths)
         return deck if valid_deck(deck) else list(range(52))
 
     def decode(
@@ -154,7 +213,6 @@ class Agent:
     ) -> str:
         if deck == list(reversed(range(52))):
             return "Could not encode message"
-
 
         deck = self.remove_trash_cards(deck)
         encoded_message = self.get_encoded_message(deck)
@@ -287,65 +345,39 @@ class Agent:
                 return True and max(encoded_msg) < 32, i
         return False, None
 
-    def encode_metadata(self, step_size, start_padding, last_chunk_padding, lengths, cards):
-        # encode the metadata into the deck
-        handle_n_duplicates = 1 # can only be 1 right now
-        chunk_size = math.floor(math.log2(len(cards) - (2*handle_n_duplicates)))
-        padding_needed = (chunk_size - (len(step_size) + len(start_padding) + len(last_chunk_padding) + len(lengths)) % chunk_size) % chunk_size
-        metadata = lengths + step_size + start_padding + last_chunk_padding + '0' * padding_needed
+    def encode_metadata(self, step_size : str, start_padding : str, end_padding : str, lengths : str, cards: List[int]):
+        ''' 
+        Encode the metadata into the deck
 
-        metadata_parts = [metadata[i:i+chunk_size] for i in range(0, len(metadata), chunk_size)]
-        metadata_ints = [int(part, 2) for part in metadata_parts]
+        Returns a list of cards
+        '''
+        cards = [str(card) for card in cards]
 
-        sorted_cards = sorted(cards)
-        metadata_arr = [sorted_cards[idx] for idx in metadata_ints]
+        metadata = step_size + start_padding + end_padding + lengths
 
-        duplicate_cards = sorted_cards[-(2*handle_n_duplicates):]
+        last_5_cards = cards[-9:]
+        permutation = self.permuter.encode(last_5_cards, int(metadata, 2))
 
-        # find duplicates in metadata_arr and replace with duplicate_cards
-        duplicated_card = duplicate_cards[1]
-        for i, card in enumerate(set(metadata_arr)):
-            if metadata_arr.count(card) > 1:
-                duplicated_card = card
-                idx = metadata_arr.index(card)
-                metadata_arr[idx] = duplicate_cards[0]
-                metadata_arr[metadata_arr.index(card)] = duplicate_cards[1]
+        return [int(card) for card in cards[:9]] + [int(card) for card in permutation]
+        
+    def decode_metadata(self, uselessCards : List[int], messageLength : int):
+        '''
+        Decode the metadata from the deck
+        
+        Returns a tuple of step_size, start_padding, end_padding, lengths
+        '''
+        cards = [str(card) for card in uselessCards]
+        last_5_cards = cards[-9:]
+        metadata = self.permuter.decode(last_5_cards)
 
-        return [duplicated_card] + metadata_arr
+        metadata = '{0:b}'.format(metadata).zfill(2 + 3 + 3 + messageLength)
 
-    def decode_metadata(self, uselessCards, messageLength):
-        # decode the metadata from the deck
-        handle_n_duplicates = 1
-        chunk_size = math.floor(math.log2(len(uselessCards)- (2*handle_n_duplicates)))
-        sortedCards = sorted(uselessCards)
-        realCardIdx = [sortedCards.index(card) for card in uselessCards] #get indexes of what each card maps to
+        step_size = int(metadata[:2], 2)
+        start_padding = int(metadata[2:5], 2)
+        end_padding = int(metadata[5:8], 2)
+        lengths = metadata[8:]
 
-        metadataLength = 2 + 3 + 3 + messageLength
-        padding = (chunk_size - (metadataLength % chunk_size)) % chunk_size
-        metadataLength += padding
-
-        metadataCardsIdx = realCardIdx[-metadataLength//chunk_size:] #gets indexes of metadata cards
-        metadataCards = [sortedCards[idx] for idx in metadataCardsIdx] #gets the real cards of metadataCards
-
-        duplicate_cards = sortedCards[-(2*handle_n_duplicates):]
-        duplicated_card = uselessCards[len(realCardIdx) - len(metadataCardsIdx) - 1]
-
-        if duplicate_cards[0] in metadataCards: # if we see there were duplicates, replace them with the duplicated card
-            metadataCards[metadataCards.index(duplicate_cards[0])] = duplicated_card
-            metadataCards[metadataCards.index(duplicate_cards[1])] = duplicated_card
-
-        # convert metadataCards back to the indexes they map to
-        metadataCardsIdx = [sortedCards.index(card) for card in metadataCards]
-
-        metadata = ''.join(['{0:b}'.format(card).zfill(chunk_size) for card in metadataCardsIdx])
-
-        lengths = metadata[:messageLength]
-        step_size = metadata[messageLength:messageLength+2]
-        start_padding = metadata[messageLength+2:messageLength+5]
-        last_chunk_padding = metadata[messageLength+5:messageLength+8]
-        extra_padding = metadata[messageLength+8:]
-
-        return int(step_size, 2), int(start_padding, 2), int(last_chunk_padding, 2), lengths
+        return step_size, start_padding, end_padding, lengths
 
 
 # -----------------------------------------------------------------------------
