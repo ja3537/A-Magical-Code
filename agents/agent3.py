@@ -1,5 +1,6 @@
 import chunk
 from concurrent.futures import thread
+from curses import meta
 import logging
 from typing import List, Optional
 from cards import valid_deck
@@ -122,14 +123,6 @@ class Agent:
 
         encode_msg = []
 
-        for i in range(4):
-            possible_card = int('0{0:b}'.format(i).zfill(2) + '{0:b}'.format(end_padding).zfill(3), 2)
-            if possible_card not in cards:
-                encode_msg.append(possible_card)
-                break
-        else: # No card found
-            raise Exception('No card found')
-        
         encode_msg.extend(cards)
 
         #TODO: encode 2 bits for step size
@@ -140,9 +133,6 @@ class Agent:
         end_padding = '{0:b}'.format(end_padding).zfill(3)
         start_padding = '{0:b}'.format(start_padding).zfill(3)
         step_size = '{0:b}'.format(step_size).zfill(2)
-
-        print(step_size, start_padding, end_padding, lengths)
-
 
         useless_cards = [card for card in range(0, self.trash_card_start_idx)
                          if card not in encode_msg]
@@ -291,7 +281,7 @@ class Agent:
             encoded_msg = self.hash_msg_with_linear_probe(chunks, i)
             decoded_hash = self.un_hash_msg(encoded_msg, i)
             if decoded_hash == chunks:
-                return True, i
+                return True and max(encoded_msg) < 32, i
         return False, None
 
     def encode_metadata(self, step_size, start_padding, last_chunk_padding, lengths, cards):
@@ -305,7 +295,6 @@ class Agent:
         sorted_cards = sorted(cards)
         metadata_arr = [sorted_cards[idx] for idx in metadata_ints] #TODO: This has duplicates:////
 
-        print(metadata_arr)
         return metadata_arr
 
     def decode_metadata(self, uselessCards, messageLength):
@@ -315,22 +304,19 @@ class Agent:
         realCardIdx = [sortedCards.index(card) for card in uselessCards]
 
         metadataLength = 2 + 3 + 3 + messageLength
-        padding = (chunk_size - metadataLength % chunk_size) % chunk_size
+        padding = (chunk_size - (metadataLength % chunk_size)) % chunk_size
         metadataLength += padding
 
-
         metadataCardsIdx = realCardIdx[-metadataLength//chunk_size:]
-        metadataCards = [sortedCards[idx] for idx in metadataCardsIdx]
-        print(metadataCards)
-        metadata = ''.join(['{0:b}'.format(card).zfill(chunk_size) for card in metadataCards])
+        # metadataCards = [sortedCards[idx] for idx in metadataCardsIdx]
 
-        print(metadata)
-        step_size = metadata[:2]
-        start_padding = metadata[2:5]
-        last_chunk_padding = metadata[5:8]
-        lengths = metadata[8:8+messageLength]
+        metadata = ''.join(['{0:b}'.format(card).zfill(chunk_size) for card in metadataCardsIdx])
 
-        print(step_size, start_padding, last_chunk_padding, lengths)
+        lengths = metadata[:messageLength]
+        step_size = metadata[messageLength:messageLength+2]
+        start_padding = metadata[messageLength+2:messageLength+5]
+        last_chunk_padding = metadata[messageLength+5:messageLength+8]
+
         return step_size, start_padding, last_chunk_padding, lengths
 
 
