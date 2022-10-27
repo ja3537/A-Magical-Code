@@ -23,7 +23,9 @@ class FreqTree:
     def __lt__(self, other: "FreqTree"):
         return self.freq < other.freq
 
-    def __eq__(self, other: "FreqTree"):
+    def __eq__(self, other: object):
+        if not isinstance(other, FreqTree):
+            return NotImplemented
         return self.freq == other.freq
 
 
@@ -190,53 +192,34 @@ pearson_table = list(range(256))
 random.shuffle(pearson_table)
 
 
-def pearson_checksum(bits: list[int]) -> int:
+def pearson_checksum(bits: list[int]) -> list[int]:
+    padding = 8 - (len(bits) % 8)
+    padded_bits = [0] * padding + bits
     checksum = 0
     for off in range(0, len(bits), 8):
         byte = bits[off : off + 8]
         byte_val = from_bit_list(byte)
         checksum = pearson_table[checksum ^ byte_val]
-    return checksum
+    checksum_bits = to_bit_list(checksum)
+    padded_checksum = [0] * (8 - len(checksum_bits)) + checksum_bits
+    return padded_checksum
 
 
 def add_checksum(bits: list[int]) -> list[int]:
-    padding = 8 - (len(bits) % 8)
-    padded_bits = [0] * padding + bits
-    checksum = pearson_checksum(padded_bits)
-    checksum_bits = to_bit_list(checksum)
-    padded_checksum = [0] * (8 - len(checksum_bits)) + checksum_bits
-    return padded_bits + padded_checksum
-    # checksum = findChecksum("".join(map(str, bits)))
-    # return bits + [int(bit) for bit in checksum]
+    # Checksum always pads before calculating checksum,
+    # so we don't need to pad the transmitted message
+    checksum = pearson_checksum(bits)
+    return bits + checksum
 
 
 def check_and_remove(bits: list[int]) -> tuple[bool, list[int]]:
     message_length = from_bit_list(bits[-8:])
     message_checksum = bits[-16:-8]
     message = bits[:-16]
-    print("message length", message_length)
-    # print("checksum", checksum)
+    # Pad message to target length with leading 0's
     message = [0] * (message_length - len(message)) + message
-    print("decoded message bits", message)
-    # message = ([0] * 100 + bits)[-(message_length + 16) : -16]
-    # checked_checksum = findChecksum("".join(map(str, message)))
-
-    padding = 8 - (len(message) % 8)
-    padded_bits = [0] * padding + message
-    checksum = pearson_checksum(padded_bits)
-    checksum_bits = to_bit_list(checksum)
-    checked_checksum = [0] * (8 - len(checksum_bits)) + checksum_bits
-
-    print("checked_checksum", checked_checksum)
-    # same = True
-    # for checksum_bit in range(8):
-    #     if checksum[checksum_bit] != checked_checksum[checksum_bit]:
-    #         same = False
+    checked_checksum = pearson_checksum(message)
     return checked_checksum == message_checksum, message
-    # message_checksum = bits[-8:]
-    # message = bits[:-8]
-    # checked_checksum = pearson_checksum(message)
-    # return message_checksum == checked_checksum, message
 
 
 def length_byte(bits: list[int]) -> list[int]:
