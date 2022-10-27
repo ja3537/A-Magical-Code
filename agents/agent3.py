@@ -1,4 +1,5 @@
 import chunk
+from concurrent.futures import thread
 import logging
 from typing import List, Optional
 from cards import valid_deck
@@ -7,7 +8,7 @@ from dahuffman import load_shakespeare, HuffmanCodec
 from bitstring import Bits
 from importlib.metadata import metadata
 import numpy as np
-
+import math
 
 log_level = logging.DEBUG
 log_file = 'log/agent3.log'
@@ -110,6 +111,7 @@ class Agent:
         step_size, parts, start_padding, end_padding = self.get_parts(bit_str)
         
         if step_size == -1:
+            raise Exception("Could not encode message")
             return list(range(52))
 
         chunk_size = [len(part) for part in parts]
@@ -117,11 +119,6 @@ class Agent:
 
         if step_size > 0:
             cards = self.hash_msg_with_linear_probe(cards, step_size=step_size)
-
-        print(parts)
-        print(cards)
-        print(chunk_size)
-        print(step_size)
 
         encode_msg = []
 
@@ -135,22 +132,28 @@ class Agent:
         
         encode_msg.extend(cards)
 
-        #TODO: encode 2 bits for step size - is this needed? or can we just try them all - same thing with padding
+        #TODO: encode 2 bits for step size
         # 3 bits for start padding
         # 3 bits for end padding
         # n bits for each chunk size
-        metadata = []
         lengths = ''.join(["0" if size == self.max_chunk_size else "1" for size in chunk_size])
-        print(lengths)
+        end_padding = '{0:b}'.format(end_padding).zfill(3)
+        start_padding = '{0:b}'.format(start_padding).zfill(3)
+        step_size = '{0:b}'.format(step_size).zfill(2)
+
+        print(step_size, start_padding, end_padding, lengths)
+
 
         useless_cards = [card for card in range(0, self.trash_card_start_idx)
                          if card not in encode_msg]
-        deck = self.trash_cards + useless_cards + metadata + [self.stop_card] + encode_msg
 
-        print("outputs")
-        print(valid_deck(deck))
-        print(sum(deck) - sum(range(52)))
-        print(deck)
+        # given the useless_cards, encode the metadata
+        metadata_cards = self.encode_metadata(step_size, start_padding, end_padding, lengths, useless_cards)
+
+        useless_cards = [card for card in useless_cards
+                    if card not in metadata_cards]
+
+        deck = self.trash_cards + useless_cards + metadata_cards + [self.stop_card] + encode_msg
 
         return deck if valid_deck(deck) else list(range(52))
     def decode(
@@ -161,44 +164,32 @@ class Agent:
 
         deck = self.remove_trash_cards(deck)
         encoded_message = self.get_encoded_message(deck)
-
+        useless_cards = self.get_useless_cards(deck)
         if len(encoded_message) == 0:
             return "NULL"
 
-        last_chunk_len, last_chunk_padding = int('{0:b}'.format(encoded_message[0]).zfill(6)[3:], 2), int('{0:b}'.format(encoded_message[1]).zfill(6)[3:], 2)
+        messageLength = len(encoded_message)
 
-        encoded_message = encoded_message[2:]
+        # decode metadata
+        step_size, start_padding, end_padding, lengths = self.decode_metadata(useless_cards, messageLength)
 
-        bit_str = ''
-        seenBitStr = set()
-        for idx, card in enumerate(encoded_message[:-1]):
-            next_card = encoded_message[idx + 1]
-            #currently assume that the next chunnk is max size, MAY NOT BE TRUE THOUGH!!!
-            next_bits = '{0:b}'.format(next_card).zfill(self.max_chunk_size)
+        step_size = int(step_size, 2)
+        start_padding = int(start_padding, 2)
+        end_padding = int(end_padding, 2)
 
-            normal_chunk = '{0:b}'.format(card).zfill(self.max_chunk_size)
-            naked_card = '{0:b}'.format(card)
-            minus_one_chunk = naked_card.zfill(self.max_chunk_size-1) + next_bits[:1] if len(naked_card) < self.max_chunk_size else naked_card
+        if step_size == 0:
+            # no linear probing
+            cards = encoded_message
+        else:
+            # linear probing
+            cards = self.un_hash_msg(encoded_message, step_size)
 
-            real_chunk_size = self.max_chunk_size
+        # decode message
+        chunk_sizes = [self.max_chunk_size if length == '0' else self.max_chunk_size-1 for length in lengths]
+        bit_str = ''.join(['{0:b}'.format(card).zfill(chunk_sizes[i]) for i, card in enumerate(cards)])
 
-            if minus_one_chunk in seenBitStr:
-                real_chunk_size -= 1
-                if normal_chunk not in seenBitStr:
-                    print("s")
-            if normal_chunk in seenBitStr:
-                print("ERROR??")
-            # else:
-            #     real_chunk_size = self.max_chunk_size
+        bit_str = bit_str[start_padding:-end_padding]
 
-            seenBitStr.add('{0:b}'.format(card).zfill(real_chunk_size))
-            bit_str += '{0:b}'.format(card).zfill(real_chunk_size)
-
-        last_bits = '{0:b}'.format(encoded_message[-1])[:-last_chunk_padding].zfill(last_chunk_len) if last_chunk_padding > 0 else '{0:b}'.format(encoded_message[-1]).zfill(last_chunk_len)
-
-        bit_str += last_bits
-
-        print(bit_str)
         decoded_message = self.huff.decode(Bits(bin=bit_str), padding_len=0)
 
         return decoded_message
@@ -215,8 +206,10 @@ class Agent:
             self,
             deck
     ) -> List[int]:
-        deck.index(self.stop_card)
         return deck[deck.index(self.stop_card)+1:]
+
+    def get_useless_cards(self, deck):
+        return deck[:deck.index(self.stop_card)]
 
     def get_parts(self, bit_str):
         '''
@@ -300,6 +293,46 @@ class Agent:
             if decoded_hash == chunks:
                 return True, i
         return False, None
+
+    def encode_metadata(self, step_size, start_padding, last_chunk_padding, lengths, cards):
+        # encode the metadata into the deck
+        chunk_size = math.floor(math.log2(len(cards)))
+        padding_needed = (chunk_size - (len(step_size) + len(start_padding) + len(last_chunk_padding) + len(lengths)) % chunk_size) % chunk_size
+        metadata = lengths + step_size + start_padding + last_chunk_padding + '0' * padding_needed
+        metadata_parts = [metadata[i:i+chunk_size] for i in range(0, len(metadata), chunk_size)]
+        metadata_ints = [int(part, 2) for part in metadata_parts]
+
+        sorted_cards = sorted(cards)
+        metadata_arr = [sorted_cards[idx] for idx in metadata_ints] #TODO: This has duplicates:////
+
+        print(metadata_arr)
+        return metadata_arr
+
+    def decode_metadata(self, uselessCards, messageLength):
+        # decode the metadata from the deck
+        chunk_size = math.floor(math.log2(len(uselessCards)))
+        sortedCards = sorted(uselessCards)
+        realCardIdx = [sortedCards.index(card) for card in uselessCards]
+
+        metadataLength = 2 + 3 + 3 + messageLength
+        padding = (chunk_size - metadataLength % chunk_size) % chunk_size
+        metadataLength += padding
+
+
+        metadataCardsIdx = realCardIdx[-metadataLength//chunk_size:]
+        metadataCards = [sortedCards[idx] for idx in metadataCardsIdx]
+        print(metadataCards)
+        metadata = ''.join(['{0:b}'.format(card).zfill(chunk_size) for card in metadataCards])
+
+        print(metadata)
+        step_size = metadata[:2]
+        start_padding = metadata[2:5]
+        last_chunk_padding = metadata[5:8]
+        lengths = metadata[8:8+messageLength]
+
+        print(step_size, start_padding, last_chunk_padding, lengths)
+        return step_size, start_padding, last_chunk_padding, lengths
+
 
 # -----------------------------------------------------------------------------
 #   Unit Tests
