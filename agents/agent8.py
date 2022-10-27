@@ -1,40 +1,47 @@
 import heapq
 from math import factorial, log2
+from pprint import pprint
 from random import Random
+from typing import Optional
 
 
 # ================
 # Message <-> Bits
 # ================
-class Node:
-    def __init__(self, char, freq):
+class FreqTree:
+    char: Optional[str]
+    freq: float
+    left: Optional["FreqTree"]
+    right: Optional["FreqTree"]
+
+    def __init__(self, char: Optional[str], freq: float):
         self.char = char
         self.freq = freq
         self.left = None
         self.right = None
 
-    def __lt__(self, other):
+    def __lt__(self, other: "FreqTree"):
         return self.freq < other.freq
 
-    def __eq__(self, other):
+    def __eq__(self, other: "FreqTree"):
         return self.freq == other.freq
 
 
-def make_huffman_encoding(frequencies):
+def make_huffman_encoding(frequencies: dict[str, float]) -> dict[str, str]:
     """
     frequencies is a dictionary mapping from a character in the English alphabet to its frequency.
     Returns a dictionary mapping from a character to its Huffman encoding.
     """
-    huffman_encoding = {}
-    heap = []
+    huffman_encoding: dict[str, str] = {}
+    heap: list[FreqTree] = []
 
     for char, freq in frequencies.items():
-        heapq.heappush(heap, Node(char, freq))
+        heapq.heappush(heap, FreqTree(char, freq))
 
     while len(heap) > 1:
         left = heapq.heappop(heap)
         right = heapq.heappop(heap)
-        node = Node(None, left.freq + right.freq)
+        node = FreqTree(None, left.freq + right.freq)
         node.left = left
         node.right = right
         heapq.heappush(heap, node)
@@ -53,7 +60,7 @@ def make_huffman_encoding(frequencies):
     return huffman_encoding
 
 
-def huffman_encode_message(message, encoding):
+def huffman_encode_message(message: str, encoding: dict[str, str]):
     """
     Encodes a message using the given encoding.
     """
@@ -65,7 +72,7 @@ def huffman_encode_message(message, encoding):
     return "".join(encoded_message)
 
 
-def huffman_decode_message(encoded_message, encoding):
+def huffman_decode_message(encoded_message: str, encoding: dict[str, str]):
     """
     Decodes a message using the given encoding.
     """
@@ -147,7 +154,7 @@ def from_bit_list(bits: list[int]) -> int:
 # ===================
 # Checksum Algorithms
 # ===================
-def quarter_sum_checksum(sent_message):
+def quarter_sum_checksum(sent_message: str) -> str:
     k = int(((len(sent_message) / 4) + 1) // 1)
 
     # Dividing sent message in packets of k bits.
@@ -203,7 +210,7 @@ def add_checksum(bits: list[int]) -> list[int]:
     # return bits + [int(bit) for bit in checksum]
 
 
-def check_and_remove(bits: list[int]) -> list[int]:
+def check_and_remove(bits: list[int]) -> tuple[bool, list[int]]:
     message_length = from_bit_list(bits[-8:])
     message_checksum = bits[-16:-8]
     message = bits[:-16]
@@ -310,6 +317,9 @@ class Agent:
 
 
 if __name__ == "__main__":
+    agent = Agent()
+    pprint(agent.encoding)
+
     for n in range(1, 52):
         assert (
             bottom_cards_decode(bottom_cards_encode(factorial(n) - 1, n), n)
