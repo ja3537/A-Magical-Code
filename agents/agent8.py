@@ -62,7 +62,7 @@ def make_huffman_encoding(frequencies: dict[str, float]) -> dict[str, str]:
     return huffman_encoding
 
 
-def huffman_encode_message(message: str, encoding: dict[str, str]):
+def huffman_encode_message(message: str, encoding: dict[str, str]) -> str:
     """
     Encodes a message using the given encoding.
     """
@@ -74,7 +74,7 @@ def huffman_encode_message(message: str, encoding: dict[str, str]):
     return "".join(encoded_message)
 
 
-def huffman_decode_message(encoded_message: str, encoding: dict[str, str]):
+def huffman_decode_message(encoded_message: str, encoding: dict[str, str]) -> str:
     """
     Decodes a message using the given encoding.
     """
@@ -135,22 +135,22 @@ def bottom_cards_decode(cards: list[int], n: int) -> int:
     return lo
 
 
-def find_n_for_message(bits: list[int]) -> int:
+def find_c_for_message(bits: str) -> int:
     # In practice, with an 8 bits checksum, this value is always > 5,
-    for n in range(1, 52):
-        if int(log2(factorial(n))) >= len(bits):
-            return n
+    for c in range(1, 52):
+        if int(log2(factorial(c))) >= len(bits):
+            return c
     return 0
 
 
-def to_bit_list(value: int) -> list[int]:
-    """255 -> [1, 1, 1, 1, 1, 1, 1, 1]"""
-    return [int(bit) for bit in bin(value)[2:]]
+def to_bit_string(value: int) -> str:
+    """255 -> 11111111"""
+    return bin(value)[2:]
 
 
-def from_bit_list(bits: list[int]) -> int:
-    """[1, 1, 1, 1, 1, 1, 1, 1] -> 255"""
-    return int("0b" + "".join(map(str, bits)), 2)
+def from_bit_string(bits: str) -> int:
+    """11111111 -> 255"""
+    return int("0b" + bits, 2)
 
 
 # ===================
@@ -192,39 +192,39 @@ pearson_table = list(range(256))
 random.shuffle(pearson_table)
 
 
-def pearson_checksum(bits: list[int]) -> list[int]:
+def pearson_checksum(bits: str) -> str:
     padding = 8 - (len(bits) % 8)
-    padded_bits = [0] * padding + bits
+    padded_bits = "0" * padding + bits
     checksum = 0
-    for off in range(0, len(bits), 8):
-        byte = bits[off : off + 8]
-        byte_val = from_bit_list(byte)
+    for off in range(0, len(padded_bits), 8):
+        byte = padded_bits[off : off + 8]
+        byte_val = from_bit_string(byte)
         checksum = pearson_table[checksum ^ byte_val]
-    checksum_bits = to_bit_list(checksum)
-    padded_checksum = [0] * (8 - len(checksum_bits)) + checksum_bits
+    checksum_bits = to_bit_string(checksum)
+    padded_checksum = "0" * (8 - len(checksum_bits)) + checksum_bits
     return padded_checksum
 
 
-def add_checksum(bits: list[int]) -> list[int]:
+def add_checksum(bits: str) -> str:
     # Checksum always pads before calculating checksum,
     # so we don't need to pad the transmitted message
     checksum = pearson_checksum(bits)
     return bits + checksum
 
 
-def check_and_remove(bits: list[int]) -> tuple[bool, list[int]]:
-    message_length = from_bit_list(bits[-8:])
+def check_and_remove(bits: str) -> tuple[bool, str]:
+    message_length = from_bit_string(bits[-8:])
     message_checksum = bits[-16:-8]
     message = bits[:-16]
     # Pad message to target length with leading 0's
-    message = [0] * (message_length - len(message)) + message
+    message = "0" * (message_length - len(message)) + message
     checked_checksum = pearson_checksum(message)
     return checked_checksum == message_checksum, message
 
 
-def length_byte(bits: list[int]) -> list[int]:
-    length_bits = to_bit_list(len(bits))
-    return [0] * (8 - len(length_bits)) + length_bits
+def length_byte(bits: str) -> str:
+    length_bits = to_bit_string(len(bits))
+    return "0" * (8 - len(length_bits)) + length_bits
 
 
 class Agent:
@@ -260,41 +260,26 @@ class Agent:
         }
         self.encoding = make_huffman_encoding(self.frequencies)
 
-    def encode(self, message):
-        print("Message to encode:", message)
+    def encode(self, message: str):
         huffman_coded = huffman_encode_message(message, self.encoding)
 
-        bits = [int(bit) for bit in huffman_coded]
-        print("Message bits", bits)
-
-        message_length = length_byte(bits)
-        # print("Message:    ", bits)
-        with_checksum = add_checksum(bits)
-        # print("W/ Checksum:", with_checksum)
+        message_length = length_byte(huffman_coded)
+        with_checksum = add_checksum(huffman_coded)
         with_length = with_checksum + message_length
-        print("W/ Length   ", with_length)
 
-        n = find_n_for_message(with_length)
-        print("n:          ", n)
-        encoded = bottom_cards_encode(from_bit_list(with_length), n)
-        print("As cards:", encoded)
-        return list(range(n, 52)) + encoded
+        c = find_c_for_message(with_length)
+        encoded = bottom_cards_encode(from_bit_string(with_length), c)
+        return list(range(c, 52)) + encoded
 
-    def decode(self, deck):
-        print(deck)
-        for n in range(52):
-            encoded = [card for card in deck if card < n]
-            decoded = to_bit_list(bottom_cards_decode(encoded, n))
-            # print("Raw decoded", decoded)
+    def decode(self, deck: list[int]):
+        for c in range(52):
+            encoded = [card for card in deck if card < c]
+            decoded = to_bit_string(bottom_cards_decode(encoded, c))
             passes_checksum, message = check_and_remove(decoded)
-            print(passes_checksum, message)
             if passes_checksum:
-                # print("Passes:     ", passes_checksum)
-                # print("Decoded:    ", message)
                 out_message = huffman_decode_message(
                     "".join(map(str, message)), self.encoding
                 )
-                # print("Message:    ", out_message)
                 return out_message
         return "NULL"
 
