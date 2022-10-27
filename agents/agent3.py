@@ -151,7 +151,6 @@ class Agent:
             deck
     ) -> str:
 
-
         deck = self.remove_trash_cards(deck)
         encoded_message = self.get_encoded_message(deck)
         useless_cards = self.get_useless_cards(deck)
@@ -166,6 +165,9 @@ class Agent:
         step_size = int(step_size, 2)
         start_padding = int(start_padding, 2)
         end_padding = int(end_padding, 2)
+
+        print("Decoded to")
+        print(step_size, start_padding, end_padding, lengths)
 
         if step_size == 0:
             # no linear probing
@@ -286,29 +288,53 @@ class Agent:
 
     def encode_metadata(self, step_size, start_padding, last_chunk_padding, lengths, cards):
         # encode the metadata into the deck
-        chunk_size = math.floor(math.log2(len(cards)))
+        handle_n_duplicates = 1 # can only be 1 right now
+        chunk_size = math.floor(math.log2(len(cards) - (2*handle_n_duplicates)))
         padding_needed = (chunk_size - (len(step_size) + len(start_padding) + len(last_chunk_padding) + len(lengths)) % chunk_size) % chunk_size
         metadata = lengths + step_size + start_padding + last_chunk_padding + '0' * padding_needed
+
         metadata_parts = [metadata[i:i+chunk_size] for i in range(0, len(metadata), chunk_size)]
         metadata_ints = [int(part, 2) for part in metadata_parts]
 
         sorted_cards = sorted(cards)
-        metadata_arr = [sorted_cards[idx] for idx in metadata_ints] #TODO: This has duplicates:////
+        metadata_arr = [sorted_cards[idx] for idx in metadata_ints]
 
-        return metadata_arr
+        duplicate_cards = sorted_cards[-(2*handle_n_duplicates):]
+
+        # find duplicates in metadata_arr and replace with duplicate_cards
+        duplicated_card = duplicate_cards[1]
+        for i, card in enumerate(set(metadata_arr)):
+            if metadata_arr.count(card) > 1:
+                duplicated_card = card
+                idx = metadata_arr.index(card)
+                metadata_arr[idx] = duplicate_cards[0]
+                metadata_arr[metadata_arr.index(card)] = duplicate_cards[1]
+
+        return [duplicated_card] + metadata_arr
 
     def decode_metadata(self, uselessCards, messageLength):
         # decode the metadata from the deck
-        chunk_size = math.floor(math.log2(len(uselessCards)))
+        handle_n_duplicates = 1
+        chunk_size = math.floor(math.log2(len(uselessCards)- (2*handle_n_duplicates)))
         sortedCards = sorted(uselessCards)
-        realCardIdx = [sortedCards.index(card) for card in uselessCards]
+        realCardIdx = [sortedCards.index(card) for card in uselessCards] #get indexes of what each card maps to
 
         metadataLength = 2 + 3 + 3 + messageLength
         padding = (chunk_size - (metadataLength % chunk_size)) % chunk_size
         metadataLength += padding
 
-        metadataCardsIdx = realCardIdx[-metadataLength//chunk_size:]
-        # metadataCards = [sortedCards[idx] for idx in metadataCardsIdx]
+        metadataCardsIdx = realCardIdx[-metadataLength//chunk_size:] #gets indexes of metadata cards
+        metadataCards = [sortedCards[idx] for idx in metadataCardsIdx] #gets the real cards of metadataCards
+
+        duplicate_cards = sortedCards[-(2*handle_n_duplicates):]
+        duplicated_card = uselessCards[len(realCardIdx) - len(metadataCardsIdx) - 1]
+
+        if duplicate_cards[0] in metadataCards: # if we see there were duplicates, replace them with the duplicated card
+            metadataCards[metadataCards.index(duplicate_cards[0])] = duplicated_card
+            metadataCards[metadataCards.index(duplicate_cards[1])] = duplicated_card
+
+        # convert metadataCards back to the indexes they map to
+        metadataCardsIdx = [sortedCards.index(card) for card in metadataCards]
 
         metadata = ''.join(['{0:b}'.format(card).zfill(chunk_size) for card in metadataCardsIdx])
 
@@ -316,6 +342,9 @@ class Agent:
         step_size = metadata[messageLength:messageLength+2]
         start_padding = metadata[messageLength+2:messageLength+5]
         last_chunk_padding = metadata[messageLength+5:messageLength+8]
+        extra_padding = metadata[messageLength+8:]
+        print('metadata', metadata)
+        print('cards', metadataCards)
 
         return step_size, start_padding, last_chunk_padding, lengths
 
