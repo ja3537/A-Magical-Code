@@ -145,7 +145,9 @@ class Agent:
 
         deck = self.trash_cards + useless_cards + metadata_cards + [self.stop_card] + encode_msg
 
+        print(end_padding, start_padding, step_size, lengths)
         return deck if valid_deck(deck) else list(range(52))
+
     def decode(
             self,
             deck
@@ -166,10 +168,6 @@ class Agent:
         # decode metadata
         step_size, start_padding, end_padding, lengths = self.decode_metadata(useless_cards, messageLength)
 
-        step_size = int(step_size, 2)
-        start_padding = int(start_padding, 2)
-        end_padding = int(end_padding, 2)
-
         if step_size == 0:
             # no linear probing
             cards = encoded_message
@@ -182,7 +180,6 @@ class Agent:
         bit_str = ''.join(['{0:b}'.format(card).zfill(chunk_sizes[i]) for i, card in enumerate(cards)])
 
         bit_str = bit_str[start_padding:-end_padding] if end_padding > 0 else bit_str[start_padding:]
-
 
         decoded_message = self.huff.decode(Bits(bin=bit_str), padding_len=0)
 
@@ -252,7 +249,7 @@ class Agent:
 
     def un_hash_msg(self, encoded_msg, step_size):
         # attempt to unhash the encoded message
-        step_size = step_size*2
+        step_size = step_size if step_size != 3 else 5
         encoded_msg_hash_table = {}
 
         message = []
@@ -268,7 +265,7 @@ class Agent:
     def hash_msg_with_linear_probe(self, chunks, step_size):
         #attempt a linear probe at the given step size
         hash_table = {}
-        step_size = step_size*2
+        step_size = step_size if step_size != 3 else 5
 
         encoded_msg = []
         for chunk in chunks:
@@ -283,7 +280,7 @@ class Agent:
             self,
             chunks
     ) -> bool:
-        for i in range(1, 5):
+        for i in range(1, 4):
             encoded_msg = self.hash_msg_with_linear_probe(chunks, i)
             decoded_hash = self.un_hash_msg(encoded_msg, i)
             if decoded_hash == chunks:
@@ -348,7 +345,7 @@ class Agent:
         last_chunk_padding = metadata[messageLength+5:messageLength+8]
         extra_padding = metadata[messageLength+8:]
 
-        return step_size, start_padding, last_chunk_padding, lengths
+        return int(step_size, 2), int(start_padding, 2), int(last_chunk_padding, 2), lengths
 
 
 # -----------------------------------------------------------------------------
