@@ -112,8 +112,8 @@ class Agent:
         step_size, parts, start_padding, end_padding = self.get_parts(bit_str)
         
         if step_size == -1:
-            raise Exception("Could not encode message")
-            return list(range(52))
+            # raise Exception("Could not encode message")
+            return list(reversed(range(52)))
 
         chunk_size = [len(part) for part in parts]
         cards = [int(part, 2) for part in parts]
@@ -150,10 +150,14 @@ class Agent:
             self,
             deck
     ) -> str:
+        if deck == list(reversed(range(52))):
+            return "Could not encode message"
+
 
         deck = self.remove_trash_cards(deck)
         encoded_message = self.get_encoded_message(deck)
         useless_cards = self.get_useless_cards(deck)
+
         if len(encoded_message) == 0:
             return "NULL"
 
@@ -166,9 +170,6 @@ class Agent:
         start_padding = int(start_padding, 2)
         end_padding = int(end_padding, 2)
 
-        print("Decoded to")
-        print(step_size, start_padding, end_padding, lengths)
-
         if step_size == 0:
             # no linear probing
             cards = encoded_message
@@ -180,7 +181,8 @@ class Agent:
         chunk_sizes = [self.max_chunk_size if length == '0' else self.max_chunk_size-1 for length in lengths]
         bit_str = ''.join(['{0:b}'.format(card).zfill(chunk_sizes[i]) for i, card in enumerate(cards)])
 
-        bit_str = bit_str[start_padding:-end_padding]
+        bit_str = bit_str[start_padding:-end_padding] if end_padding > 0 else bit_str[start_padding:]
+
 
         decoded_message = self.huff.decode(Bits(bin=bit_str), padding_len=0)
 
@@ -250,6 +252,7 @@ class Agent:
 
     def un_hash_msg(self, encoded_msg, step_size):
         # attempt to unhash the encoded message
+        step_size = step_size*2
         encoded_msg_hash_table = {}
 
         message = []
@@ -265,6 +268,7 @@ class Agent:
     def hash_msg_with_linear_probe(self, chunks, step_size):
         #attempt a linear probe at the given step size
         hash_table = {}
+        step_size = step_size*2
 
         encoded_msg = []
         for chunk in chunks:
@@ -343,8 +347,6 @@ class Agent:
         start_padding = metadata[messageLength+2:messageLength+5]
         last_chunk_padding = metadata[messageLength+5:messageLength+8]
         extra_padding = metadata[messageLength+8:]
-        print('metadata', metadata)
-        print('cards', metadataCards)
 
         return step_size, start_padding, last_chunk_padding, lengths
 
