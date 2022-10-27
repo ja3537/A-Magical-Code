@@ -3,6 +3,9 @@ from math import factorial, log2
 from random import Random
 
 
+# ================
+# Message <-> Bits
+# ================
 class Node:
     def __init__(self, char, freq):
         self.char = char
@@ -17,7 +20,7 @@ class Node:
         return self.freq == other.freq
 
 
-def make_encoding(frequencies):
+def make_huffman_encoding(frequencies):
     """
     frequencies is a dictionary mapping from a character in the English alphabet to its frequency.
     Returns a dictionary mapping from a character to its Huffman encoding.
@@ -50,7 +53,7 @@ def make_encoding(frequencies):
     return huffman_encoding
 
 
-def encode_message(message, encoding):
+def huffman_encode_message(message, encoding):
     """
     Encodes a message using the given encoding.
     """
@@ -62,121 +65,26 @@ def encode_message(message, encoding):
     return "".join(encoded_message)
 
 
-def decode_message(encoded_message, encoding):
+def huffman_decode_message(encoded_message, encoding):
     """
     Decodes a message using the given encoding.
     """
     decoded_message = ""
     while encoded_message:
+        dead = True
         for char, code in encoding.items():
             if encoded_message.startswith(code):
+                dead = False
                 decoded_message += char
                 encoded_message = encoded_message[len(code) :]
+        if dead:
+            break
     return decoded_message
 
 
-# Function to find the Checksum of Sent Message
-def findChecksum(SentMessage):
-    # needed_padding = len(SentMessage) % 4
-    # SentMessage = "0" * needed_padding + SentMessage
-    k = int(((len(SentMessage) / 4) + 1) // 1)
-
-    # Dividing sent message in packets of k bits.
-    c1 = SentMessage[0:k]
-    c2 = SentMessage[k : 2 * k]
-    c3 = SentMessage[2 * k : 3 * k]
-    c4 = SentMessage[3 * k : 4 * k]
-
-    # Calculating the binary sum of packets
-    Sum = bin(int(c1, 2) + int(c2, 2) + int(c3, 2) + int(c4, 2))[2:]
-
-    # Adding the overflow bits
-    if len(Sum) > k:
-        x = len(Sum) - k
-        Sum = bin(int(Sum[0:x], 2) + int(Sum[x:], 2))[2:]
-    if len(Sum) < k:
-        Sum = "0" * (k - len(Sum)) + Sum
-
-    # Calculating the complement of sum
-    Checksum = ""
-    for i in Sum:
-        if i == "1":
-            Checksum += "0"
-        else:
-            Checksum += "1"
-    return Checksum
-
-
-# Function to find the Complement of binary addition of
-# k bit packets of the Received Message + Checksum
-def checkReceiverChecksum(ReceivedMessage, k, Checksum):
-
-    # Dividing sent message in packets of k bits.
-    c1 = ReceivedMessage[0:k]
-    c2 = ReceivedMessage[k : 2 * k]
-    c3 = ReceivedMessage[2 * k : 3 * k]
-    c4 = ReceivedMessage[3 * k : 4 * k]
-
-    # Calculating the binary sum of packets + checksum
-    ReceiverSum = bin(
-        int(c1, 2)
-        + int(c2, 2)
-        + int(Checksum, 2)
-        + int(c3, 2)
-        + int(c4, 2)
-        + int(Checksum, 2)
-    )[2:]
-
-    # Adding the overflow bits
-    if len(ReceiverSum) > k:
-        x = len(ReceiverSum) - k
-        ReceiverSum = bin(int(ReceiverSum[0:x], 2) + int(ReceiverSum[x:], 2))[2:]
-
-    # Calculating the complement of sum
-    ReceiverChecksum = ""
-    for i in ReceiverSum:
-        if i == "1":
-            ReceiverChecksum += "0"
-        else:
-            ReceiverChecksum += "1"
-    return ReceiverChecksum
-
-
-# # Driver Code
-# SentMessage = "10010101011000111001010011101100"
-# k = 8
-# # ReceivedMessage = "10000101011000111001010011101101"
-# ReceivedMessage = "10010101011000111001010011101100"
-# # Calling the findChecksum() function
-# Checksum = findChecksum(SentMessage, k)
-
-# # Calling the checkReceiverChecksum() function
-# ReceiverChecksum = checkReceiverChecksum(ReceivedMessage, k, Checksum)
-
-# # Printing Checksum
-# print("SENDER SIDE CHECKSUM: ", Checksum)
-# print("RECEIVER SIDE CHECKSUM: ", ReceiverChecksum)
-# finalsum = bin(int(Checksum, 2) + int(ReceiverChecksum, 2))[2:]
-
-# # Finding the sum of checksum and received checksum
-# finalcomp = ""
-# for i in finalsum:
-#     if i == "1":
-#         finalcomp += "0"
-#     else:
-#         finalcomp += "1"
-
-# # If sum = 0, No error is detected
-# if int(finalcomp, 2) == 0:
-#     print("Receiver Checksum is equal to 0. Therefore,")
-#     print("STATUS: ACCEPTED")
-
-# # Otherwise, Error is detected
-# else:
-#     print("Receiver Checksum is not equal to 0. Therefore,")
-#     print("STATUS: ERROR DETECTED")
-
-
+# ==============
+# Bits <-> Cards
+# ==============
 def bottom_cards_encode(value: int, n: int) -> list[int]:
     if value >= factorial(n):
         raise ValueError(f"{value} is too large to encode in {n} cards!")
@@ -234,6 +142,38 @@ def to_bit_list(value: int) -> list[int]:
 def from_bit_list(bits: list[int]) -> int:
     """[1, 1, 1, 1, 1, 1, 1, 1] -> 255"""
     return int("0b" + "".join(map(str, bits)), 2)
+
+
+# ===================
+# Checksum Algorithms
+# ===================
+def quarter_sum_checksum(sent_message):
+    k = int(((len(sent_message) / 4) + 1) // 1)
+
+    # Dividing sent message in packets of k bits.
+    c1 = sent_message[0:k]
+    c2 = sent_message[k : 2 * k]
+    c3 = sent_message[2 * k : 3 * k]
+    c4 = sent_message[3 * k : 4 * k]
+
+    # Calculating the binary sum of packets
+    sum = bin(int(c1, 2) + int(c2, 2) + int(c3, 2) + int(c4, 2))[2:]
+
+    # Adding the overflow bits
+    if len(sum) > k:
+        x = len(sum) - k
+        sum = bin(int(sum[0:x], 2) + int(sum[x:], 2))[2:]
+    if len(sum) < k:
+        sum = "0" * (k - len(sum)) + sum
+
+    # Calculating the complement of sum
+    checksum = ""
+    for i in sum:
+        if i == "1":
+            checksum += "0"
+        else:
+            checksum += "1"
+    return checksum
 
 
 # Create separate random instance with constant seed
@@ -328,11 +268,11 @@ class Agent:
             "y": 0.01974,
             "z": 0.00074,
         }
-        self.encoding = make_encoding(self.frequencies)
+        self.encoding = make_huffman_encoding(self.frequencies)
 
     def encode(self, message):
         print("Message to encode:", message)
-        huffman_coded = encode_message(message, self.encoding)
+        huffman_coded = huffman_encode_message(message, self.encoding)
 
         bits = [int(bit) for bit in huffman_coded]
         print("Message bits", bits)
@@ -361,7 +301,9 @@ class Agent:
             if passes_checksum:
                 # print("Passes:     ", passes_checksum)
                 # print("Decoded:    ", message)
-                out_message = decode_message("".join(map(str, message)), self.encoding)
+                out_message = huffman_decode_message(
+                    "".join(map(str, message)), self.encoding
+                )
                 # print("Message:    ", out_message)
                 return out_message
         return "NULL"
@@ -378,38 +320,3 @@ if __name__ == "__main__":
             == factorial(n) // 2
         )
         assert bottom_cards_decode(bottom_cards_encode(0, n), n) == 0
-
-    # msg = "asdf"
-    # bits = to_bit_list(int.from_bytes(msg.encode(), "big"))
-    msg = "hello"
-
-    encoding = make_encoding(
-        {
-            "a": 0.08167,
-            "b": 0.01492,
-            "c": 0.02782,
-            "d": 0.04253,
-            "e": 0.12702,
-            "f": 0.02228,
-            "g": 0.02015,
-            "h": 0.06094,
-            "i": 0.06966,
-            "j": 0.00153,
-            "k": 0.00772,
-            "l": 0.04025,
-            "m": 0.02406,
-            "n": 0.06749,
-            "o": 0.07507,
-            "p": 0.01929,
-            "q": 0.00095,
-            "r": 0.05987,
-            "s": 0.06327,
-            "t": 0.09056,
-            "u": 0.02758,
-            "v": 0.00978,
-            "w": 0.02360,
-            "x": 0.00150,
-            "y": 0.01974,
-            "z": 0.00074,
-        }
-    )
