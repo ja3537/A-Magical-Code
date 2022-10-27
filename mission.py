@@ -1,15 +1,8 @@
 import numpy as np
 import cards
 import constants
+from importlib import import_module
 from agents.default import Agent as default_agent
-from agents.agent1 import Agent as agent1
-from agents.agent2 import Agent as agent2
-from agents.agent3 import Agent as agent3
-from agents.agent4 import Agent as agent4
-from agents.agent5 import Agent as agent5
-from agents.agent6 import Agent as agent6
-from agents.agent7 import Agent as agent7
-from agents.agent8 import Agent as agent8
 
 class Mission:
     def __init__(self, args):
@@ -24,7 +17,8 @@ class Mission:
                 self.agent = default_agent()
             else:
                 agent_name = "agent{}".format(args.agent[0])
-                self.agent = eval(agent_name + "()")
+                agent_module = import_module(f".{agent_name}", "agents")
+                self.agent = agent_module.Agent()
         else:
             print("error loading agent ", args.agent[0])
             exit()
