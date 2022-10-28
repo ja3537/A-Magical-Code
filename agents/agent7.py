@@ -19,7 +19,7 @@ class EncoderDecoder:
         self.factorials = factorials
 
         words_dict = {EMPTY: 0}
-        words_index = ['']
+        words_index = [EMPTY]
         with open(os.path.dirname(__file__) + '/../messages/agent7/30k.txt') as f:
             for i in range(1, DICT_SIZE-1):     # reserve 1 for empty and 1 for unknown
                 word = f.readline().rstrip('\t\n')
@@ -81,9 +81,13 @@ class EncoderDecoder:
         return perm
 
     def str_to_perm(self, message):
-        tokens = message.split()[::-1]
-        num = 0
+        tokens = message.split()
+        init = [EMPTY for i in range(SENTENCE_LEN)]
         for i in range(len(tokens)):
+            init[i] = tokens[i]
+        tokens = init[::-1]
+        num = 0
+        for i in range(SENTENCE_LEN):
             num += self.words_dict.get(tokens[i], DICT_SIZE-1) * DICT_SIZE**i
         return self.nth_perm(num)
 
@@ -123,13 +127,15 @@ class Agent:
         self.ed = EncoderDecoder(self.encoding_len)
 
     def encode(self, message):
-        return list(range(50 - self.encoding_len)) + self.ed.str_to_perm(message) + [50, 51]
+        return list(range(50 - self.encoding_len)) + self.ed.str_to_perm(message)[::-1] + [50, 51]
 
     def decode(self, deck):
         perm = []
         for card in deck:
             if 24 <= card <= 51:
                 perm.append(card)
+        perm = perm[:-2][::-1] + perm[-2:]
+
         print(perm)
         if perm[-2:] != [50, 51]:
             return "NULL"
