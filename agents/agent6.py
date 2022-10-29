@@ -1,6 +1,12 @@
 from cards import generate_deck
 import numpy as np
 from itertools import permutations
+import nltk
+from nltk.stem import SnowballStemmer
+from nltk import LancasterStemmer
+from nltk.tag import pos_tag
+
+nltk.download('averaged_perceptron_tagger')
 
 class Agent:
     def __init__(self):
@@ -42,6 +48,11 @@ class Agent:
         for i in range(24):
             self.permu_map[i] = all_permu[i]
 
+        # Snowball is less aggressive meaning less risk for loss of meaning but larger output
+        self.sno = SnowballStemmer('english')
+        # Lancaster is the most aggressive stemmer
+        self.lanc = LancasterStemmer()
+
     def numberToBase(self,n, b):
         if n == 0:
             return [0]
@@ -60,6 +71,19 @@ class Agent:
             num += a * (b ** power)
             power -= 1
         return num
+
+    # Condenses message using stemming
+    def condenseMessage(self, message_string):
+        tagged_sentence = pos_tag(message_string.split())
+        reduced_string = ""
+
+        for word,tag in tagged_sentence:
+            # Do not stem proper nouns
+            if tag != 'NNP':
+                reduced_string += self.lanc.stem(word) + " "
+            else:
+                reduced_string += word + " "
+        return reduced_string.strip()
 
     def countLeadingZeros(self,binary):
         num = 0
@@ -138,8 +162,11 @@ class Agent:
 
     def encode(self, message):
         print("message:", message)
+        reduced_message = self.condenseMessage(message)
+        print("reduced message by "+str(len(message)-len(reduced_message))+" chars, new message:" , reduced_message)
+
         binary = ''
-        for letter in message:
+        for letter in reduced_message:
             huffman_code = self.huff_LtoB[letter]
             binary += huffman_code
 
