@@ -10,10 +10,10 @@ class Agent:
     def __init__(self):
         self.rng = np.random.default_rng(seed=42)
 
-    def string_to_binary(self, message):
+    def string_to_binary(self, message, domain_type):
         return ''.join(format(ord(i), 'b') for i in message)
 
-    def binary_to_string(self, binary):
+    def binary_to_string(self, binary, domain_type):
         return ''.join(chr(int(binary[i * 7:i * 7 + 7], 2)) for i in range(len(binary) // 7))
 
     def deck_encoded(self, message_cards):
@@ -65,11 +65,35 @@ class Agent:
         hex_hash = hasher.hash(str(int(bit_string, 2)).encode()).hexdigest()
         return bin(int(hex_hash, 16))[2:].zfill(8)
 
+    def get_domain_type(self, message):
+        # 0 --> alphanumeric
+        # 1 --> latitude/longitude  i.e: 21 18.41', 157 51.50'
+        # 2 --> dates (ignore for now)
+        # TODO: rashel - add dates domain
+
+        alphanum = False
+        lat_long = False
+
+        for ch in message:
+            if ch.isalnum():
+                alphanum = True
+        if alphanum:
+            return '0'
+
+        for ch in message:
+            if ord(ch) == 39 or ord(ch) == 44 or ch.isdigit(): # only numbers, commas, apostrophes
+                lat_long = True
+        if lat_long:
+            return '1'
+
     def encode(self, message):
         deck = generate_deck(self.rng)
 
-        binary_repr = self.string_to_binary(message)
-        binary_repr = binary_repr + self.get_hash(binary_repr)
+        domain_type = self.get_domain_type(message)
+
+        binary_repr = self.string_to_binary(message, domain_type)
+        # TODO: rashel - try using 2 bits, not 8
+        binary_repr = binary_repr + self.get_hash(binary_repr) + domain_type.zfill(8)
         integer_repr = int(binary_repr, 2)
 
         num_cards_to_encode = 1
@@ -78,26 +102,29 @@ class Agent:
                 num_cards_to_encode = n
                 break
         message_start_idx = len(deck) - num_cards_to_encode
-        
         message_cards = self.num_to_cards(integer_repr, deck[message_start_idx:])
 
         return self.deck_encoded(message_cards)
 
     def decode(self, deck):
-        # return "NULL" if this is a random deck (no message)
-
         message = ''
         for n in reversed(range(1, 51)):
             encoded_cards = self.get_encoded_cards(deck, n)
             integer_repr = self.cards_to_num(encoded_cards)
             binary_repr = bin(int(integer_repr))[2:]
-            message_bits = binary_repr[:-8]
-            hash_bits = binary_repr[-8:]
+            message_bits = binary_repr[:-16]
+            middle_man = binary_repr[:-8]
+            hash_bits = middle_man[-8:]
+            domain_bits = binary_repr[-8:]
+            domain_type = int(domain_bits, 2)
+            '''message_bits = binary_repr[:-8]
+            hash_bits = binary_repr[-8:]'''
 
             if len(hash_bits) == 8 and len(message_bits) and hash_bits == self.get_hash(message_bits):
-                message = self.binary_to_string(message_bits)
+                message = self.binary_to_string(message_bits, domain_type)
                 break
 
+        # TODO: rashel - modify to be based on encoding type
         if not all(ord(c) < 128 and ord(c) > 33 for c in message) or message == '':
             return 'NULL'
 
