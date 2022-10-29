@@ -10,7 +10,7 @@ class Agent:
             ascii_rep = ord(ch)
             # ascii to binary
             binary_rep = bin(ascii_rep)[2:]
-            # padding = ['0'] * (8 - len(binary_rep)) if len(binary_rep) < 8 else []
+            # form full 8 bits and append
             encoded_bin.append(binary_rep.zfill(8))
         return encoded_bin
 
