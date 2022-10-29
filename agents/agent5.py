@@ -49,7 +49,7 @@ class Agent:
     def encode(self, message):
        # terminal
         
-        print('msg passed to encoder bytes: ', self.str_to_bin(message))
+        print('msg passed to encoder bytes: ', self.str_to_bin(message)) 
         print('msg in str from decoded bytes: ', self.bin_to_str(self.str_to_bin(message)))
 
         msgList = []
