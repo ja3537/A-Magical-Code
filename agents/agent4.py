@@ -26,7 +26,7 @@ class Agent:
         return result
 
     def get_encoded_cards(self, deck, start_idx):
-        return [c for c in deck[start_idx:]]
+        return [c for c in deck if c > start_idx]
 
     def cards_to_num(self, cards: List[int]) -> int:
         num_cards = len(cards)
@@ -87,13 +87,13 @@ class Agent:
         # return "NULL" if this is a random deck (no message)
 
         message = ''
-        for n in reversed(range(1, 52)):
+        for n in reversed(range(1, 51)):
             encoded_cards = self.get_encoded_cards(deck, n)
             integer_repr = self.cards_to_num(encoded_cards)
             binary_repr = bin(int(integer_repr))[2:]
             message_bits = binary_repr[:-8]
             hash_bits = binary_repr[-8:]
-            
+
             if len(hash_bits) == 8 and len(message_bits) and hash_bits == self.get_hash(message_bits):
                 message = self.binary_to_string(message_bits)
                 break
