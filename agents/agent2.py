@@ -2,23 +2,15 @@ from dahuffman import HuffmanCodec
 from dahuffman import load_shakespeare
 import sys
 import math
+import numpy as np
 
-
-# def nthperm(l, n):
-#     '''Get n-th permutation of l'''
-#     l = list(l)
-
-#     indices = []
-#     for i in range(1, 1+len(l)):
-#         indices.append(n % i)
-#         n //= i
-#     indices.reverse()
-
-#     perm = []
-#     for index in indices:
-#         # Using pop is kind of inefficient. We could probably avoid it.
-#         perm.append(l.pop(index))
-#     return tuple(perm)
+def english_codec_w_digit():
+    # https://en.wikipedia.org/wiki/Letter_frequency
+    freq = np.array([8.167, 1.492, 2.782, 4.253, 12.702, 2.228, 2.015, 6.094, 6.966, 0.153, 0.772, 4.025, 2.406, 6.749, 7.507, 1.929, 0.095, 5.987, 6.327, 9.056, 2.758, 0.978, 2.36, 0.15, 1.974, 0.074])
+    freq = np.concatenate([freq/100*99, np.ones(10)/10]).tolist()
+    chars = list(map(chr, range(97, 123))) + list(map(str, range(10)))
+    freq_table = {c:f for c, f in zip(chars, freq)}
+    return HuffmanCodec.from_frequencies(freq_table)
 
 def perm_encode(A):
     value = 0
@@ -42,8 +34,8 @@ def perm_decode(value, n):
 
 class Agent:
     def __init__(self):
-        self.codec = load_shakespeare()
-        self.N = 15 # only modify bottom N cards
+        self.codec = english_codec_w_digit()
+        self.N = 20 # only modify bottom N cards
 
     def encode(self, message):
         encoded = self.codec.encode(message)
@@ -54,8 +46,6 @@ class Agent:
 
 
     def decode(self, deck):
-        # TODO: incorporate shuffling
-        
         ordered_deck = [card-(52-self.N) for card in deck[-self.N:]]
 
         # hardcoded check for a random deck
