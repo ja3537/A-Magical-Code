@@ -146,6 +146,30 @@ class Agent:
         # self.encoder['/'] = 37
         # self.decoder[37] = '/'
         
+    def compute_crc_checksum(self, data) -> str:
+        # data is a binary string
+        # we would like to turn it into a list of bytes
+        # then compute the crc and return the crc as a binary string
+        if len(data) % 8 != 0:
+            data = "0" * (8 - len(data) % 8) + data
+        
+        byte_list = [int(data[i:i+8], 2) for i in range(0, len(data), 8)]
+        print(byte_list)
+        generator = 0x1D
+        crc = 0
+        for currByte in byte_list:
+            crc ^= currByte
+            # mask to trim to 8 bits
+            crc &= 0xFF
+            for i in range(8):
+                if crc & 0x80 != 0:
+                    crc = (crc << 1) ^ generator
+                    # mask to trim to 8 bits
+                    crc &= 0xFF
+                else:
+                    crc = crc << 1
+        return format(crc, '08b')
+
 
     def encode(self, message):
         """
