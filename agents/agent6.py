@@ -17,6 +17,47 @@ CARDS_FOR_ARITHMETIC_CODING = 26
 PADDING_CARDS = 52 - CARDS_FOR_ARITHMETIC_CODING
 ARITH_ACCURACY = 26
 
+############################################################################
+############################# HELPER FUNCTIONS #############################
+############################################################################
+
+#from Group 4
+def cards_to_number(cards):
+    num_cards = len(cards)
+
+    if num_cards == 1:
+        return 0
+
+    ordered_cards = sorted(cards)
+    permutations = math.factorial(num_cards)
+    sub_list_size = permutations // num_cards
+    sub_list_indx = sub_list_size * ordered_cards.index(cards[0])
+
+    return int(sub_list_indx) + int(cards_to_number(cards[1:]))
+
+#from Group 4
+def number_to_cards(number, current_deck):
+    num_cards = len(current_deck)
+
+    if num_cards == 1:
+        return current_deck
+
+    ordered_cards = sorted(current_deck)
+    permutations = math.factorial(num_cards)
+    sub_list_size = permutations // num_cards
+    sub_list_indx = int(Decimal(number) / sub_list_size)
+    sub_list_start = sub_list_indx * sub_list_size
+
+    if sub_list_start >= permutations:
+        raise Exception('Number too large to encode in cards.')
+
+    first_card = ordered_cards[sub_list_indx]
+    ordered_cards.remove(first_card)
+    return [first_card, *number_to_cards(int(number - sub_list_start), ordered_cards)]
+
+#######################################################################
+############################# AGENT CODES #############################
+#######################################################################
 
 class ArtihmaticCodingAgent:
     def __init__(self):
@@ -106,40 +147,6 @@ class ArtihmaticCodingAgent:
                     raise Exception("Error in Parsing Word")
         return result
 
-#from Group 4
-    def cards_to_number(self, cards):
-        num_cards = len(cards)
-
-        if num_cards == 1:
-            return 0
-
-        ordered_cards = sorted(cards)
-        permutations = math.factorial(num_cards)
-        sub_list_size = permutations // num_cards
-        sub_list_indx = sub_list_size * ordered_cards.index(cards[0])
-
-        return int(sub_list_indx) + int(self.cards_to_number(cards[1:]))
-
-#from Group 4
-    def number_to_cards(self, number, current_deck):
-        num_cards = len(current_deck)
-
-        if num_cards == 1:
-            return current_deck
-
-        ordered_cards = sorted(current_deck)
-        permutations = math.factorial(num_cards)
-        sub_list_size = permutations // num_cards
-        sub_list_indx = int(Decimal(number) / sub_list_size)
-        sub_list_start = sub_list_indx * sub_list_size
-
-        if sub_list_start >= permutations:
-            raise Exception('Number too large to encode in cards.')
-
-        first_card = ordered_cards[sub_list_indx]
-        ordered_cards.remove(first_card)
-        return [first_card, *self.number_to_cards(int(number - sub_list_start), ordered_cards)]
-
     def encode(self, message):
 
         val = Decimal(self.get_arithmatic_code(message))
@@ -151,7 +158,7 @@ class ArtihmaticCodingAgent:
         padded_cards = list(range(0,PADDING_CARDS))
         arith_cards = list(range(PADDING_CARDS, 52))
 
-        encoded_cards = self.number_to_cards(val_as_int, arith_cards)
+        encoded_cards = number_to_cards(val_as_int, arith_cards)
 
         #add padded cards to the end
         return padded_cards+encoded_cards
@@ -164,7 +171,7 @@ class ArtihmaticCodingAgent:
             if num >= PADDING_CARDS:
                 encoded_cards.append(num)
         #find the decimal value from it
-        val = int(self.cards_to_number(encoded_cards))
+        val = int(cards_to_number(encoded_cards))
         val_as_Decimal = Decimal("0."+"0"*(ARITH_ACCURACY-len(str(val)))+str(val))
 
         #TODO IDEAS:
@@ -376,6 +383,10 @@ class HauffmanAgent:
 
         return decode_massage
 
+###################################################################################
+###################################################################################
+###################################################################################
+
 class Agent:
     def __init__(self):
         #change this when needed
@@ -386,6 +397,10 @@ class Agent:
 
     def decode(self, deck):
         return self.agent.decode(deck)
+
+###################################################################################
+###################################################################################
+###################################################################################
 
 
 if __name__ == "__main__":
