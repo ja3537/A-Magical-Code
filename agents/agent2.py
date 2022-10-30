@@ -5,6 +5,7 @@ import math
 import numpy as np
 
 def english_codec_w_digit():
+    # TODO: special characters?
     # https://en.wikipedia.org/wiki/Letter_frequency
     letter_freq = np.array([8.167, 1.492, 2.782, 4.253, 12.702, 2.228, 2.015, 6.094, 6.966, 0.153, 0.772, 4.025, 2.406, 6.749, 7.507, 1.929, 0.095, 5.987, 6.327, 9.056, 2.758, 0.978, 2.36, 0.15, 1.974, 0.074])
     letter_freq = letter_freq / letter_freq.sum() * 0.92 # reserve 92% for lettes
