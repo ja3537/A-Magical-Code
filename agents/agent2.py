@@ -7,9 +7,11 @@ import numpy as np
 def english_codec_w_digit():
     # https://en.wikipedia.org/wiki/Letter_frequency
     letter_freq = np.array([8.167, 1.492, 2.782, 4.253, 12.702, 2.228, 2.015, 6.094, 6.966, 0.153, 0.772, 4.025, 2.406, 6.749, 7.507, 1.929, 0.095, 5.987, 6.327, 9.056, 2.758, 0.978, 2.36, 0.15, 1.974, 0.074])
-    digit_freq = np.ones(10) / 10
-    freq = np.concatenate([letter_freq/100*99, digit_freq]).tolist()
-    chars = list(map(chr, range(97, 123))) + list(map(str, range(10)))
+    letter_freq = letter_freq / letter_freq.sum() * 0.92 # reserve 92% for lettes
+    digit_freq = np.ones(10) / letter_freq.sum() * 0.03 # reserve 3% for digits
+    space_freq = np.ones(1) * 0.05 # reserve 5% for space
+    freq = np.concatenate([letter_freq/100*95, digit_freq, space_freq]).tolist()
+    chars = list(map(chr, range(97, 123))) + list(map(str, range(10))) + [' ']
     freq_table = {c:f for c, f in zip(chars, freq)}
     return HuffmanCodec.from_frequencies(freq_table)
 
@@ -36,6 +38,7 @@ def perm_decode(value, n):
 class Agent:
     def __init__(self):
         self.codec = english_codec_w_digit()
+        #self.codec.print_code_table()
         self.N = 20 # only modify bottom N cards
         self.start, self.end = 52-self.N, 51 # for locating reserved cards
 
@@ -65,11 +68,18 @@ class Agent:
 
         return cards
 
+    def truncate_and_encode(self, s):
+        max_perm = math.factorial(self.N-2)
+        perm = float('inf')
+        while perm > max_perm:
+            encoded = self.codec.encode(s)
+            perm = int.from_bytes(encoded, byteorder='big')
+            s = s[:-1]
+        return perm
 
     def encode(self, message):
         message = self.clean_text(message)
-        encoded = self.codec.encode(message)
-        perm = int.from_bytes(encoded, byteorder='big')
+        perm = self.truncate_and_encode(message)
         ordered_deck = perm_decode(perm, self.N-2) # perm may be larger than N!; need to change later
         deck = list(range(52-self.N)) + [self.start] + [card+(self.start+1) for card in ordered_deck] + [self.end]
         return deck
