@@ -233,16 +233,28 @@ class Agent:
     def __init__(self):
         self.frequencies = FrequencyDistribution.lowercase_and_space
         self.encoding = make_huffman_encoding(self.frequencies)
+        self.frequency_distributions = [fd for fd in FrequencyDistribution].sort(key=len)
+        self.bits_to_dist = {bin(i)[2:].ljust(3, "0"): fd for i, fd in enumerate(self.frequency_distributions)}
+        self.dist_to_bits = {fd: bin(i)[2:].ljust(3, "0") for i, fd in enumerate(self.frequency_distributions)}
 
     def encode(self, message: str):
         huffman_coded = huffman_encode_message(message, self.encoding)
 
+        dists = self.frequency_distributions[:]
+        unique_chars_in_msg = list(set(list(message)))
+        for char in unique_chars_in_msg:
+            for fd in dists:
+                if char not in fd.value.keys():
+                    dists.remove(fd)
+        freq_dist_used = dists.keys()[0]
+
         message_length = length_byte(huffman_coded)
         with_checksum = add_checksum(huffman_coded)
         with_length = with_checksum + message_length
+        with_scheme = with_length + self.dist_to_bits[freq_dist_used]
 
-        c = find_c_for_message(with_length)
-        encoded = bottom_cards_encode(from_bit_string(with_length), c)
+        c = find_c_for_message(with_scheme)
+        encoded = bottom_cards_encode(from_bit_string(with_scheme), c)
         return list(range(c, 52)) + encoded
 
     def decode(self, deck: list[int]):
@@ -251,8 +263,10 @@ class Agent:
             decoded = to_bit_string(bottom_cards_decode(encoded, c))
             passes_checksum, message = check_and_remove(decoded)
             if passes_checksum:
+                freq_dist_used = self.bits_to_dist[decoded[-3:]]
+
                 out_message = huffman_decode_message(
-                    "".join(map(str, message)), self.encoding
+                    "".join(map(str, message)), make_huffman_encoding(freq_dist_used)
                 )
                 return out_message
         return "NULL"
@@ -276,18 +290,6 @@ if __name__ == "__main__":
 # ================
 # Frequency Distributions
 # ================
-
-def get_distribution_bits(freq_dist: dict[str, float]) -> str:
-    """
-    Maps a frequency distribution to a string of 3 bits such that
-    its order corresponds to the order of the distributions in the
-    FrequencyDistribution Enum class.
-    """
-    dists = [fd for fd in FrequencyDistribution]
-    bits = bin(indexOf(dists, freq_dist))[2:].ljust(3, "0")
-
-    return bits
-
 
 class FrequencyDistribution(Enum):
     """
