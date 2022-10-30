@@ -71,10 +71,12 @@ def printNodes(node, val=''):
  
  
 # characters for huffman tree
-chars = ['a', 'b', 'c', 'd', 'e', 'f']
+chars = ['e', 'm', 'a', 'h', 'r', 'g', 'i', 'b', 'o', 'f', 't', 'y', 'n', 'w', 's', 
+'k', 'l', 'v', 'c', 'x', 'u', 'z', 'd', 'j', 'p', 'q']
  
 # frequency of characters
-freq = [ 5, 9, 12, 13, 16, 45]
+freq = [11.1607, 3.0129, 8.4966, 3.0034, 7.5809, 2.4705, 7.5448, 2.072, 7.1635, 1.8121, 6.9509, 1.7779, 6.6544, 1.2899, 5.7351, 1.1016, 5.4893, 1.0074, 4.5388, 0.2902,
+ 3.6308, 0.2722, 3.3844, 0.1965, 3.1671, 0.1962]
  
 # list containing unused nodes
 nodes = []
