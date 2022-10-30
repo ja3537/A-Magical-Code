@@ -76,6 +76,13 @@ class Agent:
             encoded = self.codec.encode(s)
             perm = int.from_bytes(encoded, byteorder='big')
             s = s[:-1]
+
+        # reduce N if we can
+        while perm < math.factorial(self.N-2):
+            self.N -= 1
+        self.N += 1
+        self.start, self.end = 52-self.N, 51
+
         return perm
 
     def encode(self, message):
