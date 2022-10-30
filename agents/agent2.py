@@ -6,8 +6,9 @@ import numpy as np
 
 def english_codec_w_digit():
     # https://en.wikipedia.org/wiki/Letter_frequency
-    freq = np.array([8.167, 1.492, 2.782, 4.253, 12.702, 2.228, 2.015, 6.094, 6.966, 0.153, 0.772, 4.025, 2.406, 6.749, 7.507, 1.929, 0.095, 5.987, 6.327, 9.056, 2.758, 0.978, 2.36, 0.15, 1.974, 0.074])
-    freq = np.concatenate([freq/100*99, np.ones(10)/10]).tolist()
+    letter_freq = np.array([8.167, 1.492, 2.782, 4.253, 12.702, 2.228, 2.015, 6.094, 6.966, 0.153, 0.772, 4.025, 2.406, 6.749, 7.507, 1.929, 0.095, 5.987, 6.327, 9.056, 2.758, 0.978, 2.36, 0.15, 1.974, 0.074])
+    digit_freq = np.ones(10) / 10
+    freq = np.concatenate([letter_freq/100*99, digit_freq]).tolist()
     chars = list(map(chr, range(97, 123))) + list(map(str, range(10)))
     freq_table = {c:f for c, f in zip(chars, freq)}
     return HuffmanCodec.from_frequencies(freq_table)
@@ -36,33 +37,47 @@ class Agent:
     def __init__(self):
         self.codec = english_codec_w_digit()
         self.N = 20 # only modify bottom N cards
+        self.start, self.end = 52-self.N, 51 # for locating reserved cards
+
+    def clean_text(self, s):
+        recognizable_chars = self.codec.get_code_table().keys()
+        new_s = ''
+        for c in s.lower():
+            new_s += (c if c in recognizable_chars else '')
+        return new_s
+
+    def retrieve_coded_cards(self, deck):
+        start_i = deck.index(self.start)
+        end_i = deck.index(self.end)
+        if start_i+1 >= end_i:
+            # encoding's messed up
+            return []
+        deck_window = [c-(self.start+1) for c in deck[start_i+1:end_i]]
+        cards_for_encoding = set(range(self.N-2))
+
+        cards = []
+        for c in deck_window:
+            if c in cards_for_encoding:
+                cards.append(c)
+
+        if len(cards) != self.N-2:
+            return []
+
+        return cards
+
 
     def encode(self, message):
+        message = self.clean_text(message)
         encoded = self.codec.encode(message)
         perm = int.from_bytes(encoded, byteorder='big')
-        ordered_deck = perm_decode(perm, self.N) # perm may be larger than N; need to change later
-        deck = list(range(52-self.N)) + [card+(52-self.N) for card in ordered_deck]
+        ordered_deck = perm_decode(perm, self.N-2) # perm may be larger than N!; need to change later
+        deck = list(range(52-self.N)) + [self.start] + [card+(self.start+1) for card in ordered_deck] + [self.end]
         return deck
 
-
     def decode(self, deck):
-        ordered_deck = [card-(52-self.N) for card in deck[-self.N:]]
-
-        # hardcoded check for a random deck
-        lost_cards = list(set(range(self.N)) - set(ordered_deck))
-        if len(lost_cards) >= self.N / 2:
+        ordered_deck = self.retrieve_coded_cards(deck)
+        if len(ordered_deck) == 0:
             return 'NULL'
-
-        # replace inserted cards (remove error when shuffling)
-        temp_deck = []
-        insert_i = 0
-        for card in ordered_deck:
-            if not card in set(range(self.N)):
-                temp_deck.append(lost_cards[insert_i])
-                insert_i += 1
-            else:
-               temp_deck.append(card) 
-        ordered_deck = temp_deck
 
         # decode last N cards
         perm = perm_encode(ordered_deck)
