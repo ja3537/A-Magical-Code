@@ -1,9 +1,12 @@
 person
 woman
 man
-camera
+camera!
 tv
 NULL
+dou1ble2
+double?
+d,ou1b3le
 doublethinks
 doublethinksdouble
 doublethinksdoublethinks
