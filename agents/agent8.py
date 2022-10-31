@@ -2,7 +2,7 @@ import heapq
 from math import factorial, log2
 from pprint import pprint
 from random import Random
-from typing import Optional
+from typing import Callable, Optional
 
 
 # ================
@@ -201,30 +201,106 @@ def pearson_checksum(bits: str) -> str:
         byte_val = from_bit_string(byte)
         checksum = pearson_table[checksum ^ byte_val]
     checksum_bits = to_bit_string(checksum)
-    padded_checksum = "0" * (8 - len(checksum_bits)) + checksum_bits
+    padded_checksum = pad(checksum_bits, 8)
     return padded_checksum
 
 
-def add_checksum(bits: str) -> str:
-    # Checksum always pads before calculating checksum,
-    # so we don't need to pad the transmitted message
-    checksum = pearson_checksum(bits)
-    return bits + checksum
-
-
 def check_and_remove(bits: str) -> tuple[bool, str]:
-    message_length = from_bit_string(bits[-8:])
-    message_checksum = bits[-16:-8]
+    # Pad in case of very low numbers (leading 0's are trimmed by card encoding)
+    message_checksum = pad(bits[-16:-8], 8)
+    message_length = from_bit_string(pad(bits[-8:], 8))
+    # message_checksum = pad(bits[-8:], 8)
+    # message_length = from_bit_string(pad(bits[-16:-8], 8))
     message = bits[:-16]
+
+    # if len(message) > message_length:
+    #     return False, ""
+
     # Pad message to target length with leading 0's
-    message = "0" * (message_length - len(message)) + message
+    message = pad(message, message_length, allow_over=True)
     checked_checksum = pearson_checksum(message)
     return checked_checksum == message_checksum, message
 
 
 def length_byte(bits: str) -> str:
     length_bits = to_bit_string(len(bits))
-    return "0" * (8 - len(length_bits)) + length_bits
+    return pad(length_bits, 8)
+
+
+def pad(message: str, length: int, allow_over=False):
+    if len(message) > length and not allow_over:
+        raise ValueError(
+            f"Message to pad is length {len(message)}, longer than target length {length}: {message}"
+        )
+    needed_padding = length - len(message)
+    return "0" * needed_padding + message
+
+
+# ============
+# Multiplexing
+# ============
+LOWERCASE_HUFFMAN = make_huffman_encoding(
+    {
+        " ": 1 / (4.7 + 1),
+        "a": 0.08167 * (4.7 / 5.7),
+        "b": 0.01492 * (4.7 / 5.7),
+        "c": 0.02782 * (4.7 / 5.7),
+        "d": 0.04253 * (4.7 / 5.7),
+        "e": 0.12702 * (4.7 / 5.7),
+        "f": 0.02228 * (4.7 / 5.7),
+        "g": 0.02015 * (4.7 / 5.7),
+        "h": 0.06094 * (4.7 / 5.7),
+        "i": 0.06966 * (4.7 / 5.7),
+        "j": 0.00153 * (4.7 / 5.7),
+        "k": 0.00772 * (4.7 / 5.7),
+        "l": 0.04025 * (4.7 / 5.7),
+        "m": 0.02406 * (4.7 / 5.7),
+        "n": 0.06749 * (4.7 / 5.7),
+        "o": 0.07507 * (4.7 / 5.7),
+        "p": 0.01929 * (4.7 / 5.7),
+        "q": 0.00095 * (4.7 / 5.7),
+        "r": 0.05987 * (4.7 / 5.7),
+        "s": 0.06327 * (4.7 / 5.7),
+        "t": 0.09056 * (4.7 / 5.7),
+        "u": 0.02758 * (4.7 / 5.7),
+        "v": 0.00978 * (4.7 / 5.7),
+        "w": 0.02360 * (4.7 / 5.7),
+        "x": 0.00150 * (4.7 / 5.7),
+        "y": 0.01974 * (4.7 / 5.7),
+        "z": 0.00074 * (4.7 / 5.7),
+    }
+)
+# [(encode, decode)]
+# Encoding identifier denotes index in this list
+CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
+    (
+        lambda m: huffman_encode_message(m, LOWERCASE_HUFFMAN),
+        lambda m: huffman_decode_message(m, LOWERCASE_HUFFMAN),
+    )
+]
+
+
+def select_character_encoding(message: str) -> tuple[str, int]:
+    """Select the shortest encoding for this message."""
+    shortest_encoding = -1
+    shortest_encoded: Optional[str] = None
+    for encoding_index, (encode, _) in enumerate(CHARACTER_ENCODINGS):
+        try:
+            candidate_encoding = encode(message)
+            if shortest_encoded is None or len(candidate_encoding) < len(
+                shortest_encoded
+            ):
+                shortest_encoded = candidate_encoding
+                shortest_encoding = encoding_index
+        except ValueError:
+            pass
+
+    if shortest_encoded is None:
+        raise ValueError(
+            f"Could not encode message with any available encodings: {message}"
+        )
+
+    return shortest_encoded, shortest_encoding
 
 
 class Agent:
@@ -258,23 +334,36 @@ class Agent:
             "w": 0.02360 * (4.7 / 5.7),
             "x": 0.00150 * (4.7 / 5.7),
             "y": 0.01974 * (4.7 / 5.7),
-            "z": 0.00074 * (4.7 / 5.7)
+            "z": 0.00074 * (4.7 / 5.7),
         }
         self.encoding = make_huffman_encoding(self.frequencies)
 
     def encode(self, message: str):
-        huffman_coded = huffman_encode_message(message, self.encoding)
+        print("Message:", message)
+        try:
+            encoded, encoding_id = select_character_encoding(message)
+        except ValueError as e:
+            print(e)
+            return list(range(52))
 
-        message_length = length_byte(huffman_coded)
-        with_checksum = add_checksum(huffman_coded)
-        with_length = with_checksum + message_length
+        # message_length = length_byte(encoded)
+        # with_length = encoded + message_length
+        # checksum = pearson_checksum(with_length)
+        # with_checksum = with_length + checksum
 
-        c = find_c_for_message(with_length)
-        encoded = bottom_cards_encode(from_bit_string(with_length), c)
+        message_length = length_byte(encoded)
+        checksum = pearson_checksum(encoded)
+        with_checksum = encoded + checksum + message_length
+        print("Encoded:", with_checksum)
+
+        c = find_c_for_message(with_checksum)
+        encoded = bottom_cards_encode(from_bit_string(with_checksum), c)
         return list(range(c, 52)) + encoded
 
     def decode(self, deck: list[int]):
-        for c in range(52):
+        # Minimum 16 bit suffix for checksum + padding
+        # log2(9!) > 2 ^ 16
+        for c in range(9, 52):
             encoded = [card for card in deck if card < c]
             decoded = to_bit_string(bottom_cards_decode(encoded, c))
             passes_checksum, message = check_and_remove(decoded)
