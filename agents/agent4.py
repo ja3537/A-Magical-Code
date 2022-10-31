@@ -141,15 +141,15 @@ class Agent:
 
         domain_type = self.get_domain_type(message)
         domain_binary = self.domain_to_binary(domain_type)
-        
+
         bytes_repr = HuffmanCodec.from_frequencies(
             self.frequencies).encode(message)
         binary_repr = bin(int(bytes_repr.hex(), 16))[2:].zfill(8)
-        integer_repr = int.from_bytes(bytes_repr, "big")
+
+        # integer_repr = int.from_bytes(bytes_repr, "big")
 
         # binary_repr = self.string_to_binary(message, domain_type)
         binary_repr = binary_repr + self.get_hash(binary_repr) + domain_binary
-        #print(message, domain_type)
         integer_repr = int(binary_repr, 2)
 
         num_cards_to_encode = 1
@@ -164,6 +164,7 @@ class Agent:
 
     def decode(self, deck):
         message = ''
+        meet_checksum_count = 0
         for n in reversed(range(1, 51)):
             encoded_cards = self.get_encoded_cards(deck, n)
             integer_repr = self.cards_to_num(encoded_cards)
@@ -180,7 +181,12 @@ class Agent:
                     (int(message_bits, 2).bit_length() + 7) // 8, 'big')
                 message = HuffmanCodec.from_frequencies(
                     self.frequencies).decode(message_byte)
-                break
+
+                # TODO: ugly hack to fix the checksum, can be improved
+                if meet_checksum_count > 2:
+                    break
+                meet_checksum_count += 1
+                # print(flag, ":" + message)
 
         return self.check_decoded_message(message, domain_type)
 
