@@ -1,5 +1,5 @@
 import heapq
-from math import factorial, log2
+from math import ceil, factorial, log2
 from pprint import pprint
 from random import Random
 from typing import Callable, Optional
@@ -201,26 +201,45 @@ def pearson_checksum(bits: str) -> str:
         byte_val = from_bit_string(byte)
         checksum = pearson_table[checksum ^ byte_val]
     checksum_bits = to_bit_string(checksum)
-    padded_checksum = pad(checksum_bits, 8)
+    padded_checksum = pad(checksum_bits, CHECKSUM_BITS)
     return padded_checksum
 
 
-def check_and_remove(bits: str) -> tuple[bool, str]:
-    # Pad in case of very low numbers (leading 0's are trimmed by card encoding)
-    message_checksum = pad(bits[-8:], 8)
-    length_byte = pad(bits[-16:-8], 8)
+def extract_bit_fields(bits: str, format: list[int]) -> list[str]:
+    """
+    bits: encoded message bits
+    format: list of field lengths, in reverse order with the LAST field FIRST in the list
+    """
+    fields = []
+    current_offset = len(bits)
+    for field_length in format:
+        # Pad in case of very low numbers (leading 0's are trimmed by card encoding)
+        fields.append(
+            pad(bits[(current_offset - field_length) : current_offset], field_length)
+        )
+        current_offset -= field_length
+
+    # The remaining bits (message content)
+    fields.append(bits[:current_offset])
+    return fields
+
+
+def check_and_remove(bits: str) -> tuple[bool, int, str]:
+    """Returns `(passed_checksum, encoding_id, message)`"""
+    message_checksum, length_byte, encoding_bits, message = extract_bit_fields(
+        bits, [CHECKSUM_BITS, LENGTH_BITS, ENCODING_BITS]
+    )
     message_length = from_bit_string(length_byte)
-    encoding_bits = pad(bits[-20:-16], 4)
-    message = bits[:-20]
+    encoding_id = from_bit_string(encoding_bits)
 
     if len(message) > message_length:
-        return False, ""
+        return False, -1, ""
 
     # Pad message to target length with leading 0's
     message = pad(message, message_length, allow_over=True)
     checked_bits = message + encoding_bits + length_byte
     checked_checksum = pearson_checksum(checked_bits)
-    return checked_checksum == message_checksum, message
+    return checked_checksum == message_checksum, encoding_id, message
 
 
 def length_byte(bits: str) -> str:
@@ -279,6 +298,10 @@ CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
         lambda m: huffman_decode_message(m, LOWERCASE_HUFFMAN),
     )
 ]
+
+CHECKSUM_BITS = 8
+LENGTH_BITS = 8
+ENCODING_BITS = max(int(ceil(log2(len(CHARACTER_ENCODINGS)))), 1)
 
 
 def select_character_encoding(message: str) -> tuple[str, int]:
@@ -347,8 +370,7 @@ class Agent:
             return list(range(52))
 
         message_length = length_byte(encoded)
-        # 4 is an arbitrary number for now
-        encoding_bits = pad(to_bit_string(encoding_id), 4)
+        encoding_bits = pad(to_bit_string(encoding_id), ENCODING_BITS)
         checked_bits = encoded + encoding_bits + message_length
         # Checksum checks all other bits
         checksum = pearson_checksum(checked_bits)
@@ -356,19 +378,28 @@ class Agent:
 
         c = find_c_for_message(with_checksum)
         encoded = bottom_cards_encode(from_bit_string(with_checksum), c)
+
+        # Debugging
+        # print("Message:", encoded)
+        # print("Encoding:", encoding_bits)
+        # print("Length:", message_length)
+        # print("Checksum:", checksum)
+        # print("C:", c)
+
         return list(range(c, 52)) + encoded
 
     def decode(self, deck: list[int]):
-        # Minimum 16 bit suffix for checksum + padding
+        # Minimum 16 bit suffix for checksum + length
         # log2(9!) > 2 ^ 16
         for c in range(9, 52):
             encoded = [card for card in deck if card < c]
             decoded = to_bit_string(bottom_cards_decode(encoded, c))
-            passes_checksum, message = check_and_remove(decoded)
+            passes_checksum, encoding_id, message = check_and_remove(decoded)
             if passes_checksum:
-                out_message = huffman_decode_message(
-                    "".join(map(str, message)), self.encoding
-                )
+                if encoding_id >= len(CHARACTER_ENCODINGS):
+                    continue
+                _, decode = CHARACTER_ENCODINGS[encoding_id]
+                out_message = decode(message)
                 return out_message
         return "NULL"
 
