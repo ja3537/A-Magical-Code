@@ -12,7 +12,7 @@ import numpy as np
 import math
 from math import factorial as fac
 from itertools import groupby
-
+import requests
 
 log_level = logging.DEBUG
 log_file = 'log/agent3.log'
@@ -178,11 +178,21 @@ class Agent:
         self.permuter = PermutationGenerator()
         self.max_chunk_size = 6
 
+        r = requests.get('https://raw.githubusercontent.com/mwcheng21/minified-text/main/minified.txt')
+        minified_text = r.text
+        self.abrev2word = {}
+        self.word2abrev = {}
+        for line in minified_text.splitlines():
+            [shortened, full] = line.split(' ')
+            self.abrev2word[shortened] = full
+            self.word2abrev[full] = shortened
+
     def encode(
             self,
             msg: str
         ) -> List[int]:
 
+        msg = ' '.join([self.word2abrev[word] if word in self.word2abrev else word for word in msg.split(" ")])
         bit_str = self.huff.encode(msg, padding_len=0).bin
 
         step_size, parts, start_padding, end_padding = self.get_parts(bit_str)
@@ -256,6 +266,8 @@ class Agent:
         bit_str = bit_str[start_padding:-end_padding] if end_padding > 0 else bit_str[start_padding:]
 
         decoded_message = self.huff.decode(Bits(bin=bit_str), padding_len=0)
+
+        decoded_message = ' '.join([self.abrev2word[word] if word in self.abrev2word else word for word in decoded_message.split(" ")])
 
         return decoded_message
 
