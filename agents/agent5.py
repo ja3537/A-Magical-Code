@@ -1,4 +1,7 @@
 from collections import Counter
+import numpy as np
+import math
+import random
 
 class Node:
     def __init__(self, left=None, right=None):
@@ -85,6 +88,101 @@ def decode_bin_msg(msg, encoding):
             
     return output
 
+def encode_bin_to_cards(msg_bin):
+    """
+    takes a binary string and encodes the string into cards
+    """
+    digit = int(msg_bin, 2)
+    #digit = 16
+    m=digit
+
+    min_cards = math.inf
+    for i in range(1, 53):
+        fact = math.factorial(i) - 1
+        if digit < fact:
+            min_cards = i
+            break
+    #print(min_cards)
+    permutations = []
+    elements = []
+    for i in range(min_cards):
+        elements.append(i)
+        permutations.append(0)
+    for i in range(min_cards):
+        index = m % (min_cards-i)
+        #print(index)
+        m = m // (min_cards-i)
+        permutations[i] = elements[index]
+        elements[index] = elements[min_cards-i-1]
+
+    remaining_cards = []
+    for i in range(min_cards, 51):
+        remaining_cards.append(i)
+
+    random.shuffle(remaining_cards)
+
+    remaining_cards.append(51)
+
+    returned_list = remaining_cards + permutations
+
+   # print(permutations)
+   # print(returned_list)
+
+
+    return returned_list
+
+def decode_cards_to_bin(cards):
+    """
+    takes a binary string and encodes the string into cards
+    """
+    '''
+    fact_list = []
+    while(len(cards)>0):
+        min_index = np.argmin(cards)
+        min_value = cards[min_index]
+        num_digits = 0
+        for i in range(min_index):
+            current_card = cards[i]
+            if current_card > min_value:
+                num_digits += 1
+        fact_list.append(num_digits)
+        cards.remove(min_value)
+
+    fact_list.reverse()
+
+    digit = 0
+    for i in range(len(fact_list)):
+        fact  = math.factorial(i)
+        product = fact*fact_list[i]
+        digit += product
+
+    binary = bin(digit)
+    '''
+    m = 1
+    digit = 0
+    length = len(cards)
+    positions = []
+    elements = []
+    for i in range(length):
+        positions.append(i)
+        elements.append(i)
+
+    #print(positions)
+   # print(elements)
+    for i in range(length-1):
+        digit += m*positions[cards[i]]
+        m = m * (length - i)
+        positions[elements[length-i-1]] = positions[cards[i]]
+        elements[positions[cards[i]]] = elements[length-i-1]
+      #  print(digit)
+       # print(m)
+       # print(positions)
+       # print(elements)
+
+
+
+    return digit
+
 # def str_to_bin(self, msg) -> str:
 #     """
 #     str_to_bin transforms string from ascii character to binary
@@ -127,6 +225,7 @@ class Agent:
         _freq = sorted(freq.items(), key = lambda x : x[1], reverse=True)
         node = make_tree(_freq)
         self.encoding = huffman_code(node)
+        self.start_card = 51
         
         
         # self.encoder = {}
@@ -176,6 +275,9 @@ class Agent:
         FYI: use 'encode_msg_bin' to compress a message to binary
         """
         msg_huffman_binary = encode_msg_bin(message, self.encoding)
+        print(msg_huffman_binary)
+        print(int(msg_huffman_binary, 2))
+        cards = encode_bin_to_cards(msg_huffman_binary)
         
         # print('msg passed to encoder bytes: ', self.str_to_bin(message))
         # print('msg in str from decoded bytes: ', self.bin_to_str(self.str_to_bin(message)))
@@ -196,7 +298,14 @@ class Agent:
         # encoded += msgList
 
         # return encoded
-        return msg_huffman_binary
+       # list_52 = np.arange(52)
+       # list_52 = list(list_52)
+       # list_52[41] = 51
+       # list_52[51] = 41
+        #print(list_52)
+        print(cards)
+        return cards
+
 
 
     def decode(self, deck):
@@ -204,6 +313,32 @@ class Agent:
         Given a binary str, use 'decode_bin_msg' to decode it
         see main below
         """
+        #print(deck)
+     #   list_52 = np.arange(52)
+      #  list_52 = list(list_52)
+       # list_52.reverse()
+       # list_52[41] = 51
+        #list_52[0] = 10
+        #deck = list_52
+        print(deck)
+
+        message_length = deck.index(self.start_card)
+
+        bottom_cards = []
+        for i in range(len(deck)):
+            if i > message_length:
+                bottom_cards.append(deck[i])
+
+        print(bottom_cards)
+
+        binary_message = decode_cards_to_bin(bottom_cards)
+        print(binary_message)
+        binary_message = bin(int(binary_message))[2:]
+        print(binary_message)
+
+        decoded_message = decode_bin_msg(binary_message, self.encoding)
+
+        print(binary_message)
 
         # msg = ''
 
@@ -216,7 +351,7 @@ class Agent:
         #     elif in_msg and x in self.decoder:
         #         msg += self.decoder[x]
 
-        # return msg
+        return decoded_message
 
 if __name__=='__main__':
     _freq = sorted(freq.items(), key = lambda x : x[1], reverse=True)
