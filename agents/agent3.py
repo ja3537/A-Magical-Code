@@ -69,7 +69,9 @@ class PermutationGenerator:
         return n
 
     def n_needed(self, messageLength):
-        return self.fact[messageLength]
+        for i in range(100):
+            if messageLength < self.fact[i]:
+                return i
 
     def _perm_rank(self, target, base):
         ''' Determine the permutation rank of string `target`
@@ -366,11 +368,12 @@ class Agent:
         Returns a list of cards
         '''
         cards = [str(card) for card in cards]
-
+        print(step_size, start_padding, end_padding, lengths)
         metadata = step_size + start_padding + end_padding + lengths
-        last_n_cards = cards[-self.n_needed_metadata(len(lengths)):]
+        
+        last_n_cards = cards[-self.n_needed_metadata(2**len(metadata)):]
         permutation = self.permuter.encode(last_n_cards, int(metadata, 2))
-
+        print(self.n_needed_metadata(int(metadata, 2)))
         return [int(card) for card in permutation]
         
     def decode_metadata(self, uselessCards : List[int], messageLength : int):
@@ -380,14 +383,15 @@ class Agent:
         Returns a tuple of step_size, start_padding, end_padding, lengths
         '''
         cards = [str(card) for card in uselessCards]
-        last_n_cards = cards[-self.n_needed_metadata(messageLength):]
+        last_n_cards = cards[-self.n_needed_metadata(2**(messageLength+3+3+2)):]
+
         metadata = self.permuter.decode(last_n_cards)
         metadata = '{0:b}'.format(metadata).zfill(2 + 3 + 3 + messageLength)
         step_size = int(metadata[:2], 2)
         start_padding = int(metadata[2:5], 2)
         end_padding = int(metadata[5:8], 2)
         lengths = metadata[8:8+messageLength]
-
+        print(step_size, start_padding, end_padding, lengths)
         return step_size, start_padding, end_padding, lengths
 
     def n_needed_metadata(self, messageLength : int):
