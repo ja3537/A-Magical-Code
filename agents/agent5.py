@@ -275,8 +275,10 @@ class Agent:
         FYI: use 'encode_msg_bin' to compress a message to binary
         """
         msg_huffman_binary = encode_msg_bin(message, self.encoding)
-        print(msg_huffman_binary)
-        print(int(msg_huffman_binary, 2))
+        #print(type(msg_huffman_binary))
+        msg_huffman_binary = str(1) + msg_huffman_binary
+        #print(msg_huffman_binary)
+        #print(int(msg_huffman_binary, 2))
         cards = encode_bin_to_cards(msg_huffman_binary)
         
         # print('msg passed to encoder bytes: ', self.str_to_bin(message))
@@ -333,7 +335,7 @@ class Agent:
 
         binary_message = decode_cards_to_bin(bottom_cards)
         print(binary_message)
-        binary_message = bin(int(binary_message))[2:]
+        binary_message = bin(int(binary_message))[3:]
         print(binary_message)
 
         decoded_message = decode_bin_msg(binary_message, self.encoding)
