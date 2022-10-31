@@ -1,5 +1,6 @@
 import math
 import random
+from collections import Counter
 
 class Node:
     def __init__(self, left=None, right=None):
@@ -73,7 +74,7 @@ def encode_msg_bin(msg, encoding) -> str:
         binaries.append(encoding[letter])
     return "".join(binaries)
 
-def decode_bin_msg(msg, encoding):
+def decode_bin_msg(msg, encoding) -> str:
     """
     takes a binary str and decodes the message according to 'encoding'
     """
@@ -86,7 +87,7 @@ def decode_bin_msg(msg, encoding):
                 output += ch
                 msg = msg[len(binary):]
         if not found_match:
-            break
+            break # break and returns partial msg
     return output
 
 def bin_to_cards(msg_bin):
