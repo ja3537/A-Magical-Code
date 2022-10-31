@@ -47,7 +47,7 @@ class PermutationGenerator:
 
         permutation = self._perm_unrank(rank, base)
         if permutation is None:
-            print("trying to create permuation for number ", rank)
+            print(f"trying to create permuation for number {rank} with {len(cards)} cards")
             return cards
 
         return [cards[self.alphabet.index(i)] for i in permutation]
@@ -368,12 +368,12 @@ class Agent:
         Returns a list of cards
         '''
         cards = [str(card) for card in cards]
-        print(step_size, start_padding, end_padding, lengths)
+
         metadata = step_size + start_padding + end_padding + lengths
         
         last_n_cards = cards[-self.n_needed_metadata(2**len(metadata)):]
         permutation = self.permuter.encode(last_n_cards, int(metadata, 2))
-        print(self.n_needed_metadata(int(metadata, 2)))
+
         return [int(card) for card in permutation]
         
     def decode_metadata(self, uselessCards : List[int], messageLength : int):
@@ -391,7 +391,7 @@ class Agent:
         start_padding = int(metadata[2:5], 2)
         end_padding = int(metadata[5:8], 2)
         lengths = metadata[8:8+messageLength]
-        print(step_size, start_padding, end_padding, lengths)
+
         return step_size, start_padding, end_padding, lengths
 
     def n_needed_metadata(self, messageLength : int):
