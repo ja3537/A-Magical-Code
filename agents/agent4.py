@@ -65,35 +65,56 @@ class Agent:
         hex_hash = hasher.hash(str(int(bit_string, 2)).encode()).hexdigest()
         return bin(int(hex_hash, 16))[2:].zfill(8)
 
+    def domain_to_binary(self, domain_type):
+        return bin(int(domain_type))[2:].zfill(2)
+
     def get_domain_type(self, message):
-        # 0 --> alphanumeric
-        # 1 --> latitude/longitude  i.e: 21 18.41', 157 51.50'
-        # 2 --> dates (ignore for now)
-        # TODO: rashel - add dates domain
-
-        alphanum = False
-        lat_long = False
-
-        for ch in message:
-            if ch.isalnum():
-                alphanum = True
-        if alphanum:
+        message_no_space = "".join(message.split())
+        if message.isalnum() or message_no_space.isalnum():
             return '0'
-
-        for ch in message:
-            if ord(ch) == 39 or ord(ch) == 44 or ch.isdigit(): # only numbers, commas, apostrophes
-                lat_long = True
-        if lat_long:
+        elif self.is_lat_long(message_no_space): # ex: 21 18.41', 157 51.50'
             return '1'
+        elif self.is_date(message_no_space):
+            return '2'
+        else:
+            return '3' # do generic encoding
+
+    def is_lat_long(self, message):
+        # only numbers, commas, apostrophes
+        return all([ch.isdigit() or ch == ',' or ch == "'" for ch in message]) and \
+               any(ch.isdigit() for ch in message) and (',' in message) and ("'" in message)
+
+    def is_date(self, message):
+        return all([ch.isalnum() or ch == ',' for ch in message])
+
+    def check_decoded_message(self, message, domain_type):
+        if message == '':
+            return 'NULL'
+
+        message_no_space = "".join(message.split())
+        if domain_type == 0:
+            if not (message.isalnum() or message_no_space.isalnum()):
+                return 'NULL'
+        elif domain_type == 1:
+            if not self.is_lat_long(message_no_space):
+                return 'NULL'
+        elif domain_type == 2:
+            if not self.is_date(message_no_space):
+                return 'NULL'
+        elif domain_type == 3:
+            if not all(ord(c) < 128 and ord(c) > 32 for c in message):
+                return 'NULL'
+        return message
 
     def encode(self, message):
         deck = generate_deck(self.rng)
 
         domain_type = self.get_domain_type(message)
+        domain_binary = self.domain_to_binary(domain_type)
 
         binary_repr = self.string_to_binary(message, domain_type)
-        # TODO: rashel - try using 2 bits, not 8
-        binary_repr = binary_repr + self.get_hash(binary_repr) + domain_type.zfill(8)
+        binary_repr = binary_repr + self.get_hash(binary_repr) + domain_binary
+        #print(message, domain_type)
         integer_repr = int(binary_repr, 2)
 
         num_cards_to_encode = 1
@@ -103,7 +124,6 @@ class Agent:
                 break
         message_start_idx = len(deck) - num_cards_to_encode
         message_cards = self.num_to_cards(integer_repr, deck[message_start_idx:])
-
         return self.deck_encoded(message_cards)
 
     def decode(self, deck):
@@ -112,24 +132,17 @@ class Agent:
             encoded_cards = self.get_encoded_cards(deck, n)
             integer_repr = self.cards_to_num(encoded_cards)
             binary_repr = bin(int(integer_repr))[2:]
-            message_bits = binary_repr[:-16]
-            middle_man = binary_repr[:-8]
+            message_bits = binary_repr[:-10]
+            middle_man = binary_repr[:-2]
             hash_bits = middle_man[-8:]
-            domain_bits = binary_repr[-8:]
+            domain_bits = binary_repr[-2:]
             domain_type = int(domain_bits, 2)
-            '''message_bits = binary_repr[:-8]
-            hash_bits = binary_repr[-8:]'''
 
-            if len(hash_bits) == 8 and len(message_bits) and hash_bits == self.get_hash(message_bits):
+            if len(hash_bits) == 8 and len(message_bits) and hash_bits == self.get_hash(message_bits) and len(domain_bits) == 2:
                 message = self.binary_to_string(message_bits, domain_type)
                 break
 
-        # TODO: rashel - modify to be based on encoding type
-        if not all(ord(c) < 128 and ord(c) > 33 for c in message) or message == '':
-            return 'NULL'
-
-        return message
-
+        return self.check_decoded_message(message, domain_type)
 
 if __name__ == "__main__":
     agent = Agent()
