@@ -35,20 +35,30 @@ MAX_CHUNK_SIZE = 6
 class PermutationGenerator:
     # From https://codegolf.stackexchange.com/questions/114883/i-give-you-nth-permutation-you-give-me-n
 
+    def __init__(self):
+        self.alphabet = '0123456789abcdefghijklmnopqrstuvwxyz'
+        self.fact = [0] * 34
+        self.fact[0] = 1
+        for i in range(1, 32):
+            self.fact[i] = (self.fact[i - 1] * i)
     def encode(self, cards, rank):
         ''' Encode the given cards into a permutation of the given rank '''
-        base = ''.join(list([str(num) for num in range(len(cards))]))
+        base = self.alphabet[:len(cards)]
+
         permutation = self._perm_unrank(rank, base)
         if permutation is None:
             print("trying to create permuation for number ", rank)
-        return [cards[int(i)] for i in permutation]
+            return cards
+
+        return [cards[self.alphabet.index(i)] for i in permutation]
 
     def decode(self, cards):
         ''' Decode the given permuted cards into a rank '''
-        sortedCards = sorted(cards)
+        sortedCards = [str(sortedCard) for sortedCard in sorted([int(card) for card in cards])]
 
-        target = ''.join([str(sortedCards.index(card)) for card in cards])
-        base = ''.join(list([str(num) for num in range(len(cards))]))
+        target = ''.join([self.alphabet[sortedCards.index(card)] for card in cards])
+        base = self.alphabet[:len(cards)]
+
         return self._perm_rank(target, base)
 
     def perm_count(self, s):
@@ -57,6 +67,9 @@ class PermutationGenerator:
         for _, g in groupby(s):
             n //= fac(sum(1 for u in g))
         return n
+
+    def n_needed(self, messageLength):
+        return self.fact[messageLength]
 
     def _perm_rank(self, target, base):
         ''' Determine the permutation rank of string `target`
@@ -355,11 +368,10 @@ class Agent:
         cards = [str(card) for card in cards]
 
         metadata = step_size + start_padding + end_padding + lengths
-        print("length of message ", len(lengths))
-        last_5_cards = cards[-9:]
-        permutation = self.permuter.encode(last_5_cards, int(metadata, 2))
+        last_n_cards = cards[-self.n_needed_metadata(len(lengths)):]
+        permutation = self.permuter.encode(last_n_cards, int(metadata, 2))
 
-        return [int(card) for card in cards[:9]] + [int(card) for card in permutation]
+        return [int(card) for card in permutation]
         
     def decode_metadata(self, uselessCards : List[int], messageLength : int):
         '''
@@ -368,18 +380,21 @@ class Agent:
         Returns a tuple of step_size, start_padding, end_padding, lengths
         '''
         cards = [str(card) for card in uselessCards]
-        last_5_cards = cards[-9:]
-        metadata = self.permuter.decode(last_5_cards)
-
+        last_n_cards = cards[-self.n_needed_metadata(messageLength):]
+        metadata = self.permuter.decode(last_n_cards)
         metadata = '{0:b}'.format(metadata).zfill(2 + 3 + 3 + messageLength)
-
         step_size = int(metadata[:2], 2)
         start_padding = int(metadata[2:5], 2)
         end_padding = int(metadata[5:8], 2)
-        lengths = metadata[8:]
+        lengths = metadata[8:8+messageLength]
 
         return step_size, start_padding, end_padding, lengths
 
+    def n_needed_metadata(self, messageLength : int):
+        '''
+        Returns the number of cards needed to encode the metadata
+        '''
+        return self.permuter.n_needed(messageLength)
 
 # -----------------------------------------------------------------------------
 #   Unit Tests
