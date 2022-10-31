@@ -46,6 +46,8 @@ class Agent:
             ";": 0.74,
             "?": 0.43,
             "!": 0.39,
+            "\t": 0.10,
+            " ": 0.11,
             "0": 0.09,
             "1": 0.08,
             "2": 0.07,
@@ -56,7 +58,7 @@ class Agent:
             "7": 0.02,
             "8": 0.01,
             "9": 0.005
-            }
+        }
         self.rng = np.random.default_rng(seed=42)
 
     def string_to_binary(self, message, domain_type):
