@@ -1,5 +1,3 @@
-from collections import Counter
-import numpy as np
 import math
 import random
 
@@ -66,7 +64,7 @@ freq = {
     'z' :	0.074/100
 }
 
-def encode_msg_bin(msg, encoding) -> list[int]:
+def encode_msg_bin(msg, encoding) -> str:
     """
     takes a string and returns a binary encoding of each letter per 'encoding'
     """
@@ -81,20 +79,23 @@ def decode_bin_msg(msg, encoding):
     """
     output = ''
     while msg:
+        found_match = False
         for ch, binary in encoding.items():
             if msg.startswith(binary):
+                found_match = True
                 output += ch
-                msg = msg[len(binary) :]
-            
+                msg = msg[len(binary):]
+        if not found_match:
+            break
     return output
 
-def encode_bin_to_cards(msg_bin):
+def bin_to_cards(msg_bin):
     """
     takes a binary string and encodes the string into cards
     """
     digit = int(msg_bin, 2)
     #digit = 16
-    m=digit
+    m = digit
 
     min_cards = math.inf
     for i in range(1, 53):
@@ -116,13 +117,12 @@ def encode_bin_to_cards(msg_bin):
         elements[index] = elements[min_cards-i-1]
 
     remaining_cards = []
-    for i in range(min_cards, 51):
+    for i in range(min_cards, 52):
         remaining_cards.append(i)
 
     random.shuffle(remaining_cards)
 
-    remaining_cards.append(51)
-
+    print("permutation is ", permutations)
     returned_list = remaining_cards + permutations
 
    # print(permutations)
@@ -131,33 +131,10 @@ def encode_bin_to_cards(msg_bin):
 
     return returned_list
 
-def decode_cards_to_bin(cards):
+def cards_to_bin(cards):
     """
     takes a binary string and encodes the string into cards
     """
-    '''
-    fact_list = []
-    while(len(cards)>0):
-        min_index = np.argmin(cards)
-        min_value = cards[min_index]
-        num_digits = 0
-        for i in range(min_index):
-            current_card = cards[i]
-            if current_card > min_value:
-                num_digits += 1
-        fact_list.append(num_digits)
-        cards.remove(min_value)
-
-    fact_list.reverse()
-
-    digit = 0
-    for i in range(len(fact_list)):
-        fact  = math.factorial(i)
-        product = fact*fact_list[i]
-        digit += product
-
-    binary = bin(digit)
-    '''
     m = 1
     digit = 0
     length = len(cards)
@@ -167,57 +144,14 @@ def decode_cards_to_bin(cards):
         positions.append(i)
         elements.append(i)
 
-    #print(positions)
-   # print(elements)
     for i in range(length-1):
-        digit += m*positions[cards[i]]
+        digit += m * positions[cards[i]]
         m = m * (length - i)
         positions[elements[length-i-1]] = positions[cards[i]]
         elements[positions[cards[i]]] = elements[length-i-1]
-      #  print(digit)
-       # print(m)
-       # print(positions)
-       # print(elements)
+     
+    return format(digit, 'b')
 
-
-
-    return digit
-
-# def str_to_bin(self, msg) -> str:
-#     """
-#     str_to_bin transforms string from ascii character to binary
-#     returns a list of bytes
-#     """
-#     encoded_bin = []
-#     for ch in msg:
-#         # char to ascii key
-#         ascii_rep = ord(ch)
-#         # ascii to binary
-#         binary_rep = bin(ascii_rep)[2:]
-#         # padding = ['0'] * (8 - len(binary_rep)) if len(binary_rep) < 8 else []
-#         encoded_bin.append(binary_rep.zfill(8))
-
-#     frequencies = dict(Counter(msg))
-#     frequencies = sorted(frequencies.items(), key = lambda x : x[1], reverse=True)
-#     node = make_tree(frequencies)
-#     encoding = huffman_code(node)
-
-#     print('Fre: ', frequencies, '\n\n')
-#     print('Encoding:', encoding)
-
-#     return encoded_bin
-
-# def bin_to_str(self, bytes) -> str:
-#     """
-#     bin_to_str transforms a list of bytes to string
-#     returns a string
-#     """
-#     decoded_str = ''
-#     for byte in bytes:
-#         # converts binary to decimal then maps decimal to ascii
-#         ch = chr(int(byte, 2))
-#         decoded_str += ch
-#     return decoded_str
 class Agent:
 
     def __init__(self):
@@ -225,27 +159,9 @@ class Agent:
         _freq = sorted(freq.items(), key = lambda x : x[1], reverse=True)
         node = make_tree(_freq)
         self.encoding = huffman_code(node)
-        self.start_card = 51
+        # self.start_card = 51
         
-        
-        # self.encoder = {}
-        # self.decoder = {}
-        # # 1 start of msg, 26 letters of the alphabet, 10 numbers, and 1 end msg signal
-
-        # for i in range(26):
-        #     self.encoder[chr(i + ord('a'))] = i
-        #     self.decoder[i] = chr(i + ord('a'))
-
-        # for i in range(10):
-        #     self.encoder[str(i)] = i + 26
-        #     self.decoder[i + 26] = str(i)
-
-        # self.encoder['#'] = 36
-        # self.decoder[36] = '#'
-        # self.encoder['/'] = 37
-        # self.decoder[37] = '/'
-        
-    def compute_crc_checksum(self, data) -> str:
+    def compute_crc8_checksum(self, data) -> str:
         # data is a binary string
         # we would like to turn it into a list of bytes
         # then compute the crc and return the crc as a binary string
@@ -253,11 +169,10 @@ class Agent:
             data = "0" * (8 - len(data) % 8) + data
         
         byte_list = [int(data[i:i+8], 2) for i in range(0, len(data), 8)]
-        print(byte_list)
-        generator = 0x1D
+        generator = 0x9B
         crc = 0
-        for currByte in byte_list:
-            crc ^= currByte
+        for curr_byte in byte_list:
+            crc ^= curr_byte
             # mask to trim to 8 bits
             crc &= 0xFF
             for i in range(8):
@@ -269,43 +184,42 @@ class Agent:
                     crc = crc << 1
         return format(crc, '08b')
 
+    def compute_crc16_checksum(self, data) -> str:
+        if len(data) % 8 != 0:
+            data = "0" * (8 - len(data) % 8) + data
+        
+        byte_list = [int(data[i:i+8], 2) for i in range(0, len(data), 8)]
+        # polynomial generator picked based on https://users.ece.cmu.edu/~koopman/crc/
+        generator = 0xED2F
+        crc = 0
+        for curr_byte in byte_list:
+            crc ^= (curr_byte << 8)
+            # mask to trim to 16 bits
+            crc &= 0xFFFF
+            for i in range(8):
+                if crc & 0x8000 != 0:
+                    crc = (crc << 1) ^ generator
+                    # mask to trim to 16 bits
+                    crc &= 0xFFFF
+                else:
+                    crc = crc << 1
+        return format(crc, '016b')
+
+        
 
     def encode(self, message):
         """
         FYI: use 'encode_msg_bin' to compress a message to binary
         """
         msg_huffman_binary = encode_msg_bin(message, self.encoding)
-        #print(type(msg_huffman_binary))
-        msg_huffman_binary = str(1) + msg_huffman_binary
-        #print(msg_huffman_binary)
-        #print(int(msg_huffman_binary, 2))
-        cards = encode_bin_to_cards(msg_huffman_binary)
+       
+        # Calculate checksum before prepending the leading 1 bit
+        # assert(len(self.compute_crc16_checksum(msg_huffman_binary)) == 16)
+        msg_huffman_binary += self.compute_crc16_checksum(msg_huffman_binary)
+        msg_huffman_binary = "1" + msg_huffman_binary
         
-        # print('msg passed to encoder bytes: ', self.str_to_bin(message))
-        # print('msg in str from decoded bytes: ', self.bin_to_str(self.str_to_bin(message)))
+        cards = bin_to_cards(msg_huffman_binary)
         
-        # msgList = []
-
-        # # start '#', end '/'
-        # message = '#' + message + '/'
-        
-        # encoded = list(range(38, 52)) # red section
-        # availL = set(range(38))
-        
-        # for x in message:
-        #     msgList.append(self.encode[x])
-        #     availL.remove(self.encoder[x])
-
-        # encoded += list(availL)
-        # encoded += msgList
-
-        # return encoded
-       # list_52 = np.arange(52)
-       # list_52 = list(list_52)
-       # list_52[41] = 51
-       # list_52[51] = 41
-        #print(list_52)
-        print(cards)
         return cards
 
 
@@ -315,53 +229,30 @@ class Agent:
         Given a binary str, use 'decode_bin_msg' to decode it
         see main below
         """
-        #print(deck)
-     #   list_52 = np.arange(52)
-      #  list_52 = list(list_52)
-       # list_52.reverse()
-       # list_52[41] = 51
-        #list_52[0] = 10
-        #deck = list_52
-        print(deck)
+        print("after shuffling ", deck)
+      
+        for perm_bound in range(1, 52):
+            msg_cards = []
+            for c in deck:
+                if c <= perm_bound:
+                    msg_cards.append(c)
+            bin_raw = cards_to_bin(msg_cards)
+            bin_raw = bin_raw[1:] # remove leading 1
+            bin_message, checksum = bin_raw[:-16], bin_raw[-16:]
+            if checksum == self.compute_crc16_checksum(bin_message):
+               decoded_message = decode_bin_msg(bin_message, self.encoding)
+               return decoded_message
+        return "NULL"
 
-        message_length = deck.index(self.start_card)
-
-        bottom_cards = []
-        for i in range(len(deck)):
-            if i > message_length:
-                bottom_cards.append(deck[i])
-
-        print(bottom_cards)
-
-        binary_message = decode_cards_to_bin(bottom_cards)
-        print(binary_message)
-        binary_message = bin(int(binary_message))[3:]
-        print(binary_message)
-
-        decoded_message = decode_bin_msg(binary_message, self.encoding)
-
-        print(binary_message)
-
-        # msg = ''
-
-        # in_msg = False
-        # for x in deck:
-        #     if x == self.encoder['#']:
-        #         in_msg = True
-        #     elif x == self.encoder['/']:
-        #         in_msg = False
-        #     elif in_msg and x in self.decoder:
-        #         msg += self.decoder[x]
-
-        return decoded_message
 
 if __name__=='__main__':
     _freq = sorted(freq.items(), key = lambda x : x[1], reverse=True)
     node = make_tree(_freq)
     encoding = huffman_code(node)
     
-    obj = Agent()
-    encoded = obj.encode('0000')
-    decoded = decode_bin_msg(encoded, encoding)
+    agent = Agent()
+    encoded = agent.encode('abcd')
+    #print("ENCODED: ", encoded)
+    decoded = agent.decode(encoded)
     print('Encoded msg: ', encoded)
     print('Decoded msg: ', decoded)
