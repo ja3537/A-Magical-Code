@@ -40,7 +40,7 @@ class Agent:
     def __init__(self):
         self.codec = english_codec_w_digit()
         #self.codec.print_code_table()
-        self.N = 20 # only modify bottom N cards
+        self.N = 25 # only modify bottom N cards
         self.start, self.end = 52-self.N, 51 # for locating reserved cards
 
     def clean_text(self, s):
