@@ -1,0 +1,6 @@
+space word
+123456
+ALLCAPS
+aabbcc
+aaaaaaaaa
+aaaaabbbb
