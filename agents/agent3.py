@@ -178,6 +178,8 @@ class Agent:
         self.permuter = PermutationGenerator()
         self.max_chunk_size = 6
 
+
+        # if can use precomp, comment this out
         r = requests.get('https://raw.githubusercontent.com/mwcheng21/minified-text/main/minified.txt')
         minified_text = r.text
         self.abrev2word = {}
@@ -186,6 +188,15 @@ class Agent:
             [shortened, full] = line.split(' ')
             self.abrev2word[shortened] = full
             self.word2abrev[full] = shortened
+
+        # then uncomment this
+        # with open('minified.txt', 'r') as f:
+        #     self.abrev2word = {}
+        #     self.word2abrev = {}
+        #     for line in f.splitlines():
+        #         [shortened, full] = line.split(' ')
+        #         self.abrev2word[shortened] = full
+        #         self.word2abrev[full] = shortened
 
     def encode(
             self,
