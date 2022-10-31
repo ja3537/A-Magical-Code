@@ -1,20 +1,14 @@
 import numpy as np
 import cards
 import constants
+from importlib import import_module
 from agents.default import Agent as default_agent
-from agents.agent1 import Agent as agent1
-from agents.agent2 import Agent as agent2
-from agents.agent3 import Agent as agent3
-from agents.agent4 import Agent as agent4
-from agents.agent5 import Agent as agent5
-from agents.agent6 import Agent as agent6
-from agents.agent7 import Agent as agent7
-from agents.agent8 import Agent as agent8
 
 class Mission:
     def __init__(self, args):
         self.seed = args.seed
         self.verbose = args.verbose
+        self.runs = args.runs
         if(self.seed != 0):
             self.rng = np.random.default_rng(self.seed)
         else:
@@ -24,7 +18,8 @@ class Mission:
                 self.agent = default_agent()
             else:
                 agent_name = "agent{}".format(args.agent[0])
-                self.agent = eval(agent_name + "()")
+                agent_module = import_module(f".{agent_name}", "agents")
+                self.agent = agent_module.Agent()
         else:
             print("error loading agent ", args.agent[0])
             exit()
@@ -50,10 +45,13 @@ class Mission:
         self.encoded_decks = []
         self.shuffled_decks = []
         self.n_values = []
-        self.decoded = [None]*len(self.messages)
-        self.scores = [None]*len(self.messages)
+        self.decoded = []
+        self.scores = []
+        for i in range(len(self.messages)):
+            self.decoded.append([None]*self.runs)
+            self.scores.append([None] * self.runs)
         self.total_score = 0
-        self.messages_index = list(range(len(self.messages))) #indexes of messages not yet used in mission
+        self.messages_index = list(range(len(self.messages)*self.runs)) #indexes of messages not yet used in mission
         self.rng.shuffle(self.messages_index) #determines random order for messages during decoding
 
     def execute_mission(self):
@@ -67,27 +65,34 @@ class Mission:
             self.encoded_decks.append(d)
 
         for i in range(len(self.encoded_decks)): #shuffling stage
-            d = self.encoded_decks[i]
-            if cards.valid_deck(d):
-                if(self.rand_n):
-                    n = self.rng.integers(1, self.n + 1, 1)[0]
-                else:
-                    n = self.n
-                self.n_values.append(n)
-                self.shuffled_decks.append(self.s(n, d))
+            for run in range(self.runs):
+                d = self.encoded_decks[i]
+                if cards.valid_deck(d):
+                    if(self.rand_n):
+                        n = self.rng.integers(1, self.n + 1, 1)[0]
+                    else:
+                        n = self.n
+                    if run == 0:
+                        self.n_values.append([n])
+                        self.shuffled_decks.append([self.s(n, d)])
+                    else:
+                        self.n_values[i].append(n)
+                        self.shuffled_decks[i].append(self.s(n, d))
 
 
 
         for i in self.messages_index:
-            s_deck = self.shuffled_decks[i]
+            m_index = i % len(self.messages)
+            run = i // len(self.messages)
+            s_deck = self.shuffled_decks[m_index][run]
             if cards.valid_deck(s_deck):
                 decoded_m = self.agent.decode(s_deck)
-                score = self.score_message(self.messages[i], decoded_m)
-                self.decoded[i] = decoded_m
+                score = self.score_message(self.messages[m_index], decoded_m)
+                self.decoded[m_index][run] = decoded_m
             else:
                 score = 0
-                self.decoded[i] = "invalid deck: {}".format(e_deck)
-            self.scores[i] = score
+                self.decoded[m_index][run] = "invalid deck: {}".format(s_deck)
+            self.scores[m_index][run] = score
             self.total_score += score
 
 
@@ -118,14 +123,18 @@ class Mission:
         with open(self.output, 'w+') as f:
             for i in range(len(self.messages)):
                 f.write(self.messages[i] + '\n')
-                if(self.verbose):
-                    f.write('encoded deck: ' + str(self.encoded_decks[i]) + '\n')
-                    f.write('n value: ' + str(self.n_values[i]) + '\n')
-                    f.write('shuffled deck: ' + str(self.shuffled_decks[i]) + '\n')
-                f.write(self.decoded[i] + '\n')
-                f.write(str(self.scores[i]) + '\n')
+                for run in range(self.runs):
+                    if(self.verbose):
+                        if run == 0:
+                            f.write('encoded deck: ' + str(self.encoded_decks[i]) + '\n')
+                        f.write('n value: ' + str(self.n_values[i][run]) + '\n')
+                        f.write('shuffled deck: ' + str(self.shuffled_decks[i][run]) + '\n')
+                    f.write(self.decoded[i][run] + '\n')
+                    f.write("score " + str(self.scores[i][run]) + '\n')
+                f.write("total score for agent on this message: {}/{}\n".format(sum(self.scores[i]), self.runs))
                 f.write('\n')
-            f.write('total score for agent: {}/{}'.format(self.total_score, len(self.messages)))
+            f.write('\n')
+            f.write('total score for agent: {}/{}'.format(self.total_score, len(self.messages)*self.runs))
 
 
 
