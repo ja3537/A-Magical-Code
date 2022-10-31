@@ -2,7 +2,8 @@ import heapq
 from math import factorial, log2
 from pprint import pprint
 from random import Random
-from typing import Optional
+from typing import Optional, Dict, List, Tuple
+import hashlib
 
 
 # ================
@@ -29,13 +30,13 @@ class FreqTree:
         return self.freq == other.freq
 
 
-def make_huffman_encoding(frequencies: dict[str, float]) -> dict[str, str]:
+def make_huffman_encoding(frequencies: Dict[str, float]) -> Dict[str, str]:
     """
     frequencies is a dictionary mapping from a character in the English alphabet to its frequency.
     Returns a dictionary mapping from a character to its Huffman encoding.
     """
-    huffman_encoding: dict[str, str] = {}
-    heap: list[FreqTree] = []
+    huffman_encoding: Dict[str, str] = {}
+    heap: List[FreqTree] = []
 
     for char, freq in frequencies.items():
         heapq.heappush(heap, FreqTree(char, freq))
@@ -62,7 +63,7 @@ def make_huffman_encoding(frequencies: dict[str, float]) -> dict[str, str]:
     return huffman_encoding
 
 
-def huffman_encode_message(message: str, encoding: dict[str, str]) -> str:
+def huffman_encode_message(message: str, encoding: Dict[str, str]) -> str:
     """
     Encodes a message using the given encoding.
     """
@@ -74,7 +75,7 @@ def huffman_encode_message(message: str, encoding: dict[str, str]) -> str:
     return "".join(encoded_message)
 
 
-def huffman_decode_message(encoded_message: str, encoding: dict[str, str]) -> str:
+def huffman_decode_message(encoded_message: str, encoding: Dict[str, str]) -> str:
     """
     Decodes a message using the given encoding.
     """
@@ -87,14 +88,14 @@ def huffman_decode_message(encoded_message: str, encoding: dict[str, str]) -> st
                 decoded_message += char
                 encoded_message = encoded_message[len(code) :]
         if dead:
-            break
+            raise ValueError()
     return decoded_message
 
 
 # ==============
 # Bits <-> Cards
 # ==============
-def bottom_cards_encode(value: int, n: int) -> list[int]:
+def bottom_cards_encode(value: int, n: int) -> List[int]:
     if value >= factorial(n):
         raise ValueError(f"{value} is too large to encode in {n} cards!")
 
@@ -117,7 +118,7 @@ def bottom_cards_encode(value: int, n: int) -> list[int]:
     return cards
 
 
-def bottom_cards_decode(cards: list[int], n: int) -> int:
+def bottom_cards_decode(cards: List[int], n: int) -> int:
     cards = [card for card in cards if card < n]
     # Assuming the top card is the first card in the list
     lo = 0
@@ -205,6 +206,18 @@ def pearson_checksum(bits: str) -> str:
     return padded_checksum
 
 
+def sha_checksum(bits: str, c: int) -> str:
+    # Lowest c bits of sha269 hash
+    bitstr = bytes(bits, 'utf-8')
+    hashstr = hashlib.sha256(bitstr).hexdigest()
+
+    scale = 16 ## equals to hexadecimal
+    num_of_bits = 8
+    binstr = bin(int(hashstr, scale))[2:].zfill(num_of_bits)
+
+    return binstr[-c:]
+
+
 def add_checksum(bits: str) -> str:
     # Checksum always pads before calculating checksum,
     # so we don't need to pad the transmitted message
@@ -212,7 +225,7 @@ def add_checksum(bits: str) -> str:
     return bits + checksum
 
 
-def check_and_remove(bits: str) -> tuple[bool, str]:
+def check_and_remove(bits: str) -> Tuple[bool, str]:
     message_length = from_bit_string(bits[-8:])
     message_checksum = bits[-16:-8]
     message = bits[:-16]
@@ -261,6 +274,9 @@ class Agent:
             "z": 0.00074 * (4.7 / 5.7)
         }
         self.encoding = make_huffman_encoding(self.frequencies)
+        self.total_decodes = 0
+        self.failed_decodes = 0
+        self.failed_decode_rate = 0
 
     def encode(self, message: str):
         huffman_coded = huffman_encode_message(message, self.encoding)
@@ -273,16 +289,27 @@ class Agent:
         encoded = bottom_cards_encode(from_bit_string(with_length), c)
         return list(range(c, 52)) + encoded
 
-    def decode(self, deck: list[int]):
+    def decode(self, deck: List[int]):
         for c in range(52):
             encoded = [card for card in deck if card < c]
             decoded = to_bit_string(bottom_cards_decode(encoded, c))
             passes_checksum, message = check_and_remove(decoded)
             if passes_checksum:
-                out_message = huffman_decode_message(
-                    "".join(map(str, message)), self.encoding
-                )
-                return out_message
+                try:
+                    out_message = huffman_decode_message(
+                        "".join(map(str, message)), self.encoding
+                    )
+                    self.total_decodes += 1
+                    self.failed_decode_rate = self.failed_decodes / self.total_decodes
+                    print("Failed decode rate: ", self.failed_decode_rate)
+                    return out_message
+                except ValueError:
+                    self.total_decodes += 1
+                    self.failed_decodes += 1
+                    self.failed_decode_rate = self.failed_decodes / self.total_decodes
+
+                print("Failed decode rate: ", self.failed_decode_rate)
+                return ""
         return "NULL"
 
 
