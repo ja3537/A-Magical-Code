@@ -1,6 +1,6 @@
 from cards import generate_deck
 import numpy as np
-from typing import List
+from typing import List, Dict
 import math
 from pearhash import PearsonHasher
 from enum import Enum
@@ -21,17 +21,17 @@ class Agent:
     def __init__(self):
         self.rng = np.random.default_rng(seed=42)
 
-    def string_to_binary(self, message, domain):
+    def string_to_binary(self, message: str, domain: Domain) -> str:
         bytes_repr = HuffmanCodec.from_frequencies(self.get_domain_frequencies(domain)).encode(message)
         binary_repr = bin(int(bytes_repr.hex(), 16))[2:].zfill(8)
         return binary_repr
 
-    def binary_to_string(self, binary, domain):
+    def binary_to_string(self, binary: str, domain: Domain) -> str:
         message_byte = int(binary, 2).to_bytes((int(binary, 2).bit_length() + 7) // 8, 'big')
         message = HuffmanCodec.from_frequencies(self.get_domain_frequencies(domain)).decode(message_byte)
         return message
 
-    def deck_encoded(self, message_cards):
+    def deck_encoded(self, message_cards: List[int]) -> List[int]:
         # message_cards: cards for message
         result = []
         for i in range(52):
@@ -40,7 +40,7 @@ class Agent:
         result.extend(message_cards)
         return result
 
-    def get_encoded_cards(self, deck, start_idx):
+    def get_encoded_cards(self, deck: List[int], start_idx: int) -> List[int]:
         return [c for c in deck if c > start_idx]
 
     def cards_to_num(self, cards: List[int]) -> int:
@@ -80,10 +80,10 @@ class Agent:
         hex_hash = hasher.hash(str(int(bit_string, 2)).encode()).hexdigest()
         return bin(int(hex_hash, 16))[2:].zfill(8)
 
-    def domain_to_binary(self, domain_type: Domain):
+    def domain_to_binary(self, domain_type: Domain) -> str:
         return bin(int(domain_type.value))[2:].zfill(2)
 
-    def get_domain_type(self, message):
+    def get_domain_type(self, message: str) -> Domain:
         message_no_space = "".join(message.split())
         if message.isalnum() or message_no_space.isalnum():
             return Domain.NUM
@@ -94,19 +94,19 @@ class Agent:
         else:
             return Domain.ALL  # do generic encoding
         
-    def get_domain_frequencies(self, domain):
+    def get_domain_frequencies(self, domain: Domain) -> Dict[Domain, Dict[str, float]]:
         return DomainFrequencies[domain] if domain in DomainFrequencies.keys() else DomainFrequencies[Domain.ALL]
 
-    def is_lat_long(self, message):
+    def is_lat_long(self, message: str) -> bool:
         # only numbers, commas, apostrophes
         return all([ch.isdigit() or ch == ',' or ch == "'" for ch in message]) and \
             any(ch.isdigit() for ch in message) and (
                 ',' in message) and ("'" in message)
 
-    def is_date(self, message):
+    def is_date(self, message: str) -> bool:
         return all([ch.isalnum() or ch == ',' for ch in message])
 
-    def check_decoded_message(self, message, domain_type):
+    def check_decoded_message(self, message: str, domain_type: Domain) -> str:
         if message == '':
             return 'NULL'
 
@@ -125,7 +125,7 @@ class Agent:
                 return 'NULL'
         return message
 
-    def encode(self, message):
+    def encode(self, message: str) -> List[int]:
         deck = generate_deck(self.rng)
 
         domain_type = self.get_domain_type(message)
@@ -145,7 +145,7 @@ class Agent:
             integer_repr, deck[message_start_idx:])
         return self.deck_encoded(message_cards)
 
-    def decode(self, deck):
+    def decode(self, deck: List[int]) -> str:
         message = ''
         meet_checksum_count = 0
         for n in reversed(range(1, 51)):
