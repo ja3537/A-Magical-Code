@@ -545,7 +545,7 @@ def check_and_remove(bits: str) -> tuple[bool, int, str]:
     # Pad message to target length with leading 0's
     message = pad(message, message_length, allow_over=True)
     checked_bits = message + encoding_bits + length_byte
-    checked_checksum = pearson_checksum(checked_bits)
+    checked_checksum = sha_checksum(checked_bits, CHECKSUM_BITS)
     return checked_checksum == message_checksum, encoding_id, message
 
 
@@ -599,7 +599,7 @@ CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
     ),
 ]
 
-CHECKSUM_BITS = 8
+CHECKSUM_BITS = 10
 LENGTH_BITS = 8
 ENCODING_BITS = max(int(ceil(log2(len(CHARACTER_ENCODINGS)))), 1)
 
@@ -651,7 +651,7 @@ class Agent:
         encoding_bits = pad(to_bit_string(encoding_id), ENCODING_BITS)
         checked_bits = encoded + encoding_bits + message_length
         # Checksum checks all other bits
-        checksum = pearson_checksum(checked_bits)
+        checksum = sha_checksum(checked_bits, CHECKSUM_BITS)
         with_checksum = checked_bits + checksum
 
         c = find_c_for_message(with_checksum)
