@@ -207,18 +207,19 @@ def pearson_checksum(bits: str) -> str:
 
 def check_and_remove(bits: str) -> tuple[bool, str]:
     # Pad in case of very low numbers (leading 0's are trimmed by card encoding)
-    message_checksum = pad(bits[-16:-8], 8)
-    message_length = from_bit_string(pad(bits[-8:], 8))
-    # message_checksum = pad(bits[-8:], 8)
-    # message_length = from_bit_string(pad(bits[-16:-8], 8))
-    message = bits[:-16]
+    message_checksum = pad(bits[-8:], 8)
+    length_byte = pad(bits[-16:-8], 8)
+    message_length = from_bit_string(length_byte)
+    encoding_bits = pad(bits[-20:-16], 4)
+    message = bits[:-20]
 
-    # if len(message) > message_length:
-    #     return False, ""
+    if len(message) > message_length:
+        return False, ""
 
     # Pad message to target length with leading 0's
     message = pad(message, message_length, allow_over=True)
-    checked_checksum = pearson_checksum(message)
+    checked_bits = message + encoding_bits + length_byte
+    checked_checksum = pearson_checksum(checked_bits)
     return checked_checksum == message_checksum, message
 
 
@@ -339,22 +340,19 @@ class Agent:
         self.encoding = make_huffman_encoding(self.frequencies)
 
     def encode(self, message: str):
-        print("Message:", message)
         try:
             encoded, encoding_id = select_character_encoding(message)
         except ValueError as e:
             print(e)
             return list(range(52))
 
-        # message_length = length_byte(encoded)
-        # with_length = encoded + message_length
-        # checksum = pearson_checksum(with_length)
-        # with_checksum = with_length + checksum
-
         message_length = length_byte(encoded)
-        checksum = pearson_checksum(encoded)
-        with_checksum = encoded + checksum + message_length
-        print("Encoded:", with_checksum)
+        # 4 is an arbitrary number for now
+        encoding_bits = pad(to_bit_string(encoding_id), 4)
+        checked_bits = encoded + encoding_bits + message_length
+        # Checksum checks all other bits
+        checksum = pearson_checksum(checked_bits)
+        with_checksum = checked_bits + checksum
 
         c = find_c_for_message(with_checksum)
         encoded = bottom_cards_encode(from_bit_string(with_checksum), c)
