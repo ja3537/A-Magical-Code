@@ -62,30 +62,32 @@ class node:
  
         # tree direction (0/1)
         self.huff = ''
+        self.encoding_dict = {}
          
     def __lt__(self, nxt):
         return self.freq < nxt.freq
          
  
-# utility function to print huffman
-# codes for all symbols in the newly
-# created Huffman tree
-def printNodes(node, val=''):
-     
-    # huffman code for current node
-    newVal = val + str(node.huff)
- 
-    # if node is not an edge node
-    # then traverse inside it
-    if(node.left):
-        printNodes(node.left, newVal)
-    if(node.right):
-        printNodes(node.right, newVal)
- 
-        # if node is edge node then
-        # display its huffman code
-    if(not node.left and not node.right):
-        print(f"{node.symbol} -> {newVal}")
+    # utility function to print huffman
+    # codes for all symbols in the newly
+    # created Huffman tree
+    def printNodes(self, node, val=''):
+        
+        # huffman code for current node
+        newVal = val + str(node.huff)
+    
+        # if node is not an edge node
+        # then traverse inside it
+        if(node.left):
+            self.printNodes(node.left, newVal)
+            
+        if(node.right):
+            self.printNodes(node.right, newVal)
+    
+            # if node is edge node then
+            # display its huffman code
+        if(not node.left and not node.right):
+            self.encoding_dict[node.symbol]= newVal
  
  
 # characters for huffman tree
@@ -122,7 +124,7 @@ while len(nodes) > 1:
     heapq.heappush(nodes, newNode)
  
 # Huffman Tree is ready!
-printNodes(nodes[0])
+s = nodes[0].printNodes(nodes[0])
 
 if __name__ == "__main__":
     agent = Agent()
@@ -139,3 +141,22 @@ if __name__ == "__main__":
         if msg_r == "NULL":
             count_null += 1
     print("Done")
+##---------------------------huffman_decoding---------------------------##
+#Huffman_Decoding('11111110',nodes[0])
+def Huffman_Decoding(encoded_data, huffman_tree):
+    tree_head = huffman_tree
+    decoded_output = []
+    for x in encoded_data:
+        if x == '1':
+            huffman_tree = huffman_tree.right   
+        elif x == '0':
+            huffman_tree = huffman_tree.left
+        try:
+            if huffman_tree.left.symbol == None and huffman_tree.right.symbol == None:
+                pass
+        except AttributeError:
+            decoded_output.append(huffman_tree.symbol)
+            huffman_tree = tree_head
+        
+    string = ''.join([str(item) for item in decoded_output])
+    return string
