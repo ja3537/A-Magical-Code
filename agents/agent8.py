@@ -6,6 +6,7 @@ from math import ceil, factorial, log2
 from operator import indexOf
 from pprint import pprint
 from random import Random
+from string import ascii_letters, digits, punctuation
 from typing import Callable, Dict, List, Optional, Tuple
 
 # ================
@@ -283,6 +284,12 @@ class FrequencyDistribution(Enum):
         chr(5): 0.06338218895840436e-08,
         chr(27): 0.06338218895840436e-08,
         chr(30): 0.06338218895840436e-08,
+        "#": 0.01e-08,
+        "%": 0.01e-08,
+        "\\": 0.01e-08,
+        "`": 0.01e-08,
+        "|": 0.01e-08,
+        "}": 0.01e-08,
     }
 
     numbers = {
@@ -534,8 +541,17 @@ def extract_bit_fields(bits: str, format: list[int]) -> list[str]:
 def check_and_remove(bits: str) -> tuple[bool, int, str]:
     """Returns `(passed_checksum, encoding_id, message)`"""
     message_checksum, length_byte, encoding_bits, message = extract_bit_fields(
-        bits, [CHECKSUM_BITS, LENGTH_BITS, ENCODING_BITS]
+        pad(bits, CHECKSUM_BITS + LENGTH_BITS + ENCODING_BITS, allow_over=True),
+        [CHECKSUM_BITS, LENGTH_BITS, ENCODING_BITS],
     )
+
+    # Debug
+    # print("all bits:", bits)
+    # print("message checksum:", message_checksum)
+    # print("length", length_byte)
+    # print("encoding", encoding_bits)
+    # print("message", message)
+
     message_length = from_bit_string(length_byte)
     encoding_id = from_bit_string(encoding_bits)
 
@@ -624,7 +640,6 @@ def select_character_encoding(message: str) -> tuple[str, int]:
             f"Could not encode message with any available encodings: {message}"
         )
 
-    print("Selected encoding", shortest_encoding)
     return shortest_encoded, shortest_encoding
 
 
@@ -644,6 +659,7 @@ class Agent:
         try:
             encoded, encoding_id = select_character_encoding(message)
         except ValueError as e:
+            # TODO: Lossy encoding when no encodings cover the message domain
             print(e)
             return list(range(52))
 
@@ -655,7 +671,12 @@ class Agent:
         with_checksum = checked_bits + checksum
 
         c = find_c_for_message(with_checksum)
-        card_encoded = bottom_cards_encode(from_bit_string(with_checksum), c)
+        try:
+            card_encoded = bottom_cards_encode(from_bit_string(with_checksum), c)
+        except ValueError as e:
+            # TODO: Lossy encoding when message length > available bits in card deck
+            print(e)
+            return list(range(52))
 
         # Debugging
         # print("Message:", encoded)
@@ -683,12 +704,32 @@ class Agent:
                     return out_message
                 except ValueError:
                     self.failed_decodes += 1
+                    print("Failed to decode:", deck)
         return "NULL"
+
+
+def uniform_random_message(character_set: str, length: int) -> str:
+    return "".join(random.choices(character_set, k=length))
+
+
+def shuffle(n, deck):
+    rng = np.random.default_rng()
+    shuffles = rng.integers(0, 52, n)
+    for pos in shuffles:
+        top_card = deck[0]
+        deck = deck[1:]
+        deck = deck[:pos] + [top_card] + deck[pos:]
+    return deck
 
 
 if __name__ == "__main__":
     agent = Agent()
-    pprint(agent.encoding)
+
+    for c in ascii_letters + digits + punctuation:
+        deck = agent.encode(c)
+        rted = agent.decode(deck)
+        if rted != c:
+            print("Failed to encode:", c)
 
     for n in range(1, 52):
         assert (
