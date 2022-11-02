@@ -5,7 +5,7 @@ import random
 from itertools import permutations
 
 import numpy as np
-from dahuffman import HuffmanCodec
+#from dahuffman import HuffmanCodec
 
 import cards
 
@@ -155,14 +155,14 @@ class Unscramble:
     def __init__(self, card_deck, check_sum, perm_class: Perm, max_trials=10000) -> None:
         """Will unscramble the input deck until it matches the checksum
         Will terminate after max num of trials"""
-        self.card_deck = card_deck
+        self.card_deck = np.array(card_deck)
         self.check_sum = check_sum
         self.trials = max_trials
         self.perm = perm_class
         self.answer = False
         self.result = None
 
-    def unscramble(self,trials=10000):
+    def unscramble(self,trials=1000000):
         self.trials = trials
         depth = 1
 
@@ -238,7 +238,7 @@ class Unscramble:
                 return False
 
             perm_as_list = list(perm) # perm initially tuple
-            front_of_eck = self.card_deck[perm_as_list]
+            front_of_deck = self.card_deck[perm_as_list]
 
             exclude_mask = np.ones(self.card_deck.shape, bool)
             exclude_mask[perm_as_list] = False
