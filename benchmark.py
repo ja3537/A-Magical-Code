@@ -139,41 +139,38 @@ def run_trial(args: tuple[int, int]) -> tuple[int, int, float]:
     return length, n, successes / pargs.trials
 
 
-lengths = list(range(pargs.min_length, pargs.max_length + 1))
-shuffle_amounts = list(range(pargs.min_shuffles, pargs.max_shuffles + 1))
-work = list(product(lengths, shuffle_amounts))
-pool = multiprocessing.Pool(multiprocessing.cpu_count())
+if __name__ == "__main__":
+    lengths = list(range(pargs.min_length, pargs.max_length + 1))
+    shuffle_amounts = list(range(pargs.min_shuffles, pargs.max_shuffles + 1))
+    work = list(product(lengths, shuffle_amounts))
+    pool = multiprocessing.Pool(multiprocessing.cpu_count())
 
-print("Collecting results...")
+    print("Collecting results...")
 
-if pargs.disable_threading:
-    results = map(run_trial, work)
-else:
-    results = pool.imap_unordered(run_trial, work, chunksize=4)
+    if pargs.disable_threading:
+        results = map(run_trial, work)
+    else:
+        results = pool.imap_unordered(run_trial, work, chunksize=4)
 
-collected_results = {}
-for result in results:
-    length, n, recovery_rate = result
-    if not length in collected_results:
-        collected_results[length] = []
-    collected_results[length].append((n, recovery_rate))
+    collected_results = {}
+    for result in results:
+        length, n, recovery_rate = result
+        if not length in collected_results:
+            collected_results[length] = []
+        collected_results[length].append((n, recovery_rate))
 
+    # ======================
+    # Plot benchmark results
+    # ======================
+    print("Plotting...")
+    for length in collected_results:
+        ys = [recovery_rate for _, recovery_rate in sorted(collected_results[length])]
+        plt.plot(shuffle_amounts, ys, label=str(length))
 
-# ======================
-# Plot benchmark results
-# ======================
-print("Plotting...")
-for length in collected_results:
-    ys = [recovery_rate for _, recovery_rate in sorted(collected_results[length])]
-    plt.plot(shuffle_amounts, ys, label=str(length))
-
-# https://stackoverflow.com/questions/4700614/how-to-put-the-legend-outside-the-plot
-plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
-plt.title(f"Shuffle Count vs. Recovery Rate (Agent {pargs.agent})")
-plt.xlabel("Number of shuffles")
-plt.ylabel("Recovery rate")
-plt.tight_layout()
-plt.savefig("benchmark.png", dpi=300)
-# print(
-#     f"{round((agent.decoding_errors / agent.total_decode) * 100, 2)}% ({agent.decoding_errors}/{agent.total_decode}) decoding errors"
-# )
+    # https://stackoverflow.com/questions/4700614/how-to-put-the-legend-outside-the-plot
+    plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
+    plt.title(f"Shuffle Count vs. Recovery Rate (Agent {pargs.agent})")
+    plt.xlabel("Number of shuffles")
+    plt.ylabel("Recovery rate")
+    plt.tight_layout()
+    plt.savefig("benchmark.png", dpi=300)
