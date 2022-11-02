@@ -105,7 +105,7 @@ class Agent:
         clean_message = "".join(message.split())
         if clean_message.isnumeric():
             return Domain.NUM
-        elif clean_message.islower():
+        elif clean_message.isalpha() and clean_message.islower():
             return Domain.LOWER
         elif clean_message.isalpha():
             return Domain.LOWER_AND_UPPER
