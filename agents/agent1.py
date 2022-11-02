@@ -12,6 +12,30 @@ import cards
 
 logging.disable(logging.INFO)
 
+
+def calc_checksum(number, base=127):
+    """Calculate the checksum from an interger repr the binary data
+    Args:
+        number: Int corresponding to binary data of the input message
+        base: Should be equal to the size of character set used in the message
+    """
+    num_bin = bin(number)[2:]
+    chunk_len = 5
+    checksum = 0
+    mod_prime = 113
+    # From wikipedia - rollin hash
+    # ASCII a = 97, b = 98, r = 114.
+    # hash("abr") =  [ ( [ ( [  (97 × 256) % 101 + 98 ] % 101 ) × 256 ] %  101 ) + 114 ]   % 101   =  4
+    while len(num_bin) > 0:
+        bin_chunk = num_bin[:chunk_len]
+        num_bin = num_bin[chunk_len:]
+
+        num_chunk = int(bin_chunk, 2)
+        checksum = (checksum + num_chunk) % mod_prime
+        if len(num_bin) > 0:
+            checksum = (checksum * base) % mod_prime
+    return checksum
+
 # ------- str to perm and vice-versa ----------------- #
 """Borrowed and modified from group 7"""
 
@@ -124,6 +148,51 @@ class Perm:
                 break_next = True
         return ''.join(words[::-1]).strip()
 
+
+class Unscramble:
+    def __init__(self, card_deck, check_sum, perm_class: Perm, max_trials=10000) -> None:
+        """Will unscramble the input deck until it matches the checksum
+        Will terminate after max num of trials"""
+        self.card_deck = card_deck
+        self.check_sum = check_sum
+        self.trials = max_trials
+        self.perm = perm_class
+        self.answer = False
+        self.result = None
+
+    def unscramble(self):
+        self.recrusion([], self.card_deck)
+        return self.result
+
+    def recrusion(self, prev_deck: list[int], rest_deck: list[int]):
+        if len(rest_deck) < 1:
+            new_order = [rest_deck[0]] + prev_deck
+            num = self.perm.perm_to_num(new_order)
+            if calc_checksum(num, len(self.perm.char_list)) == self.check_sum:
+                self.answer = True
+                self.result = new_order
+            return None
+        if self.trials == 0 or self.answer:
+            return None
+        for i in range(len(rest_deck) - 1):
+            if len(rest_deck) > 1:
+                new_order = [rest_deck[i]] + prev_deck + rest_deck[0:i] + rest_deck[i + 1:]
+                # In some combinations, the number might be too large
+                # TODO: Check that this isn't an error
+                try:
+                    num = self.perm.perm_to_num(new_order)
+                except IndexError:
+                    num = 0
+
+                if calc_checksum(num, len(self.perm.char_list)) == self.check_sum:
+                    self.answer = True
+                    self.result = new_order
+                    break
+        if not self.result:
+            for i in range(len(rest_deck) - 1):
+                new_prev = [rest_deck[i]] + prev_deck
+                new_rest = rest_deck[0:i] + rest_deck[i + 1:]
+                return self.recrusion(new_prev, new_rest)
 
 # --------------------------- huffman_decoding --------------------------- #
 class Node:
@@ -260,31 +329,31 @@ class Agent:
         self.valid_cards_p = tuple(range(52 - self.encode_len, 52))
         self.perm = Perm(self.valid_cards_p, self.char_set)
 
-        self.cksum_len = 5
+        self.cksum_len = 6
         self.valid_cards_c = tuple(range(52 - self.encode_len - self.cksum_len, 52 - self.encode_len))
         self.perm_ck = Perm(self.valid_cards_c, numeric)
         self.checksum_encode = None
         self.checksum_decode = None
 
-    def calc_checksum(self, number):
-        """Number corresponding to the input message"""
-        num_bin = bin(number)[2:]
-        chunk_len = 5
-        checksum = 0
-        mod_prime = 113
-        base = len(self.char_set)
-        # ASCII a = 97, b = 98, r = 114.
-        # hash("abr") =  [ ( [ ( [  (97 × 256) % 101 + 98 ] % 101 ) × 256 ] %  101 ) + 114 ]   % 101   =  4
-        while len(num_bin) > 0:
-            bin_chunk = num_bin[:chunk_len]
-            num_bin = num_bin[chunk_len:]
-
-            num_chunk = int(bin_chunk, 2)
-            checksum = (checksum + num_chunk) % mod_prime
-            if len(num_bin) > 0:
-                checksum = (checksum * base) % mod_prime
-
-        return checksum
+    # def calc_checksum(self, number):
+    #     """Number corresponding to the input message"""
+    #     num_bin = bin(number)[2:]
+    #     chunk_len = 5
+    #     checksum = 0
+    #     mod_prime = 113
+    #     base = len(self.char_set)
+    #     # ASCII a = 97, b = 98, r = 114.
+    #     # hash("abr") =  [ ( [ ( [  (97 × 256) % 101 + 98 ] % 101 ) × 256 ] %  101 ) + 114 ]   % 101   =  4
+    #     while len(num_bin) > 0:
+    #         bin_chunk = num_bin[:chunk_len]
+    #         num_bin = num_bin[chunk_len:]
+    #
+    #         num_chunk = int(bin_chunk, 2)
+    #         checksum = (checksum + num_chunk) % mod_prime
+    #         if len(num_bin) > 0:
+    #             checksum = (checksum * base) % mod_prime
+    #
+    #     return checksum
 
     def encode(self, message):
         max_chars = self.max_msg_len
@@ -297,7 +366,7 @@ class Agent:
         seq_encode = self.perm.num_to_perm(num)
 
         # Calculate Checksum
-        checksum = self.calc_checksum(num)
+        checksum = calc_checksum(num, len(self.char_set))
         self.checksum_encode = checksum
         seq_checksum = self.perm_ck.num_to_perm(checksum)
 
@@ -309,12 +378,29 @@ class Agent:
 
     def decode(self, deck):
         # Todo: Add checksum
-        seq_encode = tuple([c for c in deck if c in self.valid_cards_p])
-        decoded_str = self.perm.perm_to_str(seq_encode)
+        seq_encode = [c for c in deck if c in self.valid_cards_p]
+
+        # TESTING
+        seq_encode = seq_encode[1:] + [seq_encode[0]]
 
         seq_checksum = tuple([c for c in deck if c in self.valid_cards_c])
         decoded_checksum = self.perm_ck.perm_to_num(seq_checksum)
         self.checksum_decode = decoded_checksum
+
+        msg_int = self.perm.perm_to_num(seq_encode)
+        msg_checksum = calc_checksum(msg_int, len(self.perm.char_list)) + 1
+        if msg_checksum == decoded_checksum:
+            decoded_str = self.perm.perm_to_str(seq_encode)
+        else:
+            # Message has been scrambled. Try to recover
+            unscramble = Unscramble(seq_encode, decoded_checksum, self.perm, max_trials=1000000)
+            fixed_seq = unscramble.unscramble()
+
+            if fixed_seq is not None:
+                decoded_str = self.perm.perm_to_str(fixed_seq)
+            else:
+                decoded_str = "NULL"
+
         return decoded_str
 
 
@@ -402,5 +488,20 @@ if __name__ == "__main__":
         print(f"Direct Decode: {decode1}")
         print(f"Huffma Encode to Seq: {card_perm2}")
         print(f"Huffma Decode: {decode2}")
+
+    # Test Unscramble
+    if True:
+        deck = [45, 46, 47, 48]
+        sdeck = [46, 45, 47, 48]
+        perm_ck = Perm(tuple(deck), alpha)
+        num = perm_ck.perm_to_num(deck)
+        check_sum = calc_checksum(num, len(perm_ck.perm_zero))
+        unscramble = Unscramble(sdeck, check_sum, perm_ck, max_trials=10000)
+        cdeck = unscramble.unscramble()
+
+        if cdeck == deck:
+            print(f"Unscramble success")
+        else:
+            print(f"Unscramble Fail")
     print("Done")
 
