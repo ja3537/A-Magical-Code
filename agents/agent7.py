@@ -20,7 +20,7 @@ class EncoderDecoder:
 
         words_dict = {EMPTY: 0}
         words_index = [EMPTY]
-        with open(os.path.dirname(__file__) + '/../messages/agent7/30k.txt') as f:
+        with open(os.path.dirname(__file__) + '/../messages/agent7/30k_old.txt') as f:
             for i in range(1, DICT_SIZE-1):     # reserve 1 for empty and 1 for unknown
                 word = f.readline().rstrip('\t\n')
                 words_dict[word] = i
@@ -29,34 +29,6 @@ class EncoderDecoder:
         words_index.append(UNTOK)
         self.words_dict = words_dict
         self.words_index = words_index
-
-    # @staticmethod
-    # def to_binary_padded(n):
-    #     ret = ''
-    #     while n > 1:
-    #         ret += str(n % 2)
-    #         n = n // 2
-    #     ret += str(n)
-    #     return '0' * (6 - len(ret)) + ret[::-1]
-    #
-    # @staticmethod
-    # def to_binary(n):
-    #     ret = ''
-    #     while n > 1:
-    #         ret += str(n % 2)
-    #         n = n // 2
-    #     ret += str(n)
-    #     return ret[::-1]
-    #
-    # def binary_encoding_dicts(self, characters):
-    #     char_dict = {}
-    #     bin_dict = {}
-    #     for i in range(len(characters)):
-    #         b = self.to_binary_padded(i)
-    #         char_dict[characters[i]] = b
-    #         bin_dict[b] = characters[i]
-    #
-    #     return char_dict, bin_dict
 
     def perm_number(self, permutation):
         n = len(permutation)
@@ -99,27 +71,6 @@ class EncoderDecoder:
             words.append(self.words_index[index])
             num = num // DICT_SIZE
         return ' '.join(words[::-1]).strip()
-
-
-    # def str_to_perm(self, s):
-    #     ret = ''
-    #     for c in s[:14]:
-    #         ret += self.char_dict[c]
-    #     n = int(ret, 2)
-    #     return self.nth_perm(n)
-    #
-    # def perm_to_str(self, permutation):
-    #     n = self.perm_number(permutation)
-    #     binary_string = self.to_binary(n)
-    #     binary_string = '0' * ((6 - len(binary_string) % 6) % 6) + binary_string
-    #
-    #     ret = ''
-    #     for i in range(0, len(binary_string) - 5, 6):
-    #         if binary_string[i:i + 6] not in self.bin_dict:
-    #             return 'PARTIAL: '
-    #         ret += self.bin_dict[binary_string[i:i + 6]]
-    #     return ret
-
 
 class Agent:
     def __init__(self, encoding_len=26):
