@@ -11,9 +11,11 @@ from collections import namedtuple
 
 class Domain(Enum):
     ALL = 0
-    ALPHA_NUM = 1
+    NUMBERS = 1
     LAT_LONG = 2
-    DATE = 3
+    LOWER_CASE_LETTERS = 3
+    LOWER_AND_UPPER_CASE_LETTERS = 4
+    LOWER_AND_UPPER_CASE_LETTERS_AND_NUMBERS = 5
 
 
 MAC_DOMAIN_VALUE = max([d.value for d in Domain])
@@ -21,8 +23,8 @@ MAC_DOMAIN_VALUE = max([d.value for d in Domain])
 DomainFrequencies = {
     # reference of English letter frequencies: https://pi.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
     Domain.ALL: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, " ": 0.11, "\t": 0.10, ".": 6.97, ",": 5.93, "'": 1.53, "\"": 1.33, ":": 0.90, "-": 0.77, ";": 0.74, "?": 0.43, "!": 0.39, "0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
-    Domain.LAT_LONG: {"0": 0.9, "1": 1, "2": 0.7, "3": 0.6, "4": 0.5, "5": 0.4, "6": 0.3, "7": 0.2, "8": 0.1, "9": 0.005, "N": 1.1, "E": 1.15, "S": 1.20, "W": 1.25, ",": 1.04, ".": 1.05, " ": 1.5},
-    Domain.LOWER_CASE_LATTERS: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07},
+    Domain.LAT_LONG: {"0": 186, "1": 342, "2": 223, "3": 334, "4": 208, "5": 215, "6": 233, "7": 211, "8": 173, "9": 168, "N": 169, "E": 164, "S": 31, "W": 36, ",": 200, ".": 400, " ": 600},
+    Domain.LOWER_CASE_LETTERS: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07},
     Domain.LOWER_AND_UPPER_CASE_LETTERS: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, "A": 0.812, "B": 0.149, "C": 0.271, "D": 0.432, "E": 1.202, "F": 0.230, "G": 0.203, "H": 0.592, "I": 0.731, "J": 0.01, "K": 0.069, "L": 0.398, "M": 0.261, "N": 0.695, "O": 0.768, "P": 0.182, "Q": 0.011, "R": 0.602, "S": 0.628, "T": 0.91, "U": 0.288, "V": 0.111, "W": 0.209, "X": 0.017, "Y": 0.211, "Z": 0.007},
     Domain.LOWER_AND_UPPER_CASE_LETTERS_AND_NUMBERS: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, "A": 0.812, "B": 0.149, "C": 0.271, "D": 0.432, "E": 1.202, "F": 0.230, "G": 0.203, "H": 0.592, "I": 0.731, "J": 0.01, "K": 0.069, "L": 0.398, "M": 0.261, "N": 0.695, "O": 0.768, "P": 0.182, "Q": 0.011, "R": 0.602, "S": 0.628, "T": 0.91, "U": 0.288, "V": 0.111, "W": 0.209, "X": 0.017, "Y": 0.211, "Z": 0.007, "0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
     Domain.NUMBERS: {"0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
@@ -103,12 +105,16 @@ class Agent:
 
     def get_domain_type(self, message: str) -> Domain:
         message_no_space = "".join(message.split())
-        if message.isalnum() or message_no_space.isalnum():
-            return Domain.ALPHA_NUM
         if self.is_lat_long(message_no_space):
             return Domain.LAT_LONG
-        elif self.is_date(message_no_space):
-            return Domain.DATE
+        elif message_no_space.isnumeric():
+            return Domain.NUMBERS
+        elif message_no_space.isalnum():
+            return Domain.LOWER_AND_UPPER_CASE_LETTERS_AND_NUMBERS
+        elif message_no_space.isalpha():
+            return Domain.LOWER_AND_UPPER_CASE_LETTERS
+        elif message_no_space.islower():
+            return Domain.LOWER_CASE_LETTERS
         else:
             return Domain.ALL  # do generic encoding
 
@@ -127,14 +133,20 @@ class Agent:
             return 'NULL'
 
         message_no_space = "".join(message.split())
-        if domain_type == Domain.ALPHA_NUM:
+        if domain_type == Domain.LOWER_AND_UPPER_CASE_LETTERS_AND_NUMBERS:
             if not (message.isalnum() or message_no_space.isalnum()):
                 return 'NULL'
         elif domain_type == Domain.LAT_LONG:
             if not self.is_lat_long(message_no_space):
                 return 'NULL'
-        elif domain_type == Domain.DATE:
-            if not self.is_date(message_no_space):
+        elif domain_type == Domain.NUMBERS:
+            if not message.isnumeric():
+                return 'NULL'
+        elif domain_type == Domain.LOWER_AND_UPPER_CASE_LETTERS:
+            if not (message.isalpha() or message_no_space.isalpha()):
+                return 'NULL'
+        elif domain_type == Domain.LOWER_CASE_LETTERS:
+            if not (message.islower() or message_no_space.islower()):
                 return 'NULL'
         elif domain_type == Domain.ALL:
             if not all(ord(c) < 128 and ord(c) > 32 for c in message):
