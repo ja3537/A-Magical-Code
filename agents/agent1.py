@@ -167,11 +167,44 @@ class Unscramble:
         depth = 1
 
         while self.trials > 0:
+            print("current depth is", depth)
             if self.recursion_2(depth):
+                print("broken")
+                print("remaining num",self.trials)
                 break
 
             depth += 1
+    def recursion_2(self, depth):
+        possible_idx_perms = list(permutations(range(12), depth))
 
+        for perm in possible_idx_perms:
+            
+            if self.trials <= 0:
+                return False
+
+            perm_as_list = list(perm) # perm initially tuple
+            front_of_deck = self.card_deck[perm_as_list]
+
+            exclude_mask = np.ones(self.card_deck.shape, bool)
+            exclude_mask[perm_as_list] = False
+            remaining_cards_in_deck = self.card_deck[exclude_mask]
+
+            unshuffled_deck = np.concatenate([front_of_deck, remaining_cards_in_deck])
+            #print("------------- depth=",[depth],"-------------")
+            #print("new front ", front_of_deck)
+            #print("new back  ", remaining_cards_in_deck)
+            #print("new Order ", unshuffled_deck)
+            #print("old order  ", self.card_deck)
+            msg_int = self.perm.perm_to_num(unshuffled_deck)
+            msg_checksum = calc_checksum(msg_int)
+            if msg_checksum == self.check_sum:
+                self.answer = True
+                self.result = unshuffled_deck
+                print("found it!")
+                return True
+            
+            self.trials -= 1
+            
     def unscramble2(self):
         #no longer using this funcion
 
@@ -229,32 +262,7 @@ class Unscramble:
                 new_rest = rest_deck[0:i] + rest_deck[i + 1:]
                 return self.recrusion(new_prev, new_rest)
 
-    def recursion_2(self, depth):
-        possible_idx_perms = list(permutations(range(12), depth))
-
-        for perm in possible_idx_perms:
-            
-            if self.trials <= 0:
-                return False
-
-            perm_as_list = list(perm) # perm initially tuple
-            front_of_deck = self.card_deck[perm_as_list]
-
-            exclude_mask = np.ones(self.card_deck.shape, bool)
-            exclude_mask[perm_as_list] = False
-            remaining_cards_in_deck = self.card_deck[exclude_mask]
-
-            unshuffled_deck = np.concatenate([front_of_deck, remaining_cards_in_deck])
-            msg_int = self.perm.perm_to_num(unshuffled_deck)
-            msg_checksum = calc_checksum(msg_int)
-            if msg_checksum == self.check_sum:
-                self.answer = True
-                self.result = unshuffled_deck
-                return True
-            
-            self.trials -= 1
-        
-        return False
+    
 
 
 # --------------------------- huffman_decoding --------------------------- #
@@ -457,8 +465,9 @@ class Agent:
             decoded_str = self.perm.perm_to_str(seq_encode)
         else:
             # Message has been scrambled. Try to recover
-            unscramble = Unscramble(seq_encode, decoded_checksum, self.perm, max_trials=1000000)
-            fixed_seq = unscramble.unscramble()
+            unscramble = Unscramble(seq_encode, decoded_checksum, self.perm, max_trials=100000000)
+            unscramble.unscramble()
+            fixed_seq = unscramble.result
 
             if fixed_seq is not None:
                 decoded_str = self.perm.perm_to_str(fixed_seq)
@@ -474,6 +483,7 @@ if __name__ == "__main__":
     test_agent = False
     test_perm = False
     test_huff = False
+    test_unscramble = False
 
     # Testing Agent
     test_agent = True
@@ -499,7 +509,7 @@ if __name__ == "__main__":
 
 
     # Testing the str-to-perm and back
-    # test_perm = True
+    test_perm = False
     if test_perm:
         encode_len = 12
         valid_cards = tuple(range(52 - encode_len, 52))
@@ -555,14 +565,16 @@ if __name__ == "__main__":
         print(f"Huffma Decode: {decode2}")
 
     # Test Unscramble
-    if True:
+    #test_unscramble = True
+    if test_unscramble:
         deck = [45, 46, 47, 48, 49, 50, 51]
         sdeck = [46, 45, 47, 48, 49, 50, 51]
         perm = Perm(tuple(deck), alpha)
         num = perm.perm_to_num(deck)
         check_sum = calc_checksum(num)
         unscramble = Unscramble(sdeck, check_sum, perm, max_trials=10000)
-        cdeck = unscramble.unscramble()
+        unscramble.unscramble()
+        cdeck = list(unscramble.result)
 
         if cdeck == deck:
             print(f"Unscramble success")
