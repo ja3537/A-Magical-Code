@@ -13,7 +13,7 @@ import cards
 logging.disable(logging.INFO)
 
 
-def calc_checksum(number, base=127):
+def calc_checksum(number, base=10):
     """Calculate the checksum from an interger repr the binary data
     Args:
         number: Int corresponding to binary data of the input message
@@ -48,8 +48,9 @@ alpha_numeric_punc = alpha_numeric + "."
 
 
 class Perm:
-    def __init__(self, valid_cards=tuple(range(52 - 12, 52)), valid_char_str=alpha):
+    def __init__(self, valid_cards=tuple(range(52 - 12, 52)), valid_char_str=alpha, max_msg_len=12):
         self.encoding_len = len(valid_cards)
+        self.max_msg_len = max_msg_len
         self.perm_zero = valid_cards
         factorials = [0] * self.encoding_len
         for i in range(self.encoding_len):
@@ -92,7 +93,7 @@ class Perm:
             n %= f
         return perm
 
-    def str_to_num(self, message, max_chars=12):
+    def str_to_num(self, message):
         # Stop match string at unknown char, to meet with partial requirements
         tokens = []
         for ch in message:
@@ -100,7 +101,7 @@ class Perm:
                 tokens.append(ch)
             else:
                 break
-        while len(tokens) < max_chars:
+        while len(tokens) < self.max_msg_len:
             tokens.append(" ")
         tokens = tokens[::-1]
 
@@ -122,15 +123,16 @@ class Perm:
                             f"'{''.join(tokens[::-1])}'")
         return num
 
-    def str_to_perm(self, message, max_chars=12):
+    def str_to_perm(self, message):
         # TODO: Add notation for unknown chars. Make it a partial match
         # TODO: If there is a space exactly where the msg is cut off, we don't recognize that as a partial match
+        max_chars = self.max_msg_len
         if len(message) > max_chars:
             message = message[:max_chars]
             logging.warning(f"Input text longer than {max_chars} characters. Shortening message to "
                             f"'{message}'")
 
-        num = self.str_to_num(message, max_chars)
+        num = self.str_to_num(message)
         perm = self.num_to_perm(num)
         return perm
 
@@ -167,8 +169,10 @@ class Unscramble:
     def recrusion(self, prev_deck: list[int], rest_deck: list[int]):
         if len(rest_deck) < 1:
             new_order = [rest_deck[0]] + prev_deck
-            num = self.perm.perm_to_num(new_order)
-            if calc_checksum(num, len(self.perm.char_list)) == self.check_sum:
+
+            msg_int = self.perm.perm_to_num(new_order)
+            msg_checksum = calc_checksum(msg_int)
+            if msg_checksum == self.check_sum:
                 self.answer = True
                 self.result = new_order
             return None
@@ -180,14 +184,16 @@ class Unscramble:
                 # In some combinations, the number might be too large
                 # TODO: Check that this isn't an error
                 try:
-                    num = self.perm.perm_to_num(new_order)
+                    msg_int = self.perm.perm_to_num(new_order)
                 except IndexError:
-                    num = 0
+                    msg_int = 0
 
-                if calc_checksum(num, len(self.perm.char_list)) == self.check_sum:
+                msg_checksum = calc_checksum(msg_int)
+                if msg_checksum == self.check_sum:
                     self.answer = True
                     self.result = new_order
                     break
+
         if not self.result:
             for i in range(len(rest_deck) - 1):
                 new_prev = [rest_deck[i]] + prev_deck
@@ -327,11 +333,11 @@ class Agent:
         self.char_set = alpha
         self.max_msg_len = math.floor(math.log(math.factorial(self.encode_len), len(self.char_set)))
         self.valid_cards_p = tuple(range(52 - self.encode_len, 52))
-        self.perm = Perm(self.valid_cards_p, self.char_set)
+        self.perm = Perm(self.valid_cards_p, self.char_set, self.max_msg_len)
 
         self.cksum_len = 6
         self.valid_cards_c = tuple(range(52 - self.encode_len - self.cksum_len, 52 - self.encode_len))
-        self.perm_ck = Perm(self.valid_cards_c, numeric)
+        self.perm_ck = Perm(self.valid_cards_c, numeric, self.max_msg_len)
         self.checksum_encode = None
         self.checksum_decode = None
 
@@ -362,11 +368,11 @@ class Agent:
             logging.warning(f"Input text longer than {max_chars} characters. Shortening message to "
                             f"'{message}'")
 
-        num = self.perm.str_to_num(message, max_chars)
+        num = self.perm.str_to_num(message)
         seq_encode = self.perm.num_to_perm(num)
 
         # Calculate Checksum
-        checksum = calc_checksum(num, len(self.char_set))
+        checksum = calc_checksum(num)
         self.checksum_encode = checksum
         seq_checksum = self.perm_ck.num_to_perm(checksum)
 
@@ -381,14 +387,15 @@ class Agent:
         seq_encode = [c for c in deck if c in self.valid_cards_p]
 
         # TESTING
-        seq_encode = seq_encode[1:] + [seq_encode[0]]
+        seq_encode = [seq_encode[1]] + [seq_encode[0]] + seq_encode[2:]
+        seq_encode = [seq_encode[1]] + [seq_encode[0]] + seq_encode[2:]
 
         seq_checksum = tuple([c for c in deck if c in self.valid_cards_c])
         decoded_checksum = self.perm_ck.perm_to_num(seq_checksum)
         self.checksum_decode = decoded_checksum
 
         msg_int = self.perm.perm_to_num(seq_encode)
-        msg_checksum = calc_checksum(msg_int, len(self.perm.char_list)) + 1
+        msg_checksum = calc_checksum(msg_int)
         if msg_checksum == decoded_checksum:
             decoded_str = self.perm.perm_to_str(seq_encode)
         else:
@@ -438,10 +445,10 @@ if __name__ == "__main__":
     if test_perm:
         encode_len = 12
         valid_cards = tuple(range(52 - encode_len, 52))
-        test_perm = Perm(valid_cards, alpha)
-        card_perm = test_perm.str_to_perm("hel loworld", max_chars=20)
-        # card_perm = test_perm.str_to_perm("helloworld", max_chars=6)
-        # card_perm = test_perm.str_to_perm("123456987", max)
+        test_perm = Perm(valid_cards, alpha, 20)
+        card_perm = test_perm.str_to_perm("hel loworld")
+        # card_perm = test_perm.str_to_perm("helloworld")
+        # card_perm = test_perm.str_to_perm("123456987")
         print("card seq = " + str(card_perm))
         decoded_str = test_perm.perm_to_str(card_perm)
         print("recovered string = " + decoded_str)
@@ -462,8 +469,8 @@ if __name__ == "__main__":
         # COMPARE HUFF VS DIRECT ENCODE
         encode_len = 12
         valid_cards = tuple(range(52 - encode_len, 52))
-        test_perm = Perm(valid_cards, alpha)
-        card_perm1 = test_perm.str_to_perm(msg, max_chars=20)
+        test_perm = Perm(valid_cards, alpha, 20)
+        card_perm1 = test_perm.str_to_perm(msg)
         decode1 = test_perm.perm_to_str(card_perm1)
 
         max_trials = 30
@@ -491,12 +498,12 @@ if __name__ == "__main__":
 
     # Test Unscramble
     if True:
-        deck = [45, 46, 47, 48]
-        sdeck = [46, 45, 47, 48]
-        perm_ck = Perm(tuple(deck), alpha)
-        num = perm_ck.perm_to_num(deck)
-        check_sum = calc_checksum(num, len(perm_ck.perm_zero))
-        unscramble = Unscramble(sdeck, check_sum, perm_ck, max_trials=10000)
+        deck = [45, 46, 47, 48, 49, 50, 51]
+        sdeck = [46, 45, 47, 48, 49, 50, 51]
+        perm = Perm(tuple(deck), alpha)
+        num = perm.perm_to_num(deck)
+        check_sum = calc_checksum(num)
+        unscramble = Unscramble(sdeck, check_sum, perm, max_trials=10000)
         cdeck = unscramble.unscramble()
 
         if cdeck == deck:
