@@ -14,6 +14,8 @@ class Domain(Enum):
     LAT_LONG = 2
     DATE = 3
 
+MAC_DOMAIN_VALUE = max([d.value for d in Domain])
+
 DomainFrequencies = {
     # reference of English letter frequencies: https://pi.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
     Domain.ALL: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, " ": 0.11, "\t": 0.10, ".": 6.97, ",": 5.93, "'": 1.53, "\"": 1.33, ":": 0.90, "-": 0.77, ";": 0.74, "?": 0.43, "!": 0.39, "0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
@@ -165,14 +167,16 @@ class Agent:
             len_metadata_bits = len(parts.domain_bits) + len(parts.checksum_bits)
 
             if len_metadata_bits == 11 and parts.message_bits and parts.checksum_bits == self.get_hash(parts.message_bits):
-                domain_type = Domain(int(parts.domain_bits, 2))
-                message = self.binary_to_string(parts.message_bits, domain_type)
+                domain_int = int(parts.domain_bits, 2)
+                if domain_int <= MAC_DOMAIN_VALUE:
+                    domain_type = Domain(domain_int)
+                    message = self.binary_to_string(parts.message_bits, domain_type)
 
-                # TODO: ugly hack to fix the checksum, can be improved
-                if meet_checksum_count > 2:
-                    break
-                meet_checksum_count += 1
-                # print(flag, ":" + message)
+                    # TODO: ugly hack to fix the checksum, can be improved
+                    if meet_checksum_count > 2:
+                        break
+                    meet_checksum_count += 1
+                    # print(flag, ":" + message)
         if meet_checksum_count < 2:
             return 'NULL'
 
