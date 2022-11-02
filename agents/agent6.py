@@ -206,7 +206,7 @@ class ArtihmaticCodingAgent:
         #print(decimal_value)
         result = ""
         while len(result) < 30:
-            check = False
+            check = True
             for c in arith_boundaries:
                 min_bound = Decimal(arith_boundaries[c][0])
                 max_bound = Decimal(arith_boundaries[c][1])
@@ -216,7 +216,7 @@ class ArtihmaticCodingAgent:
                     if c == STOP_SYMBOL:
                         return result
                     decimal_value = Decimal((decimal_value-min_bound) / (max_bound-min_bound))
-                    check = True
+                    check = False
                 elif decimal_value == min_bound or decimal_value == max_bound:
                     return "NULL"
 
