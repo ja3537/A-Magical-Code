@@ -20,7 +20,7 @@ class EncoderDecoder:
 
         words_dict = {EMPTY: 0}
         words_index = [EMPTY]
-        with open(os.path.dirname(__file__) + '/../messages/agent7/30k_old.txt') as f:
+        with open(os.path.dirname(__file__) + '/../messages/agent7/30k.txt') as f:
             for i in range(1, DICT_SIZE-1):     # reserve 1 for empty and 1 for unknown
                 word = f.readline().rstrip('\t\n')
                 words_dict[word] = i
