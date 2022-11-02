@@ -463,7 +463,7 @@ class Agent:
         
         msg_huffman_binary = encode_msg_bin(message, encoding)
        
-        print("encoded scheme id is ", scheme_id)
+        #print("encoded scheme id is ", scheme_id)
         
         
         # Calculate checksum before prepending the leading 1 bit
@@ -497,9 +497,9 @@ class Agent:
             bin_raw = bin_raw[1:] # remove leading 1
             bin_message, tail = bin_raw[:-19], bin_raw[-19:]
             checksum, scheme_id = tail[:-3], tail[-3:]
-            
+
             if scheme_id in self.scheme_id_to_encoding and checksum == self.compute_crc16_checksum(bin_message):
-               print("scheme_id ", scheme_id)
+               #print("scheme_id ", scheme_id)
                decoded_message = decode_bin_msg(bin_message, self.scheme_id_to_encoding[scheme_id])
                return decoded_message
         return "NULL"
