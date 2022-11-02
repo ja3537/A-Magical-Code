@@ -15,7 +15,9 @@ import math
 #eg. we dont care about cards 0,1,2, ...., SAFE_CARDS-1
 CARDS_FOR_ARITHMETIC_CODING = 26
 PADDING_CARDS = 52 - CARDS_FOR_ARITHMETIC_CODING
-ARITH_ACCURACY = 26
+
+STOP_SYMBOL = "ß"
+ARITH_START = 0
 
 ############################################################################
 ############################# HELPER FUNCTIONS #############################
@@ -67,119 +69,253 @@ class ArtihmaticCodingAgent:
         #index of permutations
         #self.perm_idx = list(itertools.permutations(list(range(52-CARDS_FOR_ARITHMETIC_CODING, 52))))
 
-        #arithmetic coding based on these frequencies
-        #https://www3.nd.edu/~busiforc/handouts/cryptography/letterfrequencies.html
-        self.arithmatic_freq = {
-            "e": 11.1607,
-            "a": 8.4966,
-            "r": 7.5809,
-            "i": 7.5448,
-            "o": 7.1635,
-            "t": 6.9509,
-            "n": 6.6544,
-            "s": 5.7351,
-            "l": 5.4893,
-            "c": 4.5388,
-            "u": 3.6308,
-            "d": 3.3844,
-            "p": 3.1671,
-            "m": 3.0129,
-            "h": 3.0034,
-            "g": 2.4705,
-            "b": 2.0720,
-            "f": 1.8121,
-            "y": 1.7779,
-            "w": 1.2899,
-            "k": 1.1016,
-            "v": 1.0074,
-            "x": 0.2902,
-            "z": 0.2722,
-            "j": 0.1000,
-            "q": 0.1000,
-            " ": 0.0961,
-            "$": 0.0965
-        }
-
-        self.arith_boundaries = {}
-
-        total = 0
-        prev = 0
-        for c in self.arithmatic_freq:
-            total += self.arithmatic_freq[c]/100.0
-            self.arith_boundaries[c] = (prev, total if total <= 1 else 1)
-            prev = total
-        #print(self.arith_boundaries)
-
         getcontext().prec = 50
 
-    def get_arithmatic_code(self, message):
+        self.weight_dict = {
+            1: [0.4, 0.4, 0.001, 0.2], #alphabetical + symbols + alphabeticalCaps
+            2: [0.499, 0.499, 0.002,0], #alphabetical + symbols
+            3: [0.999, 0, 0.001,0], #only alphabetical
+            4: [0, 0, 0.001, 0.999], #only alphabeticalCaps
+            5: [0, 0.999, 0.001,0], #Only Numerical Symbols
+        }
 
-        #currently only supports lowercase letters
-        message = message.lower()
+        #arithmetic coding based on these frequencies
+        #https://www3.nd.edu/~busiforc/handouts/cryptography/letterfrequencies.html
+        self.alphabet = "abcdefghijklmnopqrstuvwxyz"
+        self.alphabet_freq = {
+            "e": 0.111607,
+            "a": 0.084966,
+            "r": 0.075809,
+            "i": 0.075448,
+            "o": 0.071635,
+            "t": 0.069509,
+            "n": 0.066544,
+            "s": 0.057351,
+            "l": 0.054893,
+            "c": 0.045388,
+            "u": 0.036308,
+            "d": 0.033844,
+            "p": 0.031671,
+            "m": 0.030129,
+            "h": 0.030034,
+            "g": 0.024705,
+            "b": 0.020720,
+            "f": 0.018121,
+            "y": 0.017779,
+            "w": 0.012899,
+            "k": 0.011016,
+            "v": 0.010074,
+            "x": 0.002902,
+            "z": 0.002722,
+            "j": 0.001965,
+            "q": 0.001961,
+        }
+
+        self.base_freq = {
+            " ": 0.5,
+            ".": 0.3,
+            STOP_SYMBOL: 0.2
+        }
+
+        self.alpha_caps = {}
+        self.caps= "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        for i in self.caps:
+            self.alpha_caps[i] = 1/len(self.caps)
+
+        #all Symbol/Number Freq
+        #unused symbols: 
+        self.num_symbols = "0123456789!#$%&'*,-/?@[]_`()<=>;:^{|}~\\+"
+        self.symbol_num_freq = {}
+        for i in self.num_symbols:
+            self.symbol_num_freq[i] = 1/len(self.num_symbols)
+
+    def change_frequencies(self, freq, maximum):
+
+        total = 0
+        for v in freq.values():
+            total += v
+
+        prop = maximum/total
+
+        d = {}
+        for key,value in freq.items():
+            d[key] = value*prop
+
+        return d
+
+    def get_boundaries_based_on_lead_number(self, number):
+
+        freq_d = [self.alphabet_freq, self.symbol_num_freq, self.base_freq, self.alpha_caps]
+
+        weights = self.weight_dict[int(number)]
+
+        d = {}
+
+        for i in range(4):
+            if weights[i] > 0:
+                d.update(self.change_frequencies(freq_d[i], weights[i]))
+        
+        return d
+
+
+    def set_arithmatic_boundaries(self, arith_freq):
+        maximum = 0
+        for v in arith_freq.values():
+            maximum += v
+
+        proportion = Decimal((maximum-ARITH_START)/1)
+
+        total = prev = Decimal(ARITH_START)
+        arith_boundaries = {}
+        for c in arith_freq:
+            val = Decimal(arith_freq[c])*proportion
+            total += val
+            arith_boundaries[c] = (prev, total if total <= 1 else 1)
+            prev = total
+
+        #print(arith_boundaries)
+        return arith_boundaries
+
+    def get_arithmatic_code(self, message, arith_boundaries):
 
         min_bound = Decimal(0)
         max_bound = Decimal(1)
 
-        for c in message+"$":
-            small, big = self.arith_boundaries[c]
+        for c in message+STOP_SYMBOL:
+            small, big = arith_boundaries[c]
 
             r = Decimal(max_bound-min_bound)
 
             min_bound += Decimal(small)*r
             max_bound = min_bound + Decimal(big-small)*r
 
-        val = (max_bound+min_bound)/2
+        #Removes all extraneous digits eg. If 0.555030434 has same value as 0.55, will shorten to 0.55
+        str_min = str(min_bound)
+        str_max = str(max_bound)
+
+        val = ""
+
+        for i in range(len(str_max)):
+            val += str_max[i]
+            if str_max[i] != str_min[i]:
+                break
+
         return val
 
-    def get_word(self, decimal_value):
+    def get_word(self, decimal_value, arith_boundaries):
+        #print(decimal_value)
         result = ""
         while len(result) < 30:
-            for c in self.arith_boundaries:
-                min_bound = Decimal(self.arith_boundaries[c][0])
-                max_bound = Decimal(self.arith_boundaries[c][1])
+            check = True
+            for c in arith_boundaries:
+                min_bound = Decimal(arith_boundaries[c][0])
+                max_bound = Decimal(arith_boundaries[c][1])
 
                 if decimal_value > min_bound and decimal_value < max_bound:
-                    if c == "$":
-                        return result
                     result += c
+                    if c == STOP_SYMBOL:
+                        return result
                     decimal_value = Decimal((decimal_value-min_bound) / (max_bound-min_bound))
+                    check = False
                 elif decimal_value == min_bound or decimal_value == max_bound:
-                    raise Exception("Error in Parsing Word")
+                    return "NULL"
+
+            if check:
+                return "NULL"
+
         return result
 
     def encode(self, message):
+        #print(message)
+       
 
-        val = Decimal(self.get_arithmatic_code(message))
-        
-        #convert decimal to binary
-        val_as_int = int(str(val)[2:2+ARITH_ACCURACY])
+        word_set = set(message)
+        min_val = float("inf")
+
+        #try multiple length encodings
+        for i in self.weight_dict.keys():
+            #print(i)
+            curr_dict = self.get_boundaries_based_on_lead_number(i)
+
+            #check if a particular encoding has the given subsets
+            char_set = set(curr_dict.keys())
+            #print(char_set)
+            if word_set.issubset(char_set):
+                val = Decimal(self.get_arithmatic_code(message,self.set_arithmatic_boundaries(curr_dict)))
+                val_as_int = int(str(i)+str(val)[2:])
+                #print(val_as_int)
+
+                min_val = min(min_val, val_as_int)
+
+        if min_val == float("inf"):
+            return "NULL"
 
         #encode to a card sequence
-        padded_cards = list(range(0,PADDING_CARDS))
-        arith_cards = list(range(PADDING_CARDS, 52))
-
-        encoded_cards = number_to_cards(val_as_int, arith_cards)
+        deck = list(range(0,52))
+        
+        #padded_cards = list(range(0,PADDING_CARDS))
+        #arith_cards = list(range(PADDING_CARDS, 52))
+        #print(min_val)
+        encoded_deck = number_to_cards(min_val, deck)
 
         #add padded cards to the end
-        return padded_cards+encoded_cards
+        #print(encoded_deck)
+        return encoded_deck
 
-    def decode(self, deck):
-        
-        #Get order of last 26
+    def decode_helper(self, threshhold_value, deck):
+
+        #take cards given threshhold value
         encoded_cards = []
         for num in deck:
-            if num >= PADDING_CARDS:
+            if num >= 51-threshhold_value:
                 encoded_cards.append(num)
+
         #find the decimal value from it
         val = int(cards_to_number(encoded_cards))
-        val_as_Decimal = Decimal("0."+"0"*(ARITH_ACCURACY-len(str(val)))+str(val))
+        #print(val)
 
-        #TODO IDEAS:
-        #first card is the whether the number of 1's is even or odd
-        #check the rest of the deck to confirm the number
-        #check the delimiter at the end
+        number_in_front = int(str(val)[0])
+        
 
-        return self.get_word(val_as_Decimal)
+        if number_in_front not in self.weight_dict.keys():
+            return "NULL"
+
+        else:
+
+            #take the int as a Decimal
+            val_as_Decimal = Decimal("0."+str(val)[1:])
+            #print(val_as_Decimal)
+            
+            #print(self.set_arithmatic_boundaries((self.get_boundaries_based_on_lead_number(number_in_front))))
+            return self.get_word(val_as_Decimal,self.set_arithmatic_boundaries((self.get_boundaries_based_on_lead_number(number_in_front))))
+
+
+    def decode(self, deck):
+        #print("Decoding")
+
+        word_count = {}
+        max_word_count = 0
+        max_word = None
+
+        #try all encoding lengths
+        for i in range(3, 52):
+            #print(i)
+            word = self.decode_helper(i, deck)
+            #print(word)
+
+            #word needs to have STOP signal
+            if word != "NULL" and STOP_SYMBOL in word:
+                word_count[word] = word_count[word] + 1 if word in word_count else 1
+
+                #Choose the best word (should appear at least once times and has a stop signal)
+                if word_count[word] > max_word_count:
+                    max_word_count = word_count[word]
+                    max_word = word
+
+        return max_word[:-1] if max_word is not None else "NULL"
+
+
+########################################################################################################
 
 class HauffmanAgent:
     def __init__(self):
@@ -404,7 +540,8 @@ class Agent:
 
 
 if __name__ == "__main__":
-    agent = Agent()
-    message = "indonesian flag"
+    agent = ArtihmaticCodingAgent()
+    
+    message = "hello"
     deck = agent.encode(message)
     print(agent.decode(deck))
