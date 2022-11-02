@@ -277,17 +277,17 @@ encodings = {
     'letters': ASCII_Frequencies.letter_freq_with_space
 }
 
-def generate_hoffman_code(type):
+def generate_huffman_code(type):
     _freq = sorted(encodings[type].items(), key = lambda x : x[1], reverse=True)
     node = make_tree(_freq)
     return huffman_code(node)
 
-# HOFFMAN ENCODING FOR VARIETY OF WORDS
-LOWERCASE_HOFFMAN = generate_hoffman_code('lower')
-UPPERCASE_HOFFMAN = generate_hoffman_code('upper')
-PRINTTABLE_HOFFMAN = generate_hoffman_code('printable')
-NUMBER_HOFFMAN = generate_hoffman_code('number')
-LETTERS_HOFFMAN = generate_hoffman_code('letters')
+# HUFFMAN ENCODING FOR VARIETY OF WORDS
+LOWERCASE_HUFFMAN = generate_huffman_code('lower')
+UPPERCASE_HUFFMAN = generate_huffman_code('upper')
+PRINTTABLE_HUFFMAN = generate_huffman_code('printable')
+NUMBER_HUFFMAN = generate_huffman_code('number')
+LETTERS_HUFFMAN = generate_huffman_code('letters')
 
 def encode_msg_bin(msg, encoding) -> str:
     """
@@ -348,7 +348,7 @@ def bin_to_cards(msg_bin):
 
     random.shuffle(remaining_cards)
 
-    print("permutation is ", permutations)
+    # print("permutation is ", permutations)
     returned_list = remaining_cards + permutations
 
    # print(permutations)
@@ -381,10 +381,18 @@ def cards_to_bin(cards):
 class Agent:
 
     def __init__(self):
-       
-        _freq = sorted(ASCII_Frequencies.lower_freq_with_space.items(), key = lambda x : x[1], reverse=True)
-        node = make_tree(_freq)
-        self.encoding = huffman_code(node)
+       self.scheme_id_to_encoding = { "001" : LOWERCASE_HUFFMAN,
+                                      "010" : UPPERCASE_HUFFMAN,
+                                      "011" : LETTERS_HUFFMAN,
+                                      "100" : NUMBER_HUFFMAN,
+                                      "101" : PRINTTABLE_HUFFMAN}
+
+       self.encoding_to_scheme_id = { "LOWERCASE_HUFFMAN" : "001",
+                                      "UPPERCASE_HUFFMAN" : "010",
+                                      "LETTERS_HUFFMAN" : "011",
+                                      "NUMBER_HUFFMAN" : "100",
+                                      "PRINTTABLE_HUFFMAN" : "101"}
+        #self.encoding = huffman_code(node)
         
     def compute_crc8_checksum(self, data) -> str:
         # data is a binary string
@@ -436,11 +444,35 @@ class Agent:
         """
         FYI: use 'encode_msg_bin' to compress a message to binary
         """
-        msg_huffman_binary = encode_msg_bin(message, self.encoding)
+        ms = set(message)
+        if ms.issubset(ASCII_Frequencies.lower_freq_with_space.keys()):
+            encoding = LOWERCASE_HUFFMAN
+            scheme_id = self.encoding_to_scheme_id["LOWERCASE_HUFFMAN"]
+        elif ms.issubset(ASCII_Frequencies.upper_freq_with_space.keys()):
+            encoding = UPPERCASE_HUFFMAN
+            scheme_id = self.encoding_to_scheme_id["UPPERCASE_HUFFMAN"]
+        elif ms.issubset(ASCII_Frequencies.letter_freq_with_space.keys()):
+            encoding = LETTERS_HUFFMAN
+            scheme_id = self.encoding_to_scheme_id["LETTERS_HUFFMAN"]
+        elif ms.issubset(ASCII_Frequencies.num_freq.keys()):
+            encoding = NUMBER_HUFFMAN
+            scheme_id = self.encoding_to_scheme_id["NUMBER_HUFFMAN"]
+        else:
+            encoding = PRINTTABLE_HUFFMAN
+            scheme_id = self.encoding_to_scheme_id["PRINTTABLE_HUFFMAN"]
+        
+        msg_huffman_binary = encode_msg_bin(message, encoding)
        
+        print("encoded scheme id is ", scheme_id)
+        
+        
         # Calculate checksum before prepending the leading 1 bit
         # assert(len(self.compute_crc16_checksum(msg_huffman_binary)) == 16)
         msg_huffman_binary += self.compute_crc16_checksum(msg_huffman_binary)
+
+        # Appending 3-bit identifier for encoding scheme
+        msg_huffman_binary += scheme_id
+        
         msg_huffman_binary = "1" + msg_huffman_binary
         
         cards = bin_to_cards(msg_huffman_binary)
@@ -454,7 +486,7 @@ class Agent:
         Given a binary str, use 'decode_bin_msg' to decode it
         see main below
         """
-        print("after shuffling ", deck)
+        #print("after shuffling ", deck)
       
         for perm_bound in range(1, 52):
             msg_cards = []
@@ -463,9 +495,12 @@ class Agent:
                     msg_cards.append(c)
             bin_raw = cards_to_bin(msg_cards)
             bin_raw = bin_raw[1:] # remove leading 1
-            bin_message, checksum = bin_raw[:-16], bin_raw[-16:]
-            if checksum == self.compute_crc16_checksum(bin_message):
-               decoded_message = decode_bin_msg(bin_message, self.encoding)
+            bin_message, tail = bin_raw[:-19], bin_raw[-19:]
+            checksum, scheme_id = tail[:-3], tail[-3:]
+            
+            if scheme_id in self.scheme_id_to_encoding and checksum == self.compute_crc16_checksum(bin_message):
+               print("scheme_id ", scheme_id)
+               decoded_message = decode_bin_msg(bin_message, self.scheme_id_to_encoding[scheme_id])
                return decoded_message
         return "NULL"
 
