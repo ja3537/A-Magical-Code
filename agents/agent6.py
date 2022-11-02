@@ -1,4 +1,3 @@
-from matplotlib.font_manager import weight_dict
 import numpy as np
 from itertools import permutations
 import nltk
@@ -73,13 +72,12 @@ class ArtihmaticCodingAgent:
         getcontext().prec = 50
 
         self.weight_dict = {
-            1: [0.999, 0, 0.001],
-            2: [0, 0.999, 0.001],
-            3: [0.7, 0.299, 0.001],
-            4: [0.299, 0.7, 0.001],
-            5: [0.499, 0.499, 0.002],
+            1: [0.4, 0.4, 0.001, 0.2], #alphabetical + symbols + alphabeticalCaps
+            2: [0.499, 0.499, 0.002,0], #alphabetical + symbols
+            3: [0.999, 0, 0.001,0], #only alphabetical
+            4: [0, 0, 0.001, 0.999], #only alphabeticalCaps
+            5: [0, 0.999, 0.001,0], #Only Numerical Symbols
         }
-
 
         #arithmetic coding based on these frequencies
         #https://www3.nd.edu/~busiforc/handouts/cryptography/letterfrequencies.html
@@ -115,12 +113,18 @@ class ArtihmaticCodingAgent:
 
         self.base_freq = {
             " ": 0.5,
-            STOP_SYMBOL: 0.5
+            ".": 0.3,
+            STOP_SYMBOL: 0.2
         }
+
+        self.alpha_caps = {}
+        self.caps= "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        for i in self.caps:
+            self.alpha_caps[i] = 1/len(self.caps)
 
         #all Symbol/Number Freq
         #unused symbols: 
-        self.num_symbols = "0123456789!#$%&'*,-/?@[]_`.()<=>;:^{|}~\\+"
+        self.num_symbols = "0123456789!#$%&'*,-/?@[]_`()<=>;:^{|}~\\+"
         self.symbol_num_freq = {}
         for i in self.num_symbols:
             self.symbol_num_freq[i] = 1/len(self.num_symbols)
@@ -141,13 +145,13 @@ class ArtihmaticCodingAgent:
 
     def get_boundaries_based_on_lead_number(self, number):
 
-        freq_d = [self.alphabet_freq, self.symbol_num_freq, self.base_freq]
+        freq_d = [self.alphabet_freq, self.symbol_num_freq, self.base_freq, self.alpha_caps]
 
         weights = self.weight_dict[int(number)]
 
         d = {}
 
-        for i in range(3):
+        for i in range(4):
             if weights[i] > 0:
                 d.update(self.change_frequencies(freq_d[i], weights[i]))
         
@@ -174,9 +178,6 @@ class ArtihmaticCodingAgent:
 
     def get_arithmatic_code(self, message, arith_boundaries):
 
-        #currently only supports lowercase letters
-        message = message.lower()
-
         min_bound = Decimal(0)
         max_bound = Decimal(1)
 
@@ -187,9 +188,6 @@ class ArtihmaticCodingAgent:
 
             min_bound += Decimal(small)*r
             max_bound = min_bound + Decimal(big-small)*r
-
-        #print(min_bound)
-        #print(max_bound)
 
         #Removes all extraneous digits eg. If 0.555030434 has same value as 0.55, will shorten to 0.55
         str_min = str(min_bound)
@@ -205,8 +203,10 @@ class ArtihmaticCodingAgent:
         return val
 
     def get_word(self, decimal_value, arith_boundaries):
+        #print(decimal_value)
         result = ""
         while len(result) < 30:
+            check = False
             for c in arith_boundaries:
                 min_bound = Decimal(arith_boundaries[c][0])
                 max_bound = Decimal(arith_boundaries[c][1])
@@ -216,18 +216,23 @@ class ArtihmaticCodingAgent:
                     if c == STOP_SYMBOL:
                         return result
                     decimal_value = Decimal((decimal_value-min_bound) / (max_bound-min_bound))
+                    check = True
                 elif decimal_value == min_bound or decimal_value == max_bound:
                     return "NULL"
+
+            if check:
+                return "NULL"
+
         return result
 
     def encode(self, message):
-        print(message)
-        #try multiple encodings
+        #print(message)
+       
 
         word_set = set(message)
-
         min_val = float("inf")
 
+        #try multiple length encodings
         for i in self.weight_dict.keys():
             #print(i)
             curr_dict = self.get_boundaries_based_on_lead_number(i)
@@ -257,7 +262,7 @@ class ArtihmaticCodingAgent:
         #print(encoded_deck)
         return encoded_deck
 
-    def decode_helper(self, threshhold_value, deck, arith_boundaries):
+    def decode_helper(self, threshhold_value, deck):
 
         #take cards given threshhold value
         encoded_cards = []
@@ -270,6 +275,7 @@ class ArtihmaticCodingAgent:
         #print(val)
 
         number_in_front = int(str(val)[0])
+        
 
         if number_in_front not in self.weight_dict.keys():
             return "NULL"
@@ -279,22 +285,22 @@ class ArtihmaticCodingAgent:
             #take the int as a Decimal
             val_as_Decimal = Decimal("0."+str(val)[1:])
             #print(val_as_Decimal)
-
+            
+            #print(self.set_arithmatic_boundaries((self.get_boundaries_based_on_lead_number(number_in_front))))
             return self.get_word(val_as_Decimal,self.set_arithmatic_boundaries((self.get_boundaries_based_on_lead_number(number_in_front))))
 
 
     def decode(self, deck):
+        #print("Decoding")
 
         word_count = {}
         max_word_count = 0
         max_word = None
 
-        arith_boundaries = self.set_arithmatic_boundaries(self.alphabet_freq)
-
         #try all encoding lengths
         for i in range(3, 52):
             #print(i)
-            word = self.decode_helper(i, deck, arith_boundaries)
+            word = self.decode_helper(i, deck)
             #print(word)
 
             #word needs to have STOP signal
