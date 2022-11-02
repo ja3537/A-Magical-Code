@@ -10,9 +10,11 @@ from collections import namedtuple
 
 class Domain(Enum):
     ALL = 0
-    ALPHA_NUM = 1
-    LAT_LONG = 2
-    DATE = 3
+    NUM = 1
+    LOWER = 2
+    ALPHA = 3
+    ALPHA_NUM = 4
+    LAT_LONG = 5
 
 MAC_DOMAIN_VALUE = max([d.value for d in Domain])
 
@@ -91,41 +93,31 @@ class Agent:
         return bin(int(domain_type.value))[2:].zfill(3)
 
     def get_domain_type(self, message: str) -> Domain:
-        message_no_space = "".join(message.split())
-        if message.isalnum() or message_no_space.isalnum():
+        clean_message = "".join(message.split())
+        if clean_message.isnumeric():
+            return Domain.NUM
+        elif clean_message.islower():
+            return Domain.LOWER
+        elif clean_message.isalpha():
+            return Domain.ALPHA
+        elif clean_message.isalnum():
             return Domain.ALPHA_NUM
-        if self.is_lat_long(message_no_space): 
+        elif self.is_lat_long(clean_message):
             return Domain.LAT_LONG
-        elif self.is_date(message_no_space):
-            return Domain.DATE
         else:
-            return Domain.ALL  # do generic encoding
+            return Domain.ALL
         
     def get_domain_frequencies(self, domain: Domain) -> Dict[Domain, Dict[str, float]]:
         return DomainFrequencies[domain] if domain in DomainFrequencies.keys() else DomainFrequencies[Domain.ALL]
 
     def is_lat_long(self, message: str) -> bool:
-        # only numbers, commas, periods, and N/E/S/W
         return all([ch.isdigit() or ch in [",", ".", "N", "E", "S", "W"] for ch in message])
 
-    def is_date(self, message: str) -> bool:
-        return all([ch.isalnum() or ch == ',' for ch in message])
-
     def check_decoded_message(self, message: str, domain_type) -> str:
+        clean_message = "".join(message.split())
         if message == '':
             return 'NULL'
-
-        message_no_space = "".join(message.split())
-        if domain_type == Domain.ALPHA_NUM:
-            if not (message.isalnum() or message_no_space.isalnum()):
-                return 'NULL'
-        elif domain_type == Domain.LAT_LONG:
-            if not self.is_lat_long(message_no_space):
-                return 'NULL'
-        elif domain_type == Domain.DATE:
-            if not self.is_date(message_no_space):
-                return 'NULL'
-        elif domain_type == Domain.ALL:
+        if self.get_domain_type(clean_message) == Domain.ALL:
             if not all(ord(c) < 128 and ord(c) > 32 for c in message):
                 return 'NULL'
         return message
@@ -176,7 +168,6 @@ class Agent:
                     if meet_checksum_count > 2:
                         break
                     meet_checksum_count += 1
-                    # print(flag, ":" + message)
         if meet_checksum_count < 2:
             return 'NULL'
 
