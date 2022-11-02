@@ -17,6 +17,7 @@ class Domain(Enum):
 DomainFrequencies = {
     # reference of English letter frequencies: https://pi.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
     Domain.ALL: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, " ": 0.11, "\t": 0.10, ".": 6.97, ",": 5.93, "'": 1.53, "\"": 1.33, ":": 0.90, "-": 0.77, ";": 0.74, "?": 0.43, "!": 0.39, "0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
+    Domain.LAT_LONG: {"0": 1, "1": 1, "2": 1, "3": 1, "4": 1, "5": 1, "6": 1, "7": 1, "8": 1, "9": 1, "N": 0.5, "E": 0.5, "S": 0.5, "W": 0.5, ",": 0.5, ".": 0.5, " ": 0.5},
 }
 
 EncodedBinary = namedtuple('EncodedBinary', ['message_bits', 'domain_bits', 'checksum_bits'])
@@ -27,7 +28,7 @@ class Agent:
 
     def string_to_binary(self, message: str, domain: Domain) -> str:
         bytes_repr = HuffmanCodec.from_frequencies(self.get_domain_frequencies(domain)).encode(message)
-        binary_repr = bin(int(bytes_repr.hex(), 16))[2:].zfill(8)
+        binary_repr = bin(int(bytes_repr.hex(), 16))[2:]
         return binary_repr
 
     def binary_to_string(self, binary: str, domain: Domain) -> str:
@@ -85,13 +86,13 @@ class Agent:
         return bin(int(hex_hash, 16))[2:].zfill(8)
 
     def domain_to_binary(self, domain_type: Domain) -> str:
-        return bin(int(domain_type.value))[3:].zfill(3)
+        return bin(int(domain_type.value))[2:].zfill(3)
 
     def get_domain_type(self, message: str) -> Domain:
         message_no_space = "".join(message.split())
         if message.isalnum() or message_no_space.isalnum():
             return Domain.ALPHA_NUM
-        elif self.is_lat_long(message_no_space):  # ex: 21 18.41', 157 51.50'
+        if self.is_lat_long(message_no_space): 
             return Domain.LAT_LONG
         elif self.is_date(message_no_space):
             return Domain.DATE
@@ -102,10 +103,8 @@ class Agent:
         return DomainFrequencies[domain] if domain in DomainFrequencies.keys() else DomainFrequencies[Domain.ALL]
 
     def is_lat_long(self, message: str) -> bool:
-        # only numbers, commas, apostrophes
-        return all([ch.isdigit() or ch == ',' or ch == "'" for ch in message]) and \
-            any(ch.isdigit() for ch in message) and (
-                ',' in message) and ("'" in message)
+        # only numbers, commas, periods, and N/E/S/W
+        return all([ch.isdigit() or ch in [",", ".", "N", "E", "S", "W"] for ch in message])
 
     def is_date(self, message: str) -> bool:
         return all([ch.isalnum() or ch == ',' for ch in message])
@@ -146,7 +145,7 @@ class Agent:
 
         num_cards_to_encode = 1
         for n in range(1, 52):
-            if math.log2(math.factorial(n)) > len(binary_repr):
+            if math.factorial(n) >= integer_repr:
                 num_cards_to_encode = n
                 break
         message_start_idx = len(deck) - num_cards_to_encode
@@ -166,7 +165,7 @@ class Agent:
             len_metadata_bits = len(parts.domain_bits) + len(parts.checksum_bits)
 
             if len_metadata_bits == 11 and parts.message_bits and parts.checksum_bits == self.get_hash(parts.message_bits):
-                domain_type = int(parts.domain_bits, 2)
+                domain_type = Domain(int(parts.domain_bits, 2))
                 message = self.binary_to_string(parts.message_bits, domain_type)
 
                 # TODO: ugly hack to fix the checksum, can be improved
