@@ -174,6 +174,7 @@ class Unscramble:
 
     def unscramble2(self):
         #no longer using this funcion
+
         msg_int = self.perm.perm_to_num(self.card_deck)
         msg_checksum = calc_checksum(msg_int)
         if msg_checksum == self.check_sum:
@@ -194,6 +195,7 @@ class Unscramble:
 
     def recrusion(self, prev_deck: list[int], rest_deck: list[int]):
         ## no longer using this funcion
+
         if len(rest_deck) < 1:
             new_order = [rest_deck[0]] + prev_deck
 
@@ -226,6 +228,7 @@ class Unscramble:
                 new_prev = [rest_deck[i]] + prev_deck
                 new_rest = rest_deck[0:i] + rest_deck[i + 1:]
                 return self.recrusion(new_prev, new_rest)
+
     def recursion_2(self, depth):
         possible_idx_perms = list(permutations(range(12), depth))
 
@@ -235,7 +238,7 @@ class Unscramble:
                 return False
 
             perm_as_list = list(perm) # perm initially tuple
-            front_of_deck = self.card_deck[perm_as_list]
+            front_of_eck = self.card_deck[perm_as_list]
 
             exclude_mask = np.ones(self.card_deck.shape, bool)
             exclude_mask[perm_as_list] = False
@@ -252,6 +255,7 @@ class Unscramble:
             self.trials -= 1
         
         return False
+
 
 # --------------------------- huffman_decoding --------------------------- #
 class Node:

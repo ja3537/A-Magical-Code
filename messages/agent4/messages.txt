@@ -1,6 +1,13 @@
 person
 woman
 man
-camera
+camera!
 tv
 NULL
+dou1ble2
+double?
+d,ou1b3le
+doublethinks
+doublethinksdouble
+doublethinksdoublethinks
+6.21 S, 106.85 E

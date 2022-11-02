@@ -1,0 +1,3 @@
+[submodule "messages/agent3/minified-text"]
+	path = messages/agent3/minified-text
+	url = git@github.com:mwcheng21/minified-text.git

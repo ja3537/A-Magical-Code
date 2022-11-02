@@ -56,10 +56,18 @@ if __name__ == '__main__':
         action = "store_true",
         help = "(boolean) sets n to be a random value up to N for each deck"
     )
+    parser.add_argument(
+        "--runs",
+        "-r",
+        default = 1,
+        type = int,
+        help = "number of runs per message in message file"
+    )
 
 
 args = parser.parse_args()
 assert float(args.null_rate) >= 0 and float(args.null_rate) < 1, "null rate must be between 0 (inclusive) and 1 (exclusive)"
+assert args.runs >= 1, "number of runs must be a positive integer"
 
 mission = Mission(args)
 mission.execute_mission()
