@@ -69,7 +69,7 @@ class ArtihmaticCodingAgent:
         #index of permutations
         #self.perm_idx = list(itertools.permutations(list(range(52-CARDS_FOR_ARITHMETIC_CODING, 52))))
 
-        getcontext().prec = 50
+        getcontext().prec = 100
 
         self.weight_dict = {
             1: [0.4, 0.4, 0.001, 0.2], #alphabetical + symbols + alphabeticalCaps
@@ -542,6 +542,7 @@ class Agent:
 if __name__ == "__main__":
     agent = ArtihmaticCodingAgent()
     
-    message = "hello"
+    message = "hello i am maximo oen. bye"
     deck = agent.encode(message)
+    print(deck)
     print(agent.decode(deck))
