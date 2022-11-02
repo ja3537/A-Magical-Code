@@ -15,7 +15,6 @@ import math
 #eg. we dont care about cards 0,1,2, ...., SAFE_CARDS-1
 CARDS_FOR_ARITHMETIC_CODING = 26
 PADDING_CARDS = 52 - CARDS_FOR_ARITHMETIC_CODING
-ARITH_ACCURACY = 26
 
 ############################################################################
 ############################# HELPER FUNCTIONS #############################
@@ -67,6 +66,9 @@ class ArtihmaticCodingAgent:
         #index of permutations
         #self.perm_idx = list(itertools.permutations(list(range(52-CARDS_FOR_ARITHMETIC_CODING, 52))))
 
+        getcontext().prec = 50
+
+
         #arithmetic coding based on these frequencies
         #https://www3.nd.edu/~busiforc/handouts/cryptography/letterfrequencies.html
         self.arithmatic_freq = {
@@ -94,25 +96,26 @@ class ArtihmaticCodingAgent:
             "v": 1.0074,
             "x": 0.2902,
             "z": 0.2722,
-            "j": 0.1000,
+            "j": 0.1900,
             "q": 0.1000,
             " ": 0.0961,
-            "$": 0.0965
+            "$": 0.0065
         }
 
         self.arith_boundaries = {}
 
+    def set_arithmatic_boundaries(self, arith_freq):
         total = 0
         prev = 0
-        for c in self.arithmatic_freq:
-            total += self.arithmatic_freq[c]/100.0
-            self.arith_boundaries[c] = (prev, total if total <= 1 else 1)
+        arith_boundaries = {}
+        for c in arith_freq:
+            total += arith_freq[c]/100.0
+            arith_boundaries[c] = (prev, total if total <= 1 else 1)
             prev = total
-        #print(self.arith_boundaries)
 
-        getcontext().prec = 50
+        return arith_boundaries
 
-    def get_arithmatic_code(self, message):
+    def get_arithmatic_code(self, message, arith_boundaries):
 
         #currently only supports lowercase letters
         message = message.lower()
@@ -121,65 +124,102 @@ class ArtihmaticCodingAgent:
         max_bound = Decimal(1)
 
         for c in message+"$":
-            small, big = self.arith_boundaries[c]
+            small, big = arith_boundaries[c]
 
             r = Decimal(max_bound-min_bound)
 
             min_bound += Decimal(small)*r
             max_bound = min_bound + Decimal(big-small)*r
 
-        val = (max_bound+min_bound)/2
+        print(min_bound)
+        print(max_bound)
+
+        str_min = str(min_bound)
+        str_max = str(max_bound)
+
+        val = ""
+
+        for i in range(len(str_max)):
+            val += str_max[i]
+            if str_max[i] != str_min[i]:
+                break
+
         return val
 
-    def get_word(self, decimal_value):
+    def get_word(self, decimal_value, arith_boundaries):
         result = ""
         while len(result) < 30:
-            for c in self.arith_boundaries:
-                min_bound = Decimal(self.arith_boundaries[c][0])
-                max_bound = Decimal(self.arith_boundaries[c][1])
+            for c in arith_boundaries:
+                min_bound = Decimal(arith_boundaries[c][0])
+                max_bound = Decimal(arith_boundaries[c][1])
 
                 if decimal_value > min_bound and decimal_value < max_bound:
+                    result += c
                     if c == "$":
                         return result
-                    result += c
                     decimal_value = Decimal((decimal_value-min_bound) / (max_bound-min_bound))
                 elif decimal_value == min_bound or decimal_value == max_bound:
+                    print(decimal_value)
                     raise Exception("Error in Parsing Word")
         return result
 
     def encode(self, message):
 
-        val = Decimal(self.get_arithmatic_code(message))
+        val = Decimal(self.get_arithmatic_code(message,self.set_arithmatic_boundaries(self.arithmatic_freq)))
+        print(val)
         
         #convert decimal to binary
-        val_as_int = int(str(val)[2:2+ARITH_ACCURACY])
+        val_as_int = int(str(val)[2:])
 
         #encode to a card sequence
-        padded_cards = list(range(0,PADDING_CARDS))
-        arith_cards = list(range(PADDING_CARDS, 52))
+        deck = list(range(0,52))
+        
+        #padded_cards = list(range(0,PADDING_CARDS))
+        #arith_cards = list(range(PADDING_CARDS, 52))
 
-        encoded_cards = number_to_cards(val_as_int, arith_cards)
+        encoded_deck = number_to_cards(val_as_int, deck)
 
         #add padded cards to the end
-        return padded_cards+encoded_cards
+        print(encoded_deck)
+        return encoded_deck
 
-    def decode(self, deck):
-        
-        #Get order of last 26
+    def decode_helper(self, threshhold_value, deck):
         encoded_cards = []
         for num in deck:
-            if num >= PADDING_CARDS:
+            if num >= 51-threshhold_value:
                 encoded_cards.append(num)
+
         #find the decimal value from it
         val = int(cards_to_number(encoded_cards))
-        val_as_Decimal = Decimal("0."+"0"*(ARITH_ACCURACY-len(str(val)))+str(val))
 
-        #TODO IDEAS:
-        #first card is the whether the number of 1's is even or odd
-        #check the rest of the deck to confirm the number
-        #check the delimiter at the end
+        print(val)
 
-        return self.get_word(val_as_Decimal)
+        val_as_Decimal = Decimal("0."+str(val))
+        return self.get_word(val_as_Decimal,self.set_arithmatic_boundaries(self.arithmatic_freq))
+
+
+    def decode(self, deck):
+
+        word_count = {}
+        max_word_count = 0
+        max_word = None
+
+        #try all encoding lengths
+        for i in range(3, 52):
+            word = self.decode_helper(i, deck)
+            print(word)
+
+            if word[-1] == "$":
+                word_count[word] = word_count[word] if word in word_count else 1
+
+                if word_count[word] > max_word_count:
+                    max_word_count = word_count[word]
+                    max_word = word
+
+        return max_word[:-1] if max_word is not None else "NULL"
+
+
+########################################################################################################
 
 class HauffmanAgent:
     def __init__(self):
@@ -405,6 +445,8 @@ class Agent:
 
 if __name__ == "__main__":
     agent = Agent()
-    message = "indonesian flag"
+    message = "hello"
+    print(message)
     deck = agent.encode(message)
+    print(deck)
     print(agent.decode(deck))
