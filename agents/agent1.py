@@ -31,9 +31,9 @@ def calc_checksum(number, base=10):
         num_bin = num_bin[chunk_len:]
 
         num_chunk = int(bin_chunk, 2)
-        checksum = (checksum + num_chunk) % mod_prime
-        if len(num_bin) > 0:
-            checksum = (checksum * base) % mod_prime
+        checksum = ((checksum + num_chunk) * base) % mod_prime
+        # if len(num_bin) > 0:
+        #     checksum = (checksum * base) % mod_prime
     return checksum
 
 # ------- str to perm and vice-versa ----------------- #
@@ -165,6 +165,25 @@ class Unscramble:
     def unscramble(self):
         self.recrusion([], self.card_deck)
         return self.result
+
+    def unscramble2(self):
+        msg_int = self.perm.perm_to_num(self.card_deck)
+        msg_checksum = calc_checksum(msg_int)
+        if msg_checksum == self.check_sum:
+            return self.card_deck
+
+        num_cards = len(self.card_deck)
+
+        for idx in range(num_cards)-1:
+            try:
+                new_deck = [self.card_deck[idx]] + self.card_deck[:idx] + self.card_deck[idx+1:]
+            except IndexError:
+                new_deck = [self.card_deck[idx]] + self.card_deck[:idx]
+            msg_int = self.perm.perm_to_num(new_deck)
+            msg_checksum = calc_checksum(msg_int)
+            if msg_checksum == self.check_sum:
+                return new_deck
+
 
     def recrusion(self, prev_deck: list[int], rest_deck: list[int]):
         if len(rest_deck) < 1:
@@ -326,7 +345,7 @@ class Huffman:
 
 class Agent:
     def __init__(self):
-        self.encode_len = 12  # Max num of cards in seq
+        self.encode_len = 20  # Max num of cards in seq
         self.seed = 0
         self.rng = np.random.default_rng(self.seed)
 
@@ -426,19 +445,20 @@ if __name__ == "__main__":
         deck = agent.encode(msg)
         if not cards.valid_deck(deck):
             raise ValueError
+
+        num_shuffles = 50
+        rng = np.random.default_rng()
+        shuffles = rng.integers(0, 52, num_shuffles)
+        for pos in shuffles:
+            top_card = deck[0]
+            deck = deck[1:]
+            deck = deck[:pos] + [top_card] + deck[pos:]
+
         msg_decoded = agent.decode(deck)
         print(f"Message: {msg}")
         print(f"Shuffled deck: {deck}")
         print(f"Decoded Message: {msg_decoded}")
 
-        # Check NULL redundancy
-        count_null = 0
-        for idx in range(1000):
-            rng = np.random.default_rng(idx)
-            deck_r = cards.generate_deck(rng, random=True)
-            msg_r = agent.decode(deck_r)
-            if msg_r == "NULL":
-                count_null += 1
 
     # Testing the str-to-perm and back
     # test_perm = True
