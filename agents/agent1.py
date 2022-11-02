@@ -24,12 +24,12 @@ alpha_numeric_punc = alpha_numeric + "."
 
 
 class Perm:
-    def __init__(self, n=20, valid_char_str=alpha):
-        self.encoding_len = n
-        self.perm_zero = tuple(range(52 - n, 52))
-        factorials = [0] * n
-        for i in range(n):
-            factorials[i] = math.factorial(n - i - 1)
+    def __init__(self, valid_cards=tuple(range(52 - 12, 52)), valid_char_str=alpha):
+        self.encoding_len = len(valid_cards)
+        self.perm_zero = valid_cards
+        factorials = [0] * self.encoding_len
+        for i in range(self.encoding_len):
+            factorials[i] = math.factorial(self.encoding_len - i - 1)
         self.factorials = factorials
         self.char_list = valid_char_str
 
@@ -68,14 +68,7 @@ class Perm:
             n %= f
         return perm
 
-    def str_to_perm(self, message, max_chars=12):
-        # TODO: Add notation for unknown chars. Make it a partial match
-        # TODO: If there is a space exactly where the msg is cut off, we don't recognize that as a partial match
-        if len(message) > max_chars:
-            message = message[:max_chars]
-            logging.warning(f"Input text longer than {max_chars} characters. Shortening message to "
-                            f"'{message}'")
-
+    def str_to_num(self, message, max_chars=12):
         # Stop match string at unknown char, to meet with partial requirements
         tokens = []
         for ch in message:
@@ -93,7 +86,7 @@ class Perm:
             max_trials -= 1
             num = 0
             for idx, ch in enumerate(tokens):
-                 num += self.char_list.index(ch) * len(self.char_list) ** idx
+                num += self.char_list.index(ch) * len(self.char_list) ** idx
 
             # Check if message can fit in N cards
             if num // self.factorials[0] < len(self.perm_zero):
@@ -103,8 +96,17 @@ class Perm:
         if max_trials < 100 and tokens[0] != " ":
             logging.warning(f"Input text too long to encode into {self.encoding_len} cards. Shortening message to "
                             f"'{''.join(tokens[::-1])}'")
+        return num
 
-        # Get perm matching int
+    def str_to_perm(self, message, max_chars=12):
+        # TODO: Add notation for unknown chars. Make it a partial match
+        # TODO: If there is a space exactly where the msg is cut off, we don't recognize that as a partial match
+        if len(message) > max_chars:
+            message = message[:max_chars]
+            logging.warning(f"Input text longer than {max_chars} characters. Shortening message to "
+                            f"'{message}'")
+
+        num = self.str_to_num(message, max_chars)
         perm = self.num_to_perm(num)
         return perm
 
@@ -254,27 +256,65 @@ class Agent:
         self.rng = np.random.default_rng(self.seed)
 
         self.char_set = alpha
-        self.msg_len = math.floor(math.log(math.factorial(self.encode_len), len(self.char_set)))
-        self.perm = Perm(self.encode_len, self.char_set)
-        self.valid_cards_p = self.perm.perm_zero
+        self.max_msg_len = math.floor(math.log(math.factorial(self.encode_len), len(self.char_set)))
+        self.valid_cards_p = tuple(range(52 - self.encode_len, 52))
+        self.perm = Perm(self.valid_cards_p, self.char_set)
 
         self.cksum_len = 5
         self.valid_cards_c = tuple(range(52 - self.encode_len - self.cksum_len, 52 - self.encode_len))
+        self.perm_ck = Perm(self.valid_cards_c, numeric)
+        self.checksum_encode = None
+        self.checksum_decode = None
+
+    def calc_checksum(self, number):
+        """Number corresponding to the input message"""
+        num_bin = bin(number)[2:]
+        chunk_len = 5
+        checksum = 0
+        mod_prime = 113
+        base = len(self.char_set)
+        # ASCII a = 97, b = 98, r = 114.
+        # hash("abr") =  [ ( [ ( [  (97 × 256) % 101 + 98 ] % 101 ) × 256 ] %  101 ) + 114 ]   % 101   =  4
+        while len(num_bin) > 0:
+            bin_chunk = num_bin[:chunk_len]
+            num_bin = num_bin[chunk_len:]
+
+            num_chunk = int(bin_chunk, 2)
+            checksum = (checksum + num_chunk) % mod_prime
+            if len(num_bin) > 0:
+                checksum = (checksum * base) % mod_prime
+
+        return checksum
 
     def encode(self, message):
-        seq_encode = self.perm.str_to_perm(message, max_chars=self.msg_len)
+        max_chars = self.max_msg_len
+        if len(message) > max_chars:
+            message = " " + message[:max_chars-1]
+            logging.warning(f"Input text longer than {max_chars} characters. Shortening message to "
+                            f"'{message}'")
+
+        num = self.perm.str_to_num(message, max_chars)
+        seq_encode = self.perm.num_to_perm(num)
+
+        # Calculate Checksum
+        checksum = self.calc_checksum(num)
+        self.checksum_encode = checksum
+        seq_checksum = self.perm_ck.num_to_perm(checksum)
 
         # Scramble the rest of the cards above message
-        seq_rand = [c for c in range(52) if c not in self.valid_cards_p]
+        seq_rand = [c for c in range(52) if c not in self.valid_cards_p+self.valid_cards_c]
         self.rng.shuffle(seq_rand)
-        seq_total = seq_rand + seq_encode
+        seq_total = seq_rand + seq_encode + seq_checksum
         return seq_total
 
     def decode(self, deck):
         # Todo: Add checksum
-        seq_encode = [c for c in deck if c in self.valid_cards_p]
-        seq_encode = tuple(seq_encode)
+        seq_encode = tuple([c for c in deck if c in self.valid_cards_p])
         decoded_str = self.perm.perm_to_str(seq_encode)
+
+        seq_checksum = tuple([c for c in deck if c in self.valid_cards_c])
+        decoded_checksum = self.perm_ck.perm_to_num(seq_checksum)
+        self.checksum_decode = decoded_checksum
         return decoded_str
 
 
@@ -289,7 +329,7 @@ if __name__ == "__main__":
     test_agent = True
     if test_agent:
         agent = Agent()
-        msg = "aaabc"
+        msg = "abc"
         deck = agent.encode(msg)
         if not cards.valid_deck(deck):
             raise ValueError
@@ -310,7 +350,9 @@ if __name__ == "__main__":
     # Testing the str-to-perm and back
     # test_perm = True
     if test_perm:
-        test_perm = Perm(12, alpha)
+        encode_len = 12
+        valid_cards = tuple(range(52 - encode_len, 52))
+        test_perm = Perm(valid_cards, alpha)
         card_perm = test_perm.str_to_perm("hel loworld", max_chars=20)
         # card_perm = test_perm.str_to_perm("helloworld", max_chars=6)
         # card_perm = test_perm.str_to_perm("123456987", max)
@@ -332,7 +374,9 @@ if __name__ == "__main__":
         print(f"Encoding as a num: {num}")
 
         # COMPARE HUFF VS DIRECT ENCODE
-        test_perm = Perm(12, alpha)
+        encode_len = 12
+        valid_cards = tuple(range(52 - encode_len, 52))
+        test_perm = Perm(valid_cards, alpha)
         card_perm1 = test_perm.str_to_perm(msg, max_chars=20)
         decode1 = test_perm.perm_to_str(card_perm1)
 
