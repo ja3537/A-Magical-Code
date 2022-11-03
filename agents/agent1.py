@@ -1,54 +1,41 @@
 import heapq
 import logging
 import math
-import random
-from itertools import permutations
+from collections import deque
 
 import numpy as np
-from dahuffman import HuffmanCodec
 
 import cards
 
 
 logging.disable(logging.INFO)
-
-
-def calc_checksum(number, base=10):
-    """Calculate the checksum from an interger repr the binary data
-    Args:
-        number: Int corresponding to binary data of the input message
-        base: Should be equal to the size of character set used in the message
-    """
-    num_bin = bin(number)[2:]
-    chunk_len = 5
-    checksum = 0
-    mod_prime = 113
-    # From wikipedia - rollin hash
-    # ASCII a = 97, b = 98, r = 114.
-    # hash("abr") =  [ ( [ ( [  (97 × 256) % 101 + 98 ] % 101 ) × 256 ] %  101 ) + 114 ]   % 101   =  4
-    while len(num_bin) > 0:
-        bin_chunk = num_bin[:chunk_len]
-        num_bin = num_bin[chunk_len:]
-
-        num_chunk = int(bin_chunk, 2)
-        checksum = ((checksum + num_chunk) * base) % mod_prime
-        # if len(num_bin) > 0:
-        #     checksum = (checksum * base) % mod_prime
-    return checksum
-
-# ------- str to perm and vice-versa ----------------- #
-"""Borrowed and modified from group 7"""
-
-MAX_CHAR = 10  # Max num of char in input message
-
+# Permutations of input strings
 alpha = " abcdefghijklmnopqrstuvwxyz"
 numeric = " 0123456789"
 alpha_numeric = alpha + numeric[1:]  # Don't include space twice
 alpha_numeric_punc = alpha_numeric + "."
 
 
+def calc_checksum(deck: list[int], mod_prime=5000, base=256):
+    """Calculate the checksum from an interger repr the binary data
+    Args:
+        deck: List of cards making up the message
+        mod_prime: Modulus value. Checksum will always be less than this
+        base: The base of the number system. Should be equal to the len of the message sequence.
+
+    Ref:
+        Wikipedia - Rolling Hash
+    """
+    checksum = 0
+    for card in deck:
+        checksum = ((checksum + card) * base) % mod_prime
+    return checksum
+
+
+# ------- str to perm and vice-versa ----------------- #
 class Perm:
     def __init__(self, valid_cards=tuple(range(52 - 12, 52)), valid_char_str=alpha, max_msg_len=12):
+        """Borrowed and modified from group 7"""
         self.encoding_len = len(valid_cards)
         self.max_msg_len = max_msg_len
         self.perm_zero = valid_cards
@@ -60,7 +47,6 @@ class Perm:
 
     def perm_to_num(self, permutation):
         n = len(permutation)
-        # s = sorted(permutation)
         number = 0
 
         for i in range(n):
@@ -136,8 +122,7 @@ class Perm:
         perm = self.num_to_perm(num)
         return perm
 
-    def perm_to_str(self, perm):
-        num = self.perm_to_num(perm)
+    def num_to_str(self, num):
         words = []
         break_next = False
         while True:
@@ -150,6 +135,11 @@ class Perm:
                 break_next = True
         return ''.join(words[::-1]).strip()
 
+    def perm_to_str(self, perm):
+        num = self.perm_to_num(perm)
+        msg = self.num_to_str(num)
+        return msg
+
 
 class Unscramble:
     def __init__(self, card_deck, check_sum, perm_class: Perm, max_trials=10000) -> None:
@@ -161,101 +151,41 @@ class Unscramble:
         self.perm = perm_class
         self.answer = False
         self.result = None
+        self.dque = deque([])
 
-    def unscramble(self,trials=10000):
-        self.trials = trials
-        depth = 1
+    def deshuffle1(self, deck):
+        """Gets a list of decks by moving each card to the top"""
+        ds_decks = []
+        for idx in range(1, len(deck)):
+            deck_in = deck.copy()
+            top_card = deck_in.pop(idx)
+            deck_in.insert(0, top_card)
+            ds_decks.append(deck_in)
+        return ds_decks
 
-        while self.trials > 0:
-            if self.recursion_2(depth):
-                break
-
-            depth += 1
-
-    def unscramble2(self):
-        #no longer using this funcion
-
-        msg_int = self.perm.perm_to_num(self.card_deck)
-        msg_checksum = calc_checksum(msg_int)
+    def verify_msg(self, card_deck):
+        msg_checksum = calc_checksum(card_deck)
         if msg_checksum == self.check_sum:
-            return self.card_deck
-
-        num_cards = len(self.card_deck)
-
-        for idx in range(num_cards)-1:
-            try:
-                new_deck = [self.card_deck[idx]] + self.card_deck[:idx] + self.card_deck[idx+1:]
-            except IndexError:
-                new_deck = [self.card_deck[idx]] + self.card_deck[:idx]
-            msg_int = self.perm.perm_to_num(new_deck)
-            msg_checksum = calc_checksum(msg_int)
-            if msg_checksum == self.check_sum:
-                return new_deck
-
-
-    def recrusion(self, prev_deck: list[int], rest_deck: list[int]):
-        ## no longer using this funcion
-
-        if len(rest_deck) < 1:
-            new_order = [rest_deck[0]] + prev_deck
-
-            msg_int = self.perm.perm_to_num(new_order)
-            msg_checksum = calc_checksum(msg_int)
-            if msg_checksum == self.check_sum:
-                self.answer = True
-                self.result = new_order
+            decoded_str = self.perm.perm_to_str(card_deck)
+            return decoded_str
+        else:
             return None
-        if self.trials == 0 or self.answer:
-            return None
-        for i in range(len(rest_deck) - 1):
-            if len(rest_deck) > 1:
-                new_order = [rest_deck[i]] + prev_deck + rest_deck[0:i] + rest_deck[i + 1:]
-                # In some combinations, the number might be too large
-                # TODO: Check that this isn't an error
-                try:
-                    msg_int = self.perm.perm_to_num(new_order)
-                except IndexError:
-                    msg_int = 0
 
-                msg_checksum = calc_checksum(msg_int)
-                if msg_checksum == self.check_sum:
-                    self.answer = True
-                    self.result = new_order
-                    break
+    def unscramble(self):
+        decoded_str = self.verify_msg(self.card_deck)
+        if decoded_str is not None:
+            return decoded_str
 
-        if not self.result:
-            for i in range(len(rest_deck) - 1):
-                new_prev = [rest_deck[i]] + prev_deck
-                new_rest = rest_deck[0:i] + rest_deck[i + 1:]
-                return self.recrusion(new_prev, new_rest)
+        self.dque.extend(self.deshuffle1(self.card_deck))
+        while self.trials > 0 and len(self.dque) > 0:
+            ddeck = self.dque.popleft()
+            decoded_str = self.verify_msg(ddeck)
+            if decoded_str is not None:
+                return decoded_str
 
-    def recursion_2(self, depth):
-        possible_idx_perms = list(permutations(range(12), depth))
-
-        for perm in possible_idx_perms:
-            
-            if self.trials <= 0:
-                return False
-
-            perm_as_list = list(perm) # perm initially tuple
-            front_of_eck = self.card_deck[perm_as_list]
-
-            exclude_mask = np.ones(self.card_deck.shape, bool)
-            exclude_mask[perm_as_list] = False
-            remaining_cards_in_deck = self.card_deck[exclude_mask]
-
-            unshuffled_deck = np.concatenate([front_of_deck, remaining_cards_in_deck])
-            msg_int = self.perm.perm_to_num(unshuffled_deck)
-            msg_checksum = calc_checksum(msg_int)
-            if msg_checksum == self.check_sum:
-                self.answer = True
-                self.result = unshuffled_deck
-                return True
-            
+            self.dque.extend(self.deshuffle1(ddeck))
             self.trials -= 1
-        
-        return False
-
+        return None
 
 # --------------------------- huffman_decoding --------------------------- #
 class Node:
@@ -392,31 +322,16 @@ class Agent:
         self.valid_cards_p = tuple(range(52 - self.encode_len, 52))
         self.perm = Perm(self.valid_cards_p, self.char_set, self.max_msg_len)
 
-        self.cksum_len = 6
+        self.cksum_len = 7
         self.valid_cards_c = tuple(range(52 - self.encode_len - self.cksum_len, 52 - self.encode_len))
-        self.perm_ck = Perm(self.valid_cards_c, numeric, self.max_msg_len)
+        max_ck_len = math.floor(math.log(math.factorial(self.cksum_len), len(self.char_set)))
+        self.perm_ck = Perm(self.valid_cards_c, self.char_set, max_ck_len)
+
+        # Only used for debugging
         self.checksum_encode = None
         self.checksum_decode = None
-
-    # def calc_checksum(self, number):
-    #     """Number corresponding to the input message"""
-    #     num_bin = bin(number)[2:]
-    #     chunk_len = 5
-    #     checksum = 0
-    #     mod_prime = 113
-    #     base = len(self.char_set)
-    #     # ASCII a = 97, b = 98, r = 114.
-    #     # hash("abr") =  [ ( [ ( [  (97 × 256) % 101 + 98 ] % 101 ) × 256 ] %  101 ) + 114 ]   % 101   =  4
-    #     while len(num_bin) > 0:
-    #         bin_chunk = num_bin[:chunk_len]
-    #         num_bin = num_bin[chunk_len:]
-    #
-    #         num_chunk = int(bin_chunk, 2)
-    #         checksum = (checksum + num_chunk) % mod_prime
-    #         if len(num_bin) > 0:
-    #             checksum = (checksum * base) % mod_prime
-    #
-    #     return checksum
+        self.encode_seq = None
+        self.checksum_seq = None
 
     def encode(self, message):
         max_chars = self.max_msg_len
@@ -429,7 +344,7 @@ class Agent:
         seq_encode = self.perm.num_to_perm(num)
 
         # Calculate Checksum
-        checksum = calc_checksum(num)
+        checksum = calc_checksum(seq_encode)
         self.checksum_encode = checksum
         seq_checksum = self.perm_ck.num_to_perm(checksum)
 
@@ -437,34 +352,26 @@ class Agent:
         seq_rand = [c for c in range(52) if c not in self.valid_cards_p+self.valid_cards_c]
         self.rng.shuffle(seq_rand)
         seq_total = seq_rand + seq_encode + seq_checksum
+
+        self.encode_seq = seq_encode
+        self.checksum_seq = seq_checksum
         return seq_total
 
     def decode(self, deck):
-        # Todo: Add checksum
         seq_encode = [c for c in deck if c in self.valid_cards_p]
-
-        # TESTING
-        seq_encode = [seq_encode[1]] + [seq_encode[0]] + seq_encode[2:]
-        seq_encode = [seq_encode[1]] + [seq_encode[0]] + seq_encode[2:]
 
         seq_checksum = tuple([c for c in deck if c in self.valid_cards_c])
         decoded_checksum = self.perm_ck.perm_to_num(seq_checksum)
         self.checksum_decode = decoded_checksum
 
-        msg_int = self.perm.perm_to_num(seq_encode)
-        msg_checksum = calc_checksum(msg_int)
-        if msg_checksum == decoded_checksum:
-            decoded_str = self.perm.perm_to_str(seq_encode)
-        else:
-            # Message has been scrambled. Try to recover
-            unscramble = Unscramble(seq_encode, decoded_checksum, self.perm, max_trials=1000000)
-            fixed_seq = unscramble.unscramble()
+        # Try to recover message (unscramble if necessary)
+        unscramble = Unscramble(seq_encode, decoded_checksum, self.perm, max_trials=1000000)
+        decoded_str = unscramble.unscramble()
 
-            if fixed_seq is not None:
-                decoded_str = self.perm.perm_to_str(fixed_seq)
-            else:
-                decoded_str = "NULL"
+        if decoded_str is None:
+            decoded_str = "NULL"
 
+        # TODO: Add case for partial strings
         return decoded_str
 
 
@@ -484,7 +391,7 @@ if __name__ == "__main__":
         if not cards.valid_deck(deck):
             raise ValueError
 
-        num_shuffles = 50
+        num_shuffles = 10
         rng = np.random.default_rng()
         shuffles = rng.integers(0, 52, num_shuffles)
         for pos in shuffles:
@@ -559,8 +466,7 @@ if __name__ == "__main__":
         deck = [45, 46, 47, 48, 49, 50, 51]
         sdeck = [46, 45, 47, 48, 49, 50, 51]
         perm = Perm(tuple(deck), alpha)
-        num = perm.perm_to_num(deck)
-        check_sum = calc_checksum(num)
+        check_sum = calc_checksum(deck)
         unscramble = Unscramble(sdeck, check_sum, perm, max_trials=10000)
         cdeck = unscramble.unscramble()
 
