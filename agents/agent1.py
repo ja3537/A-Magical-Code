@@ -16,11 +16,12 @@ alpha_numeric = alpha + numeric[1:]  # Don't include space twice
 alpha_numeric_punc = alpha_numeric + "."
 
 
-def calc_checksum(deck: list[int], mod_prime=5000, base=256):
+def calc_checksum(deck: list[int], mod_prime=40213, base=239):
     """Calculate the checksum from an interger repr the binary data
     Args:
         deck: List of cards making up the message
-        mod_prime: Modulus value. Checksum will always be less than this
+        mod_prime: Modulus value. Checksum will always be less than this.
+            Values: [113, 4973, 40213]
         base: The base of the number system. Should be equal to the len of the message sequence.
 
     Ref:
@@ -142,12 +143,18 @@ class Perm:
 
 
 class Unscramble:
-    def __init__(self, card_deck, check_sum, max_trials=10000) -> None:
+    def __init__(self, card_deck, check_sum, max_trials=10000, orig_deck=None) -> None:
         """Will unscramble the input deck until it matches the checksum
-        Will terminate after max num of trials"""
+        Args:
+            card_deck: The shuffled deck of cards
+            check_sum: The checksum of the correct sequence of cards
+            max_trials: Will terminate after these many trials
+            orig_deck: For testing only. The original unshuffled deck
+        """
         self.card_deck = card_deck
         self.check_sum = check_sum
         self.max_trials = max_trials
+        self.orig_deck = orig_deck
 
     @staticmethod
     def deshuffle1(deck):
@@ -167,11 +174,18 @@ class Unscramble:
         while trials > 0 and len(dque) > 0:
             ddeck = dque.popleft()
             msg_checksum = calc_checksum(ddeck)
+
+            if self.orig_deck is not None:
+                if self.orig_deck == ddeck:
+                    print(f"Found a match for the original deck")
+
             if msg_checksum == self.check_sum:
+                print(f"Checksum matches the original deck. Trial: {self.max_trials - trials}")
                 return ddeck
             else:
                 dque.extend(self.deshuffle1(ddeck))
                 trials -= 1
+        print(f"Failed to find a checksum match. Trial: {self.max_trials - trials}")
         return None
 
 
