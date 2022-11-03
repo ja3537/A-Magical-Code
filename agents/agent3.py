@@ -186,6 +186,7 @@ class GenericTransformer(MessageTransformer):
 Deck = list[int]
 
 class BDC(ABC):
+    """Bits <-> Deck Converter."""
     def __init__(self):
         self.metacodec = MetaCodec()
 
@@ -203,6 +204,9 @@ class BDC(ABC):
         pass
 
 class ChunkConverter(BDC):
+    """Converts between bits and deck of cards by mapping each chunk of bits
+    to a card, using linear probing if there are collisions."""
+
     def to_deck(self, domain: Domain, bits: Bits) -> Optional[tuple[Deck, Deck]]:
         # TODO
         return None
@@ -211,6 +215,9 @@ class ChunkConverter(BDC):
         return None
 
 class PermutationConverter(BDC):
+    """Converts between bits and deck of cards by mapping each permutation of
+    cards to a unique integer in its binary representation."""
+
     def to_deck(self, domain: Domain, bits: Bits) -> Optional[tuple[Deck, Deck]]:
         # TODO: actually encode the message
         metadata = self.meta.encode(domain, PermutationConverter)
@@ -224,6 +231,7 @@ class PermutationConverter(BDC):
         return bits
 
 def to_partial_deck(domain: Domain, msg_bits: Bits) -> tuple[Deck, Deck]:
+    """Dynamically select the best BDC to encode bits to deck."""
     for bdc in [ChunkConverter, PermutationConverter]:
         deck = bdc().to_deck(domain, msg_bits)
         if deck is not None:
@@ -236,6 +244,7 @@ def to_partial_deck(domain: Domain, msg_bits: Bits) -> tuple[Deck, Deck]:
 # -----------------------------------------------------------------------------
 
 class MetaCodec:
+    """Codec for (domain, BDC) <-> deck"""
     def __init__(self):
         self.domains = [Domain.PASSWORD, Domain.GENERIC]
         self.BDCs = [ChunkConverter, PermutationConverter]
@@ -399,6 +408,17 @@ class Agent:
         return metadata, message
 
     def encode(self, msg: str) -> List[int]:
+        # Encoding Steps
+        # 1. detect the domain of the message, if none matches, fall back to
+        #    using Domain.GENERIC
+        # 2. based on the domain, choose a domain-specific *MessageTransformer*
+        #    to compress the message string into a shorter one
+        # 3. dynamically select a *Bits <-> Deck Converter* based on the
+        #    shortened message, returns two decks:
+        #      a) metadata deck: containing domain and BDC type
+        #      b) message deck: contains the encoded message
+        # 4. tangles the decks, trash cards, unused cards, stop cards into a
+        #    final deck returned to the simulator
 
         domain = self.domain_detector.detect(msg)
         debug(f"message domain: {domain.name}")
@@ -480,10 +500,10 @@ class Agent:
         return deck if valid_deck(deck) else list(range(52))
 
     def decode(self, deck) -> str:
-        # decoding steps
+        # Decoding Steps:
         # 1. recover the deck that contains the message and metadata
         #    The metadata containing the bdc and domain is fixed size and are always at the end of the deck of message + metadata
-        #    Use a single card to represent the metdata which is 4 bits
+        #    We can Use a single card to represent the metdata which is 4 bits
         #        3 bits for MessageTransformer + 1 bits for bdc
         # 2. read the metadata to recover bdc and domain
         # 3. use bdc to convert message deck -> message bits
