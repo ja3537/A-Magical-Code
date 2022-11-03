@@ -1,3 +1,5 @@
+from email.headerregistry import Address
+import enum
 import math
 import os
 
@@ -6,6 +8,29 @@ EMPTY = ''
 DICT_SIZE = 27000
 SENTENCE_LEN = 6
 
+class Domain(enum):
+    G1 = 1
+    AIRPORT = 2
+    PASSWORD = 3
+    LOCATION = 4
+    ADDRESS = 5
+    NGRAM = 6
+    DICTIONARY = 7
+    NAME_PLACES = 8
+
+def domain_classifier(message):
+    """
+    Classifies the message into one of the following domains:
+    - G1
+    - AIRPORT
+    - PASSWORD
+    - LOCATION
+    - ADDRESS
+    - NGRAM
+    - DICIONARY
+    - NAME_PLACES
+    """
+    return 
 
 class EncoderDecoder:
     def __init__(self, n=26):
