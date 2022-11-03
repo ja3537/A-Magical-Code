@@ -1,3 +1,4 @@
+import hashlib
 import heapq
 import logging
 import math
@@ -16,20 +17,27 @@ alpha_numeric = alpha + numeric[1:]  # Don't include space twice
 alpha_numeric_punc = alpha_numeric + "."
 
 
-def calc_checksum(deck: list[int], mod_prime=40213, base=239):
+def calc_checksum(deck: list[int], mod_prime=40213, mode="blake", base=239):
     """Calculate the checksum from an interger repr the binary data
     Args:
         deck: List of cards making up the message
         mod_prime: Modulus value. Checksum will always be less than this.
-            Values: [113, 4973, 40213]
+            Values: [113, 719, 4973, 40213, 362867]
         base: The base of the number system. Should be equal to the len of the message sequence.
-
-    Ref:
-        Wikipedia - Rolling Hash
     """
-    checksum = 0
-    for card in deck:
-        checksum = ((checksum + card) * base) % mod_prime
+    if mode not in ["blake2b", "polynomial"]:
+        raise ValueError
+
+    if mode == "polynomial":
+        checksum = 0
+        for card in deck:
+            checksum = ((checksum + card) * base) % mod_prime
+    else:
+        h = hashlib.blake2b(digest_size=2)
+        for card in deck:
+            h.update(card.to_bytes(1, "little"))  # Max value of card = 51 < 1 byte
+        hash = int.from_bytes(h.digest(), "little")
+        checksum = hash % mod_prime
     return checksum
 
 
@@ -167,25 +175,22 @@ class Unscramble:
             ds_decks.append(deck_in)
         return ds_decks
 
-    def unscramble(self):
+    def unscramble(self, mod_prime=None, mode=None):
         dque = deque([])
         dque.append(self.card_deck)
         trials = self.max_trials
         while trials > 0 and len(dque) > 0:
             ddeck = dque.popleft()
-            msg_checksum = calc_checksum(ddeck)
-
-            if self.orig_deck is not None:
-                if self.orig_deck == ddeck:
-                    print(f"Found a match for the original deck")
+            if mod_prime is None:
+                msg_checksum = calc_checksum(ddeck)
+            else:
+                msg_checksum = calc_checksum(ddeck, mod_prime, mode)
 
             if msg_checksum == self.check_sum:
-                print(f"Checksum matches the original deck. Trial: {self.max_trials - trials}")
                 return ddeck
             else:
                 dque.extend(self.deshuffle1(ddeck))
                 trials -= 1
-        print(f"Failed to find a checksum match. Trial: {self.max_trials - trials}")
         return None
 
 
