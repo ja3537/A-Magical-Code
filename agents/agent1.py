@@ -142,18 +142,15 @@ class Perm:
 
 
 class Unscramble:
-    def __init__(self, card_deck, check_sum, perm_class: Perm, max_trials=10000) -> None:
+    def __init__(self, card_deck, check_sum, max_trials=10000) -> None:
         """Will unscramble the input deck until it matches the checksum
         Will terminate after max num of trials"""
         self.card_deck = card_deck
         self.check_sum = check_sum
-        self.trials = max_trials
-        self.perm = perm_class
-        self.answer = False
-        self.result = None
-        self.dque = deque([])
+        self.max_trials = max_trials
 
-    def deshuffle1(self, deck):
+    @staticmethod
+    def deshuffle1(deck):
         """Gets a list of decks by moving each card to the top"""
         ds_decks = []
         for idx in range(1, len(deck)):
@@ -163,29 +160,20 @@ class Unscramble:
             ds_decks.append(deck_in)
         return ds_decks
 
-    def verify_msg(self, card_deck):
-        msg_checksum = calc_checksum(card_deck)
-        if msg_checksum == self.check_sum:
-            decoded_str = self.perm.perm_to_str(card_deck)
-            return decoded_str
-        else:
-            return None
-
     def unscramble(self):
-        decoded_str = self.verify_msg(self.card_deck)
-        if decoded_str is not None:
-            return decoded_str
-
-        self.dque.extend(self.deshuffle1(self.card_deck))
-        while self.trials > 0 and len(self.dque) > 0:
-            ddeck = self.dque.popleft()
-            decoded_str = self.verify_msg(ddeck)
-            if decoded_str is not None:
-                return decoded_str
-
-            self.dque.extend(self.deshuffle1(ddeck))
-            self.trials -= 1
+        dque = deque([])
+        dque.append(self.card_deck)
+        trials = self.max_trials
+        while trials > 0 and len(dque) > 0:
+            ddeck = dque.popleft()
+            msg_checksum = calc_checksum(ddeck)
+            if msg_checksum == self.check_sum:
+                return ddeck
+            else:
+                dque.extend(self.deshuffle1(ddeck))
+                trials -= 1
         return None
+
 
 # --------------------------- huffman_decoding --------------------------- #
 class Node:
@@ -365,11 +353,13 @@ class Agent:
         self.checksum_decode = decoded_checksum
 
         # Try to recover message (unscramble if necessary)
-        unscramble = Unscramble(seq_encode, decoded_checksum, self.perm, max_trials=1000000)
-        decoded_str = unscramble.unscramble()
+        unscramble = Unscramble(seq_encode, decoded_checksum, max_trials=1000000)
+        seq_fixed = unscramble.unscramble()
 
-        if decoded_str is None:
+        if seq_fixed is None:
             decoded_str = "NULL"
+        else:
+            decoded_str = self.perm.perm_to_str(seq_fixed)
 
         # TODO: Add case for partial strings
         return decoded_str
@@ -465,12 +455,11 @@ if __name__ == "__main__":
     if True:
         deck = [45, 46, 47, 48, 49, 50, 51]
         sdeck = [46, 45, 47, 48, 49, 50, 51]
-        perm = Perm(tuple(deck), alpha)
         check_sum = calc_checksum(deck)
-        unscramble = Unscramble(sdeck, check_sum, perm, max_trials=10000)
-        cdeck = unscramble.unscramble()
+        unscramble = Unscramble(sdeck, check_sum, max_trials=10000)
+        udeck = unscramble.unscramble()
 
-        if cdeck == deck:
+        if udeck == deck:
             print(f"Unscramble success")
         else:
             print(f"Unscramble Fail")
