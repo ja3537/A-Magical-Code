@@ -1,4 +1,5 @@
-from concurrent.futures import thread
+from abc import abstractmethod, ABC
+from enum import Enum
 import logging
 from typing import List, Optional
 from cards import valid_deck
@@ -73,6 +74,8 @@ class PermutationGenerator:
         return n
 
     def n_needed(self, messageLength):
+        """Returns the number of cards needed to encode a message of
+        messageLength using permutation."""
         for i in range(100):
             if messageLength < self.fact[i]:
                 return i
@@ -110,10 +113,171 @@ class PermutationGenerator:
                     return self._perm_unrank(rank - total, newbase, head + c)
                 total = newtotal
 
+# -----------------------------------------------------------------------------
+#   String -> Domain Detector
+# -----------------------------------------------------------------------------
+
+class DomainRule(ABC):
+    @abstractmethod
+    def verdict(self, msg: str) -> bool:
+        pass
+
+class GenericRule:
+    def verdict(self, _: str) -> bool:
+        return True
+
+class PasswordRule:
+    def verdict(self, msg: str) -> bool:
+        return len(msg) > 0 and msg[0] == "@"
+
+class Domain(Enum):
+    GENERIC  = GenericRule
+    PASSWORD = PasswordRule
+    # COORDS   = 2
+
+class DomainDetector:
+    def __init__(self, domains: list[Domain], default_domain=Domain.GENERIC):
+        self.domains = domains
+        self.default_domain = default_domain
+
+    def detect(self, msg: str) -> Domain:
+        # TODO
+        for domain in self.domains:
+            rule = domain.value()
+            if rule.verdict(msg):
+                return 
+        return Domain.GENERIC
+
 
 # -----------------------------------------------------------------------------
-#   Codec
+#   String <-> String Message TransFormer (Compression, DeCompression)
 # -----------------------------------------------------------------------------
+
+class MessageTransformer(ABC):
+    @abstractmethod
+    def compress(self, msg: str) -> Bits:
+        pass
+
+    @abstractmethod
+    def uncompress(self, bits: Bits) -> str:
+        pass
+
+
+class GenericTransformer(MessageTransformer):
+    def __init__(self):
+        self.huffman = Huffman()
+
+    def compress(self, msg: str) -> Bits:
+        bits = self.huffman.encode(msg, padding_len=0)
+        debug(f'GenericTransformer: "{msg}" -> {bits.bin}')
+
+        return bits
+
+    def uncompress(self, bits: Bits) -> str:
+        msg = self.huffman.decode(bits, padding_len=0)
+        debug(f'GenericTransformer: "{bits.bin}" -> {msg}')
+
+        return msg
+
+
+# -----------------------------------------------------------------------------
+#   Bits <-> Deck Converter (BDC)
+# -----------------------------------------------------------------------------
+Deck = list[int]
+
+class BDC(ABC):
+    def __init__(self):
+        self.metacodec = MetaCodec()
+
+    @property
+    def meta(self):
+        return self.metacodec
+
+    @abstractmethod
+    def to_deck(self, domain: Domain, bits: Bits) -> Optional[tuple[Deck, Deck]]:
+        """Returns metadata deck and message deck."""
+        pass
+
+    @abstractmethod
+    def to_bits(self, deck: Deck) -> Optional[Bits]:
+        pass
+
+class ChunkConverter(BDC):
+    def to_deck(self, domain: Domain, bits: Bits) -> Optional[tuple[Deck, Deck]]:
+        # TODO
+        return None
+
+    def to_bits(self, domain: Domain, deck: Deck) -> Optional[Bits]:
+        return None
+
+class PermutationConverter(BDC):
+    def to_deck(self, domain: Domain, bits: Bits) -> Optional[tuple[Deck, Deck]]:
+        # TODO: actually encode the message
+        metadata = self.meta.encode(domain, PermutationConverter)
+        return [metadata, [20]]
+
+    def to_bits(self, domain: Domain, deck: Deck) -> Optional[Bits]:
+        # TODO: actually decode the message
+        bits = Bits(uint=deck[0], length=5)
+        debug(f"recovered message deck: {deck} -> {bits.bin}")
+
+        return bits
+
+def to_partial_deck(domain: Domain, msg_bits: Bits) -> tuple[Deck, Deck]:
+    for bdc in [ChunkConverter, PermutationConverter]:
+        deck = bdc().to_deck(domain, msg_bits)
+        if deck is not None:
+            return deck
+
+    return None
+
+# -----------------------------------------------------------------------------
+#   Bits <-> String Codec
+# -----------------------------------------------------------------------------
+
+class MetaCodec:
+    def __init__(self):
+        self.domains = [Domain.PASSWORD, Domain.GENERIC]
+        self.BDCs = [ChunkConverter, PermutationConverter]
+
+    def encode(self, domain: Domain, bdc: BDC) -> Deck:
+        # use the index to represent domain and BDC
+        domain_idx = self.domains.index(domain)
+        bdc_idx = self.BDCs.index(bdc)
+
+        # metadata bit representation:
+        # domain (3 bits) + BDC (1 bit) => metadata (4 bits)
+        domain_bits = Bits(uint=domain_idx, length=3)
+        bdc_bit = Bits(uint=bdc_idx, length=1)
+        metadata = Bits(bin=f'0b{domain_bits.bin}{bdc_bit.bin}')
+
+        # Bit -> Card
+        deck = [metadata.uint]
+
+        # logging
+        debug('MetaCodec encode: %s (domain), %s (BDC) -> %s (deck)' % (domain.name, bdc, str(deck)))
+        debug("%-7s %-5s %5s %-5s %10s" % ("DOMAIN", "BITS", "BDC", "BITS", "METADATA"))
+        debug( "%-7d %-5s %5d %-5s %10s" %
+            (domain_idx, domain_bits.bin, bdc_idx, bdc_bit.bin, metadata.bin))
+
+        return deck
+
+    def decode(self, deck: Deck) -> tuple[Domain, BDC]:
+        metadata = Bits(uint=deck[0], length=4)
+        bdc_bit, domain_bits = metadata.bin[-1], metadata.bin[:-1]
+
+        bdc_idx = int(bdc_bit, 2)
+        domain_idx = int(domain_bits, 2)
+
+        bdc = self.BDCs[bdc_idx]
+        domain = self.domains[domain_idx]
+
+        debug('MetaCodec decode:  %s (deck) -> %s (domain), %s (BDC)' % (str(deck), domain.name, bdc))
+        debug("%-7s %-5s %5s %-5s %10s" % ("DOMAIN", "BITS", "BDC", "BITS", "METADATA"))
+        debug( "%-7d %-5s %5d %-5s %10s" %
+            (domain_idx, domain_bits, bdc_idx, bdc_bit, metadata.bin))
+
+        return domain, bdc
 
 
 class Huffman:
@@ -173,6 +337,19 @@ class Agent:
         self.permuter = PermutationGenerator()
         self.max_chunk_size = 6
 
+        self.domain_detector = DomainDetector(
+            [Domain.PASSWORD]
+        )
+
+        self.domain2transformer = {
+            Domain.GENERIC: GenericTransformer()
+        }
+
+        #---------------------------------------------------------------------
+        #  Obtain abbreviation for words in a dictionary.
+        #---------------------------------------------------------------------
+        # Note: self.word2abrev stores the mapping of word to abbreviation
+
         # if can use precomp, comment this out
         r = requests.get(
             'https://raw.githubusercontent.com/mwcheng21/minified-text/main/minified.txt'
@@ -193,14 +370,63 @@ class Agent:
         #         [shortened, full] = line.split(' ')
         #         self.abrev2word[shortened] = full
         #         self.word2abrev[full] = shortened
+    
+    # TODO: there might be many _tangle_cards and _untangle_cards methods
+    # such as using checksum vs using trashcards, so this should be extracted
+    # as a component that could be swapped and reused.
+    def _tangle_cards(self, metadata: Deck, message: Deck) -> Deck:
+        used_cards = self.trash_cards + [self. stop_card] + metadata + message
+        unused_message_cards = [
+            card for card in range(0, 52)
+            if card not in used_cards
+        ]
+
+        used_cards.insert(self.trash_card_start_idx, unused_message_cards)
+        deck = (self.trash_cards
+              + unused_message_cards
+              + [self.stop_card]
+              + message
+              + metadata)
+
+        return deck if valid_deck(deck) else list(range(52))
+
+    def _untangle_cards(self, cards: Deck) -> tuple[Deck, Deck]:
+        deck = self.remove_trash_cards(cards)
+        metadata, message = deck[-1:], deck[:-1]
+
+        message = message[message.index(self.stop_card) + 1:]
+
+        return metadata, message
 
     def encode(self, msg: str) -> List[int]:
+
+        domain = self.domain_detector.detect(msg)
+        debug(f"message domain: {domain.name}")
+
+        bits = self.domain2transformer[domain].compress(msg)
+
+        metadata_cards, message_cards = to_partial_deck(domain, bits)
+        final_deck = self._tangle_cards(metadata_cards, message_cards)
+
+        return final_deck
+
+        #---------------------------------------------------------------------
+        #  TODO: port the implementation below to ChunkConverter
+        #---------------------------------------------------------------------
+
+        #---------------------------------------------------------------------
+        #  Message String -> Bits
+        #---------------------------------------------------------------------
 
         msg = ' '.join([
             self.word2abrev[word] if word in self.word2abrev else word
             for word in msg.split(" ")
         ])
         bit_str = self.huff.encode(msg, padding_len=0).bin
+
+        #---------------------------------------------------------------------
+        #  Bits -> Message Deck: Hash Resolution
+        #---------------------------------------------------------------------
 
         step_size, parts, start_padding, end_padding = self.get_parts(bit_str)
 
@@ -243,6 +469,10 @@ class Agent:
             card for card in useless_cards if card not in metadata_cards
         ]
 
+        #---------------------------------------------------------------------
+        #  Composing the final deck
+        #---------------------------------------------------------------------
+
         deck = self.trash_cards + useless_cards + metadata_cards + [
             self.stop_card
         ] + encode_msg
@@ -250,6 +480,28 @@ class Agent:
         return deck if valid_deck(deck) else list(range(52))
 
     def decode(self, deck) -> str:
+        # decoding steps
+        # 1. recover the deck that contains the message and metadata
+        #    The metadata containing the bdc and domain is fixed size and are always at the end of the deck of message + metadata
+        #    Use a single card to represent the metdata which is 4 bits
+        #        3 bits for MessageTransformer + 1 bits for bdc
+        # 2. read the metadata to recover bdc and domain
+        # 3. use bdc to convert message deck -> message bits
+        # 4. use domain to convert message bits -> original message string
+        
+        metadata, message = self._untangle_cards(deck)
+        domain, bdc = MetaCodec().decode(metadata)
+
+        # deck -> message bits
+        message_bits = bdc().to_bits(domain, message)
+        orig_msg = self.domain2transformer[domain].uncompress(message_bits)
+
+        return orig_msg
+
+        #---------------------------------------------------------------------
+        #  TODO: port the implementation below to ChunkConverter
+        #---------------------------------------------------------------------
+
         if deck == list(reversed(range(52))):
             return "Could not encode message"
 
@@ -466,3 +718,15 @@ def test_huffman_codec():
         assert orig == decoded, 'error: decoded message is not the same as the original'
 
     print('PASSED: Huffman codec using dictionary')
+
+def test_metacodec():
+    codec = MetaCodec()
+
+    for domain, bdc in [
+        (Domain.GENERIC, ChunkConverter),
+        (Domain.PASSWORD, PermutationConverter)
+    ]:
+        deck = codec.encode(domain, bdc)
+        codec.decode(deck)
+
+test_metacodec()
