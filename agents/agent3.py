@@ -244,7 +244,7 @@ class BDC(ABC):
         return self.metacodec
 
     @abstractmethod
-    def to_deck(self, bits: Bits) -> Optional[Deck]:
+    def to_deck(self, bits: Bits) -> Optional[tuple[Deck, Deck]]:
         """Returns message deck, including any message metadata."""
         pass
 
@@ -380,7 +380,7 @@ class ChunkConverter(BDC):
         """Returns the number of cards needed to encode the metadata."""
         return self.permuter.n_needed(messageLength)
 
-    def to_deck(self, bits: Bits) -> Optional[Deck]:
+    def to_deck(self, bits: Bits) -> Optional[tuple[Deck, Deck]]:
         step_size, parts, start_padding, end_padding = self._get_parts(bits.bin)
 
         if step_size < 0:
@@ -412,9 +412,8 @@ class ChunkConverter(BDC):
         # given the useless_cards, encode the metadata
         msg_metadata_cards = self._encode_metadata(
             step_size, start_padding, end_padding, lengths, useless_cards)
-        message = msg_cards + msg_metadata_cards
 
-        return message
+        return msg_metadata_cards, msg_cards
 
     def to_bits(self, msg: Deck, msg_metadata: Deck) -> Optional[Bits]:
         # decode metadata
@@ -448,9 +447,9 @@ class PermutationConverter(BDC):
     """Converts between bits and deck of cards by mapping each permutation of
     cards to a unique integer in its binary representation."""
 
-    def to_deck(self, bits: Bits) -> Optional[Deck]:
+    def to_deck(self, bits: Bits) -> Optional[tuple[Deck, Deck]]:
         # TODO: actually encode the message
-        return [20]
+        return [], [20]
 
     def to_bits(self, msg: Deck, msg_metadata: Deck) -> Optional[Bits]:
         # TODO: actually decode the message
@@ -459,7 +458,7 @@ class PermutationConverter(BDC):
 
         return bits
 
-def to_partial_deck(domain: Domain, msg_bits: Bits) -> tuple[Deck, Deck]:
+def to_partial_deck(domain: Domain, msg_bits: Bits) -> Optional[tuple[Deck, Deck, Deck]]:
     """Dynamically select the best BDC to encode bits to deck."""
     for bdc in [ChunkConverter, PermutationConverter]:
         converter = bdc()
@@ -467,7 +466,7 @@ def to_partial_deck(domain: Domain, msg_bits: Bits) -> tuple[Deck, Deck]:
 
         if msg_deck is not None:
             metadata_deck = converter.meta.encode(domain, bdc)
-            return metadata_deck, msg_deck
+            return metadata_deck, *msg_deck
 
     return None
 
@@ -586,16 +585,16 @@ class Agent:
     # TODO: there might be many _tangle_cards and _untangle_cards methods
     # such as using checksum vs using trashcards, so this should be extracted
     # as a component that could be swapped and reused.
-    def _tangle_cards(self, metadata: Deck, message: Deck) -> Deck:
-        used_cards = self.trash_cards + [self.stop_card] + metadata + message
+    def _tangle_cards(self, metadata: Deck, message_metadata: Deck, message: Deck) -> Deck:
+        used_cards = self.trash_cards + [self.stop_card] + metadata + message + message_metadata
         unused_message_cards = [
             card for card in range(0, 52)
             if card not in used_cards
         ]
 
-        used_cards.insert(self.trash_card_start_idx, unused_message_cards)
         deck = (self.trash_cards
               + unused_message_cards
+              + message_metadata
               + [self.stop_card]
               + message
               + metadata)
@@ -609,8 +608,8 @@ class Agent:
             return deck
 
         deck = remove_trash_cards(cards)
-        stop_card = deck.index(self.stop_card) + 1
-        message, message_metadata, metadata = deck[:stop_card], deck[stop_card+1:-1], deck[-1:]
+        stop_card = deck.index(self.stop_card)
+        message_metadata, message, metadata = deck[:stop_card], deck[stop_card+1:-1], deck[-1:]
 
         return metadata, message_metadata, message
 
@@ -635,8 +634,8 @@ class Agent:
         # TODO: to_partial_deck (bdc) needs to communicate with _tangle_cards
         # on the cards it used. Maybe move _tangle and _untangle into bdc?
         # or modify the interface to also return cards used.
-        metadata_cards, message_cards = to_partial_deck(domain, bits)
-        final_deck = self._tangle_cards(metadata_cards, message_cards)
+        metadata_cards, message_metadata_cards, message_cards = to_partial_deck(domain, bits)
+        final_deck = self._tangle_cards(metadata_cards, message_metadata_cards, message_cards)
 
         return final_deck
 
