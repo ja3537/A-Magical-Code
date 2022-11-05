@@ -637,6 +637,37 @@ class Agent:
 
         bits = self.domain2transformer[domain].compress(msg)
 
+        # TODO: at this point, we already now the number of bits to encode to deck.
+        # So it seems like *here* we can decide what *scheme* to use make our encoded
+        # message resilient to shuffles (e.g. trash cards, checksums)
+        #
+        # We could create an entity to represent this scheme, and it will have the
+        # following features:
+        #   - select cards it need, so that we can pass to BDC to tell it not to use
+        #     these cards
+        #   - a tanlge() method: creates the final deck given the 3 deck returned by
+        #     to_partial_deck()
+        #   - an untangle() method: untangles a given deck into 3 decks
+        #
+        # To achieve this, we'll also have to encode this enformation in the metadata
+        # deck (currently 4 bits of information, there's room for one more bit for this)
+        # to be able to know untangle() from which *scheme* to use during decoding.
+        # 
+        # Actually, we can't. Because, we need to untangle the deck first to get the
+        # metadata that we need to know which untangle to use. So it seems like we need
+        # to decide a single scheme to use apriori.
+        #
+        # This approach has two benefits
+        #   1. schemes to protect against shuffles could be used with *any* BDC
+        #   2. (NO) a scheme could be *dynamically* selected at runtime, per message
+        #   3. decouples the implementation of *BDC* and such against-shuffle safety
+        #      *scheme* [1]
+        #
+        # [1]: currently, they are coupled. For example, ChunkConverter has the
+        #      trash_card_start_idx hardcoded to be able to figure out what cards
+        #      to use and not use, so that it's consistent with the tangle and untangle
+        #      methods in the Agent class.
+
         # TODO: to_partial_deck (bdc) needs to communicate with _tangle_cards
         # on the cards it used. Maybe move _tangle and _untangle into bdc?
         # or modify the interface to also return cards used.
