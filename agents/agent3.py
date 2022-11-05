@@ -387,10 +387,12 @@ class ChunkConverter(BDC):
             # could not encode message
             return None
 
-        # TODO: step size of 0, no linear probing
         chunk_size = [len(part) for part in parts]
-        cards = [int(part, 2) for part in parts]
-        msg_cards = self._hash_msg_with_linear_probe(cards, step_size=step_size)
+        msg_cards = [int(part, 2) for part in parts]
+
+        if step_size > 0:
+            # has duplicate bit chunks, hash with linear probing
+            msg_cards = self._hash_msg_with_linear_probe(msg_cards, step_size=step_size)
 
         #TODO: encode 2 bits for step size
         # 3 bits for start padding
@@ -462,10 +464,13 @@ def to_partial_deck(domain: Domain, msg_bits: Bits) -> Optional[tuple[Deck, Deck
     """Dynamically select the best BDC to encode bits to deck."""
     for bdc in [ChunkConverter, PermutationConverter]:
         converter = bdc()
+        # TODO: There might be collision between the metadata card
+        # and the cards used for msg_deck, need to make bdc aware of
+        # what cards it can use to encode bits
+        metadata_deck = converter.meta.encode(domain, bdc)
         msg_deck = converter.to_deck(msg_bits)
 
         if msg_deck is not None:
-            metadata_deck = converter.meta.encode(domain, bdc)
             return metadata_deck, *msg_deck
 
     return None
