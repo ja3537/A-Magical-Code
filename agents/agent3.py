@@ -145,7 +145,7 @@ class DomainDetector:
         for domain in self.domains:
             rule = domain.value()
             if rule.verdict(msg):
-                return 
+                return domain
         return Domain.GENERIC
 
 
@@ -579,7 +579,8 @@ class Agent:
         )
 
         self.domain2transformer = {
-            Domain.GENERIC: WordTransformer()
+            Domain.GENERIC: WordTransformer(),
+            Domain.PASSWORD: WordTransformer()
         }
  
     # TODO: there might be many _tangle_cards and _untangle_cards methods
