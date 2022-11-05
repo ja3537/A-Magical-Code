@@ -20,7 +20,7 @@ logger.addHandler(logging.FileHandler(log_file))
 
 
 def debug(*args) -> None:
-    logger.info(' '.join(args))
+    logger.info(" ".join(args))
 
 
 # -----------------------------------------------------------------------------
@@ -179,6 +179,55 @@ class GenericTransformer(MessageTransformer):
 
         return msg
 
+class WordTransformer(MessageTransformer):
+    def __init__(self, delimiter=""):
+        self.huffman = Huffman()
+
+        #---------------------------------------------------------------------
+        #  Obtain abbreviation for words in a dictionary.
+        #---------------------------------------------------------------------
+        # Note: self.word2abrev stores the mapping of word to abbreviation
+
+        # if can use precomp, comment this out
+        self.delim = delimiter
+        r = requests.get(
+            'https://raw.githubusercontent.com/mwcheng21/minified-text/main/minified.txt'
+        )
+        minified_text = r.text
+        self.abrev2word = {}
+        self.word2abrev = {}
+        for line in minified_text.splitlines():
+            [shortened, full] = line.split(' ')
+            self.abrev2word[shortened] = full
+            self.word2abrev[full] = shortened
+
+        # then uncomment this
+        # with open('minified.txt', 'r') as f:
+        #     self.abrev2word = {}
+        #     self.word2abrev = {}
+        #     for line in f.splitlines():
+        #         [shortened, full] = line.split(' ')
+        #         self.abrev2word[shortened] = full
+        #         self.word2abrev[full] = shortened
+
+    def compress(self, msg: str) -> Bits:
+        msg = self.delim.join([
+            self.word2abrev[word] if word in self.word2abrev else word
+            for word in msg.split(self.delim)
+        ])
+        bit_str = self.huffman.encode(msg, padding_len=0).bin
+
+        return bit_str
+
+    def uncompress(self, bits: Bits) -> str:
+        decoded_message = self.huff.decode(bits, padding_len=0)
+        original_message = self.delim.join([
+            self.abrev2word[word] if word in self.abrev2word else word
+            for word in decoded_message.split(self.delim)
+        ])
+
+        return original_message
+        
 
 # -----------------------------------------------------------------------------
 #   Bits <-> Deck Converter (BDC)
@@ -195,47 +244,227 @@ class BDC(ABC):
         return self.metacodec
 
     @abstractmethod
-    def to_deck(self, domain: Domain, bits: Bits) -> Optional[tuple[Deck, Deck]]:
-        """Returns metadata deck and message deck."""
+    def to_deck(self, bits: Bits) -> Optional[Deck]:
+        """Returns message deck, including any message metadata."""
         pass
 
     @abstractmethod
-    def to_bits(self, deck: Deck) -> Optional[Bits]:
+    def to_bits(self, msg: Deck, msg_metadata: Deck) -> Optional[Bits]:
         pass
 
 class ChunkConverter(BDC):
     """Converts between bits and deck of cards by mapping each chunk of bits
     to a card, using linear probing if there are collisions."""
 
-    def to_deck(self, domain: Domain, bits: Bits) -> Optional[tuple[Deck, Deck]]:
-        # TODO
-        return None
+    def __init__(self):
+        self.permuter = PermutationGenerator()
+        self.trash_card_strat_idx = 32
 
-    def to_bits(self, domain: Domain, deck: Deck) -> Optional[Bits]:
-        return None
+    def _get_parts(self, bit_str):
+        """Takes in a bit string, checks if it's possible to encode.
+        
+        Returns a tuple of is_able_to_encode, parts, start_padding,
+                           end_padding, contains_no_duplicates.
+        """
+        chunk_size = self.max_chunk_size
+        padding = max(chunk_size,
+                      ((chunk_size - len(bit_str) % chunk_size) % chunk_size))
+        last_card_padding = 0
+
+        for i in range(padding):
+            start_padding = i
+
+            padded_bit_str = '0' * start_padding + bit_str
+            parts = []
+            while len(padded_bit_str) > 0 and chunk_size <= len(
+                    padded_bit_str):
+                if padded_bit_str[:chunk_size][0] == '0':
+                    parts.append(padded_bit_str[:chunk_size])
+                    padded_bit_str = padded_bit_str[chunk_size:]
+                else:
+                    parts.append(padded_bit_str[:chunk_size - 1])
+                    padded_bit_str = padded_bit_str[chunk_size - 1:]
+
+            if len(padded_bit_str) > 0:
+                last_card_padding = chunk_size - len(padded_bit_str)
+                potential_card = padded_bit_str + '0' * last_card_padding
+                if potential_card in parts or potential_card[0] == '1':
+                    last_card_padding -= 1
+                    potential_card = padded_bit_str + '0' * last_card_padding
+                parts.append(potential_card)
+
+            int_deck = [int(part, 2) for part in parts]
+            if len(int_deck) == len(set(int_deck)):
+                # no duplicates
+                return 0, parts, start_padding, last_card_padding
+
+            # must be duplicates, so check if can hash
+            canHash, step_size = self.can_hash_msg(int_deck)
+            if canHash:
+                break
+        else:
+            return -1, None, None, None
+
+        return step_size, parts, start_padding, last_card_padding
+
+    def _unhash_msg(self, encoded_msg, step_size):
+        """Attempts to unhash the encoded message."""
+        step_size = step_size if step_size != 3 else 5
+        encoded_msg_hash_table = {}
+
+        message = []
+        for i, card in enumerate(encoded_msg):
+            address_of_card = card
+            while address_of_card - step_size in encoded_msg_hash_table:
+                address_of_card -= step_size
+
+            encoded_msg_hash_table[address_of_card] = card
+            message.append(address_of_card)
+        return message
+
+    def _hash_msg_with_linear_probe(self, chunks, step_size):
+        """Attempts a linear probe at the given step size."""
+        hash_table = {}
+        step_size = step_size if step_size != 3 else 5
+
+        encoded_msg = []
+        for chunk in chunks:
+            address_of_chunk = chunk
+            while address_of_chunk in hash_table:
+                address_of_chunk += step_size
+            hash_table[address_of_chunk] = chunk
+            encoded_msg.append(address_of_chunk)
+        return encoded_msg
+
+    def _can_hash_msg(self, chunks) -> bool:
+        for i in range(1, 4):
+            encoded_msg = self._hash_msg_with_linear_probe(chunks, i)
+            decoded_hash = self._unhash_msg(encoded_msg, i)
+            if decoded_hash == chunks:
+                return True and max(encoded_msg) < 32, i
+        return False, None
+
+    def _encode_metadata(self, step_size: str, start_padding: str,
+                        end_padding: str, lengths: str, cards: Deck
+                        ) -> Deck:
+        """Encode the message metadata into a deck.""" 
+        cards = [str(card) for card in cards]
+
+        metadata = step_size + start_padding + end_padding + lengths
+
+        last_n_cards = cards[-self.n_needed_metadata(2**len(metadata)):]
+        permutation = self.permuter.encode(last_n_cards, int(metadata, 2))
+
+        return [int(card) for card in permutation]
+
+    def _decode_metadata(self, msg_metadata: Deck, msg_len: int):
+        """Decodes the metadata from the deck.
+        
+        Returns a tuple of step_size, start_padding, end_padding, lengths.
+        """
+        cards = [str(card) for card in msg_metadata]
+        last_n_cards = cards[-self.n_needed_metadata(2**(msg_len + 3 + 3 + 2)):]
+
+        metadata = self.permuter.decode(last_n_cards)
+        metadata = '{0:b}'.format(metadata).zfill(2 + 3 + 3 + msg_len)
+        step_size = int(metadata[:2], 2)
+        start_padding = int(metadata[2:5], 2)
+        end_padding = int(metadata[5:8], 2)
+        lengths = metadata[8:8 + msg_len]
+
+        return step_size, start_padding, end_padding, lengths
+
+    def _n_needed_metadata(self, messageLength: int):
+        """Returns the number of cards needed to encode the metadata."""
+        return self.permuter.n_needed(messageLength)
+
+    def to_deck(self, bits: Bits) -> Optional[Deck]:
+        step_size, parts, start_padding, end_padding = self._get_parts(bits.bin)
+
+        if step_size < 0:
+            # could not encode message
+            return None
+
+        # TODO: step size of 0, no linear probing
+        chunk_size = [len(part) for part in parts]
+        cards = [int(part, 2) for part in parts]
+        msg_cards = self._hash_msg_with_linear_probe(cards, step_size=step_size)
+
+        #TODO: encode 2 bits for step size
+        # 3 bits for start padding
+        # 3 bits for end padding
+        # n bits for each chunk size
+        lengths = "".join([
+            "0" if size == self.max_chunk_size else "1"
+            for size in chunk_size
+        ])
+        end_padding = '{0:b}'.format(end_padding).zfill(3)
+        start_padding = '{0:b}'.format(start_padding).zfill(3)
+        step_size = '{0:b}'.format(step_size).zfill(2)
+
+        useless_cards = [
+            card for card in range(0, self.trash_card_start_idx)
+            if card not in msg_cards
+        ]
+
+        # given the useless_cards, encode the metadata
+        msg_metadata_cards = self.encode_metadata(
+            step_size, start_padding, end_padding, lengths, useless_cards)
+        message = msg_cards + msg_metadata_cards
+
+        return message
+
+    def to_bits(self, msg: Deck, msg_metadata: Deck) -> Optional[Bits]:
+        # decode metadata
+        step_size, start_padding, end_padding, lengths = self._decode_metadata(msg_metadata, len(msg))
+
+        if step_size == 0:
+            # no linear probing
+            cards = msg
+        else:
+            # linear probing
+            cards = self.un_hash_msg(msg, step_size)
+
+        # decode message
+        chunk_sizes = [
+            self.max_chunk_size if length == '0' else self.max_chunk_size - 1
+            for length in lengths
+        ]
+        bit_str = ''.join([
+            '{0:b}'.format(card).zfill(chunk_sizes[i])
+            for i, card in enumerate(cards)
+        ])
+
+        if end_padding > 0:
+            return bit_str[start_padding:-end_padding] 
+        else:
+            return bit_str[start_padding:]
+
 
 class PermutationConverter(BDC):
     """Converts between bits and deck of cards by mapping each permutation of
     cards to a unique integer in its binary representation."""
 
-    def to_deck(self, domain: Domain, bits: Bits) -> Optional[tuple[Deck, Deck]]:
+    def to_deck(self, bits: Bits) -> Optional[Deck]:
         # TODO: actually encode the message
-        metadata = self.meta.encode(domain, PermutationConverter)
-        return [metadata, [20]]
+        return [20]
 
-    def to_bits(self, domain: Domain, deck: Deck) -> Optional[Bits]:
+    def to_bits(self, msg: Deck, msg_metadata: Deck) -> Optional[Bits]:
         # TODO: actually decode the message
-        bits = Bits(uint=deck[0], length=5)
-        debug(f"recovered message deck: {deck} -> {bits.bin}")
+        bits = Bits(uint=msg[0], length=5)
+        debug(f"recovered message deck: {msg} -> {bits.bin}")
 
         return bits
 
 def to_partial_deck(domain: Domain, msg_bits: Bits) -> tuple[Deck, Deck]:
     """Dynamically select the best BDC to encode bits to deck."""
     for bdc in [ChunkConverter, PermutationConverter]:
-        deck = bdc().to_deck(domain, msg_bits)
-        if deck is not None:
-            return deck
+        converter = bdc()
+        msg_deck = converter.to_deck(msg_bits)
+
+        if msg_deck is not None:
+            metadata_deck = converter.meta.encode(domain, bdc)
+            return msg_deck, metadata_deck
 
     return None
 
@@ -351,35 +580,9 @@ class Agent:
         )
 
         self.domain2transformer = {
-            Domain.GENERIC: GenericTransformer()
+            Domain.GENERIC: WordTransformer()
         }
-
-        #---------------------------------------------------------------------
-        #  Obtain abbreviation for words in a dictionary.
-        #---------------------------------------------------------------------
-        # Note: self.word2abrev stores the mapping of word to abbreviation
-
-        # if can use precomp, comment this out
-        r = requests.get(
-            'https://raw.githubusercontent.com/mwcheng21/minified-text/main/minified.txt'
-        )
-        minified_text = r.text
-        self.abrev2word = {}
-        self.word2abrev = {}
-        for line in minified_text.splitlines():
-            [shortened, full] = line.split(' ')
-            self.abrev2word[shortened] = full
-            self.word2abrev[full] = shortened
-
-        # then uncomment this
-        # with open('minified.txt', 'r') as f:
-        #     self.abrev2word = {}
-        #     self.word2abrev = {}
-        #     for line in f.splitlines():
-        #         [shortened, full] = line.split(' ')
-        #         self.abrev2word[shortened] = full
-        #         self.word2abrev[full] = shortened
-    
+ 
     # TODO: there might be many _tangle_cards and _untangle_cards methods
     # such as using checksum vs using trashcards, so this should be extracted
     # as a component that could be swapped and reused.
@@ -399,13 +602,17 @@ class Agent:
 
         return deck if valid_deck(deck) else list(range(52))
 
-    def _untangle_cards(self, cards: Deck) -> tuple[Deck, Deck]:
-        deck = self.remove_trash_cards(cards)
-        metadata, message = deck[-1:], deck[:-1]
+    def _untangle_cards(self, cards: Deck) -> tuple[Deck, Deck, Deck]:
+        def remove_trash_cards(deck) -> List[int]:
+            for i in self.trash_cards:
+                deck.remove(i)
+            return deck
 
-        message = message[message.index(self.stop_card) + 1:]
+        deck = remove_trash_cards(cards)
+        stop_card = deck.index(self.stop_card) + 1
+        message, message_metadata, metadata = deck[:stop_card], deck[stop_card+1:-1], deck[-1]
 
-        return metadata, message
+        return metadata, message_metadata, message
 
     def encode(self, msg: str) -> List[int]:
         # Encoding Steps
@@ -425,79 +632,13 @@ class Agent:
 
         bits = self.domain2transformer[domain].compress(msg)
 
+        # TODO: to_partial_deck (bdc) needs to communicate with _tangle_cards
+        # on the cards it used. Maybe move _tangle and _untangle into bdc?
+        # or modify the interface to also return cards used.
         metadata_cards, message_cards = to_partial_deck(domain, bits)
         final_deck = self._tangle_cards(metadata_cards, message_cards)
 
         return final_deck
-
-        #---------------------------------------------------------------------
-        #  TODO: port the implementation below to ChunkConverter
-        #---------------------------------------------------------------------
-
-        #---------------------------------------------------------------------
-        #  Message String -> Bits
-        #---------------------------------------------------------------------
-
-        msg = ' '.join([
-            self.word2abrev[word] if word in self.word2abrev else word
-            for word in msg.split(" ")
-        ])
-        bit_str = self.huff.encode(msg, padding_len=0).bin
-
-        #---------------------------------------------------------------------
-        #  Bits -> Message Deck: Hash Resolution
-        #---------------------------------------------------------------------
-
-        step_size, parts, start_padding, end_padding = self.get_parts(bit_str)
-
-        if step_size == -1:
-            # raise Exception("Could not encode message")
-            return list(reversed(range(52)))
-
-        chunk_size = [len(part) for part in parts]
-        cards = [int(part, 2) for part in parts]
-
-        if step_size > 0:
-            cards = self.hash_msg_with_linear_probe(cards, step_size=step_size)
-
-        encode_msg = []
-
-        encode_msg.extend(cards)
-
-        #TODO: encode 2 bits for step size
-        # 3 bits for start padding
-        # 3 bits for end padding
-        # n bits for each chunk size
-        lengths = ''.join([
-            "0" if size == self.max_chunk_size else "1" for size in chunk_size
-        ])
-        end_padding = '{0:b}'.format(end_padding).zfill(3)
-        start_padding = '{0:b}'.format(start_padding).zfill(3)
-        step_size = '{0:b}'.format(step_size).zfill(2)
-
-        useless_cards = [
-            card for card in range(0, self.trash_card_start_idx)
-            if card not in encode_msg
-        ]
-
-        # given the useless_cards, encode the metadata
-        metadata_cards = self.encode_metadata(step_size, start_padding,
-                                              end_padding, lengths,
-                                              useless_cards)
-
-        useless_cards = [
-            card for card in useless_cards if card not in metadata_cards
-        ]
-
-        #---------------------------------------------------------------------
-        #  Composing the final deck
-        #---------------------------------------------------------------------
-
-        deck = self.trash_cards + useless_cards + metadata_cards + [
-            self.stop_card
-        ] + encode_msg
-
-        return deck if valid_deck(deck) else list(range(52))
 
     def decode(self, deck) -> str:
         # Decoding Steps:
@@ -509,201 +650,17 @@ class Agent:
         # 3. use bdc to convert message deck -> message bits
         # 4. use domain to convert message bits -> original message string
         
-        metadata, message = self._untangle_cards(deck)
+        metadata, message_metadata, message = self._untangle_cards(deck)
+        if len(message) == 0:
+            return "NULL"
+
         domain, bdc = MetaCodec().decode(metadata)
 
         # deck -> message bits
-        message_bits = bdc().to_bits(domain, message)
+        message_bits = bdc().to_bits(domain, message, message_metadata)
         orig_msg = self.domain2transformer[domain].uncompress(message_bits)
 
         return orig_msg
-
-        #---------------------------------------------------------------------
-        #  TODO: port the implementation below to ChunkConverter
-        #---------------------------------------------------------------------
-
-        if deck == list(reversed(range(52))):
-            return "Could not encode message"
-
-        deck = self.remove_trash_cards(deck)
-        encoded_message = self.get_encoded_message(deck)
-        useless_cards = self.get_useless_cards(deck)
-
-        if len(encoded_message) == 0:
-            return "NULL"
-
-        messageLength = len(encoded_message)
-
-        # decode metadata
-        step_size, start_padding, end_padding, lengths = self.decode_metadata(
-            useless_cards, messageLength)
-
-        if step_size == 0:
-            # no linear probing
-            cards = encoded_message
-        else:
-            # linear probing
-            cards = self.un_hash_msg(encoded_message, step_size)
-
-        # decode message
-        chunk_sizes = [
-            self.max_chunk_size if length == '0' else self.max_chunk_size - 1
-            for length in lengths
-        ]
-        bit_str = ''.join([
-            '{0:b}'.format(card).zfill(chunk_sizes[i])
-            for i, card in enumerate(cards)
-        ])
-
-        bit_str = bit_str[
-            start_padding:-end_padding] if end_padding > 0 else bit_str[
-                start_padding:]
-
-        decoded_message = self.huff.decode(Bits(bin=bit_str), padding_len=0)
-
-        decoded_message = ' '.join([
-            self.abrev2word[word] if word in self.abrev2word else word
-            for word in decoded_message.split(" ")
-        ])
-
-        return decoded_message
-
-    def remove_trash_cards(self, deck) -> List[int]:
-        for i in self.trash_cards:
-            deck.remove(i)
-        return deck
-
-    def get_encoded_message(self, deck) -> List[int]:
-        return deck[deck.index(self.stop_card) + 1:]
-
-    def get_useless_cards(self, deck):
-        return deck[:deck.index(self.stop_card)]
-
-    def get_parts(self, bit_str):
-        '''
-        Takes in a bit string 
-
-        Returns a tuple of is_able_to_encode, parts, start_padding, end_padding, contains_no_duplicates
-        '''
-        chunk_size = self.max_chunk_size
-        padding = max(chunk_size,
-                      ((chunk_size - len(bit_str) % chunk_size) % chunk_size))
-        last_card_padding = 0
-
-        for i in range(padding):
-            start_padding = i
-
-            padded_bit_str = '0' * start_padding + bit_str
-            parts = []
-            while len(padded_bit_str) > 0 and chunk_size <= len(
-                    padded_bit_str):
-                if padded_bit_str[:chunk_size][0] == '0':
-                    parts.append(padded_bit_str[:chunk_size])
-                    padded_bit_str = padded_bit_str[chunk_size:]
-                else:
-                    parts.append(padded_bit_str[:chunk_size - 1])
-                    padded_bit_str = padded_bit_str[chunk_size - 1:]
-
-            if len(padded_bit_str) > 0:
-                last_card_padding = chunk_size - len(padded_bit_str)
-                potential_card = padded_bit_str + '0' * last_card_padding
-                if potential_card in parts or potential_card[0] == '1':
-                    last_card_padding -= 1
-                    potential_card = padded_bit_str + '0' * last_card_padding
-                parts.append(potential_card)
-
-            int_deck = [int(part, 2) for part in parts]
-            if len(int_deck) == len(set(int_deck)):
-                # no duplicates
-                return 0, parts, start_padding, last_card_padding
-
-            # must be duplicates, so check if can hash
-            canHash, step_size = self.can_hash_msg(int_deck)
-            if canHash:
-                break
-        else:
-            return -1, None, None, None
-
-        return step_size, parts, start_padding, last_card_padding
-
-    def un_hash_msg(self, encoded_msg, step_size):
-        # attempt to unhash the encoded message
-        step_size = step_size if step_size != 3 else 5
-        encoded_msg_hash_table = {}
-
-        message = []
-        for i, card in enumerate(encoded_msg):
-            address_of_card = card
-            while address_of_card - step_size in encoded_msg_hash_table:
-                address_of_card -= step_size
-
-            encoded_msg_hash_table[address_of_card] = card
-            message.append(address_of_card)
-        return message
-
-    def hash_msg_with_linear_probe(self, chunks, step_size):
-        #attempt a linear probe at the given step size
-        hash_table = {}
-        step_size = step_size if step_size != 3 else 5
-
-        encoded_msg = []
-        for chunk in chunks:
-            address_of_chunk = chunk
-            while address_of_chunk in hash_table:
-                address_of_chunk += step_size
-            hash_table[address_of_chunk] = chunk
-            encoded_msg.append(address_of_chunk)
-        return encoded_msg
-
-    def can_hash_msg(self, chunks) -> bool:
-        for i in range(1, 4):
-            encoded_msg = self.hash_msg_with_linear_probe(chunks, i)
-            decoded_hash = self.un_hash_msg(encoded_msg, i)
-            if decoded_hash == chunks:
-                return True and max(encoded_msg) < 32, i
-        return False, None
-
-    def encode_metadata(self, step_size: str, start_padding: str,
-                        end_padding: str, lengths: str, cards: List[int]):
-        ''' 
-        Encode the metadata into the deck
-
-        Returns a list of cards
-        '''
-        cards = [str(card) for card in cards]
-
-        metadata = step_size + start_padding + end_padding + lengths
-
-        last_n_cards = cards[-self.n_needed_metadata(2**len(metadata)):]
-        permutation = self.permuter.encode(last_n_cards, int(metadata, 2))
-
-        return [int(card) for card in permutation]
-
-    def decode_metadata(self, uselessCards: List[int], messageLength: int):
-        '''
-        Decode the metadata from the deck
-        
-        Returns a tuple of step_size, start_padding, end_padding, lengths
-        '''
-        cards = [str(card) for card in uselessCards]
-        last_n_cards = cards[-self.n_needed_metadata(2**(messageLength + 3 +
-                                                         3 + 2)):]
-
-        metadata = self.permuter.decode(last_n_cards)
-        metadata = '{0:b}'.format(metadata).zfill(2 + 3 + 3 + messageLength)
-        step_size = int(metadata[:2], 2)
-        start_padding = int(metadata[2:5], 2)
-        end_padding = int(metadata[5:8], 2)
-        lengths = metadata[8:8 + messageLength]
-
-        return step_size, start_padding, end_padding, lengths
-
-    def n_needed_metadata(self, messageLength: int):
-        '''
-        Returns the number of cards needed to encode the metadata
-        '''
-        return self.permuter.n_needed(messageLength)
-
 
 # -----------------------------------------------------------------------------
 #   Unit Tests
