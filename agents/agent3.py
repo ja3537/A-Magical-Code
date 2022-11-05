@@ -180,7 +180,7 @@ class GenericTransformer(MessageTransformer):
         return msg
 
 class WordTransformer(MessageTransformer):
-    def __init__(self, delimiter=""):
+    def __init__(self, delimiter=" "):
         self.huffman = Huffman()
 
         #---------------------------------------------------------------------
@@ -215,12 +215,12 @@ class WordTransformer(MessageTransformer):
             self.word2abrev[word] if word in self.word2abrev else word
             for word in msg.split(self.delim)
         ])
-        bit_str = self.huffman.encode(msg, padding_len=0).bin
+        bits = self.huffman.encode(msg, padding_len=0)
 
-        return bit_str
+        return bits
 
     def uncompress(self, bits: Bits) -> str:
-        decoded_message = self.huff.decode(bits, padding_len=0)
+        decoded_message = self.huffman.decode(bits, padding_len=0)
         original_message = self.delim.join([
             self.abrev2word[word] if word in self.abrev2word else word
             for word in decoded_message.split(self.delim)
@@ -256,9 +256,11 @@ class ChunkConverter(BDC):
     """Converts between bits and deck of cards by mapping each chunk of bits
     to a card, using linear probing if there are collisions."""
 
-    def __init__(self):
+    def __init__(self, max_chunk_size=MAX_CHUNK_SIZE):
+        super().__init__()
         self.permuter = PermutationGenerator()
-        self.trash_card_strat_idx = 32
+        self.trash_card_start_idx = 32
+        self.max_chunk_size = max_chunk_size
 
     def _get_parts(self, bit_str):
         """Takes in a bit string, checks if it's possible to encode.
@@ -299,7 +301,7 @@ class ChunkConverter(BDC):
                 return 0, parts, start_padding, last_card_padding
 
             # must be duplicates, so check if can hash
-            canHash, step_size = self.can_hash_msg(int_deck)
+            canHash, step_size = self._can_hash_msg(int_deck)
             if canHash:
                 break
         else:
@@ -352,7 +354,7 @@ class ChunkConverter(BDC):
 
         metadata = step_size + start_padding + end_padding + lengths
 
-        last_n_cards = cards[-self.n_needed_metadata(2**len(metadata)):]
+        last_n_cards = cards[-self._n_needed_metadata(2**len(metadata)):]
         permutation = self.permuter.encode(last_n_cards, int(metadata, 2))
 
         return [int(card) for card in permutation]
@@ -363,7 +365,7 @@ class ChunkConverter(BDC):
         Returns a tuple of step_size, start_padding, end_padding, lengths.
         """
         cards = [str(card) for card in msg_metadata]
-        last_n_cards = cards[-self.n_needed_metadata(2**(msg_len + 3 + 3 + 2)):]
+        last_n_cards = cards[-self._n_needed_metadata(2**(msg_len + 3 + 3 + 2)):]
 
         metadata = self.permuter.decode(last_n_cards)
         metadata = '{0:b}'.format(metadata).zfill(2 + 3 + 3 + msg_len)
@@ -408,7 +410,7 @@ class ChunkConverter(BDC):
         ]
 
         # given the useless_cards, encode the metadata
-        msg_metadata_cards = self.encode_metadata(
+        msg_metadata_cards = self._encode_metadata(
             step_size, start_padding, end_padding, lengths, useless_cards)
         message = msg_cards + msg_metadata_cards
 
@@ -423,7 +425,7 @@ class ChunkConverter(BDC):
             cards = msg
         else:
             # linear probing
-            cards = self.un_hash_msg(msg, step_size)
+            cards = self._unhash_msg(msg, step_size)
 
         # decode message
         chunk_sizes = [
@@ -436,10 +438,11 @@ class ChunkConverter(BDC):
         ])
 
         if end_padding > 0:
-            return bit_str[start_padding:-end_padding] 
+            bit_str = bit_str[start_padding:-end_padding] 
         else:
-            return bit_str[start_padding:]
+            bit_str = bit_str[start_padding:]
 
+        return Bits(bin=bit_str)
 
 class PermutationConverter(BDC):
     """Converts between bits and deck of cards by mapping each permutation of
@@ -464,7 +467,7 @@ def to_partial_deck(domain: Domain, msg_bits: Bits) -> tuple[Deck, Deck]:
 
         if msg_deck is not None:
             metadata_deck = converter.meta.encode(domain, bdc)
-            return msg_deck, metadata_deck
+            return metadata_deck, msg_deck
 
     return None
 
@@ -571,9 +574,6 @@ class Agent:
         self.trash_card_start_idx = 32
         self.trash_cards = list(range(self.trash_card_start_idx, 51))
         self.rng = np.random.default_rng(seed=42)
-        self.huff = Huffman()  # Create huffman object
-        self.permuter = PermutationGenerator()
-        self.max_chunk_size = 6
 
         self.domain_detector = DomainDetector(
             [Domain.PASSWORD]
@@ -587,7 +587,7 @@ class Agent:
     # such as using checksum vs using trashcards, so this should be extracted
     # as a component that could be swapped and reused.
     def _tangle_cards(self, metadata: Deck, message: Deck) -> Deck:
-        used_cards = self.trash_cards + [self. stop_card] + metadata + message
+        used_cards = self.trash_cards + [self.stop_card] + metadata + message
         unused_message_cards = [
             card for card in range(0, 52)
             if card not in used_cards
@@ -610,7 +610,7 @@ class Agent:
 
         deck = remove_trash_cards(cards)
         stop_card = deck.index(self.stop_card) + 1
-        message, message_metadata, metadata = deck[:stop_card], deck[stop_card+1:-1], deck[-1]
+        message, message_metadata, metadata = deck[:stop_card], deck[stop_card+1:-1], deck[-1:]
 
         return metadata, message_metadata, message
 
@@ -657,7 +657,7 @@ class Agent:
         domain, bdc = MetaCodec().decode(metadata)
 
         # deck -> message bits
-        message_bits = bdc().to_bits(domain, message, message_metadata)
+        message_bits = bdc().to_bits(message, message_metadata)
         orig_msg = self.domain2transformer[domain].uncompress(message_bits)
 
         return orig_msg
@@ -706,4 +706,7 @@ def test_metacodec():
         deck = codec.encode(domain, bdc)
         codec.decode(deck)
 
-test_metacodec()
+
+if __name__ == "__main__":
+    test_metacodec()
+    test_huffman_codec()
