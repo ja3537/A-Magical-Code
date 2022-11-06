@@ -1,12 +1,14 @@
 import hashlib
 import heapq
+import os.path as path
 import pdb
 from enum import Enum
 from math import ceil, factorial, log2
 from operator import indexOf
 from pprint import pprint
 from random import Random
-from typing import Callable, Dict, List, Optional, Tuple
+from string import ascii_letters, digits, punctuation
+from typing import Callable, Dict, Optional
 
 # ================
 # Frequency Distributions
@@ -283,6 +285,12 @@ class FrequencyDistribution(Enum):
         chr(5): 0.06338218895840436e-08,
         chr(27): 0.06338218895840436e-08,
         chr(30): 0.06338218895840436e-08,
+        "#": 0.01e-08,
+        "%": 0.01e-08,
+        "\\": 0.01e-08,
+        "`": 0.01e-08,
+        "|": 0.01e-08,
+        "}": 0.01e-08,
     }
 
     numbers = {
@@ -330,7 +338,7 @@ def make_huffman_encoding(frequencies: FrequencyDistribution) -> Dict[str, str]:
     Returns a dictionary mapping from a character to its Huffman encoding.
     """
     huffman_encoding: Dict[str, str] = {}
-    heap: List[FreqTree] = []
+    heap: list[FreqTree] = []
 
     for char, freq in frequencies.value.items():
         heapq.heappush(heap, FreqTree(char, freq))
@@ -386,10 +394,51 @@ def huffman_decode_message(encoded_message: str, encoding: Dict[str, str]) -> st
     return decoded_message
 
 
+def huffman_coders(
+    encoding: Dict[str, str]
+) -> tuple[Callable[[str], str], Callable[[str], str]]:
+    return lambda m: huffman_encode_message(
+        m, encoding
+    ), lambda m: huffman_decode_message(m, encoding)
+
+
+def dict_coders() -> tuple[Callable[[str], str], Callable[[str], str]]:
+    words = []
+    word_index: dict[str, int] = {}
+    # Word list sourced from https://github.com/first20hours/google-10000-english
+    with open(path.join(path.dirname(__file__), "agent8", "dict.txt")) as dict_file:
+        words = [word.strip() for word in dict_file]
+        word_index = {word: i for i, word in enumerate(words)}
+
+    bits_per_word = int(ceil(log2(len(word_index))))
+
+    def encode(message: str) -> str:
+        # assume lowercase words separated by spaces
+        to_encode = message.lower().split()
+        encoded = ""
+        for word in to_encode:
+            if not word in word_index:
+                raise ValueError()
+            encoded += pad(to_bit_string(word_index[word]), bits_per_word)
+        return encoded
+
+    def decode(message: str) -> str:
+        decoded = []
+        for off in range(0, len(message), bits_per_word):
+            word_bits = message[off : off + bits_per_word]
+            word_index = from_bit_string(word_bits)
+            if word_index < 0 or word_index >= len(words):
+                raise ValueError()
+            decoded.append(words[word_index])
+        return " ".join(decoded)
+
+    return encode, decode
+
+
 # ==============
 # Bits <-> Cards
 # ==============
-def bottom_cards_encode(value: int, n: int) -> List[int]:
+def bottom_cards_encode(value: int, n: int) -> list[int]:
     if value >= factorial(n):
         raise ValueError(f"{value} is too large to encode in {n} cards!")
 
@@ -412,7 +461,7 @@ def bottom_cards_encode(value: int, n: int) -> List[int]:
     return cards
 
 
-def bottom_cards_decode(cards: List[int], n: int) -> int:
+def bottom_cards_decode(cards: list[int], n: int) -> int:
     cards = [card for card in cards if card < n]
     # Assuming the top card is the first card in the list
     lo = 0
@@ -534,8 +583,17 @@ def extract_bit_fields(bits: str, format: list[int]) -> list[str]:
 def check_and_remove(bits: str) -> tuple[bool, int, str]:
     """Returns `(passed_checksum, encoding_id, message)`"""
     message_checksum, length_byte, encoding_bits, message = extract_bit_fields(
-        bits, [CHECKSUM_BITS, LENGTH_BITS, ENCODING_BITS]
+        pad(bits, CHECKSUM_BITS + LENGTH_BITS + ENCODING_BITS, allow_over=True),
+        [CHECKSUM_BITS, LENGTH_BITS, ENCODING_BITS],
     )
+
+    # Debug
+    # print("all bits:", bits)
+    # print("message checksum:", message_checksum)
+    # print("length", length_byte)
+    # print("encoding", encoding_bits)
+    # print("message", message)
+
     message_length = from_bit_string(length_byte)
     encoding_id = from_bit_string(encoding_bits)
 
@@ -577,26 +635,12 @@ NUMBER_HUFFMAN = make_huffman_encoding(FrequencyDistribution.numbers)
 # [(encode, decode)]
 # Encoding identifier denotes index in this list
 CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
-    (
-        lambda m: huffman_encode_message(m, LOWERCASE_HUFFMAN),
-        lambda m: huffman_decode_message(m, LOWERCASE_HUFFMAN),
-    ),
-    (
-        lambda m: huffman_encode_message(m, MIXED_HUFFMAN),
-        lambda m: huffman_decode_message(m, MIXED_HUFFMAN),
-    ),
-    (
-        lambda m: huffman_encode_message(m, ALPHANUM_HUFFMAN),
-        lambda m: huffman_decode_message(m, ALPHANUM_HUFFMAN),
-    ),
-    (
-        lambda m: huffman_encode_message(m, ASCII_HUFFMAN),
-        lambda m: huffman_decode_message(m, ASCII_HUFFMAN),
-    ),
-    (
-        lambda m: huffman_encode_message(m, NUMBER_HUFFMAN),
-        lambda m: huffman_decode_message(m, NUMBER_HUFFMAN),
-    ),
+    huffman_coders(LOWERCASE_HUFFMAN),
+    huffman_coders(MIXED_HUFFMAN),
+    huffman_coders(ALPHANUM_HUFFMAN),
+    huffman_coders(ASCII_HUFFMAN),
+    huffman_coders(NUMBER_HUFFMAN),
+    dict_coders(),
 ]
 
 CHECKSUM_BITS = 10
@@ -624,7 +668,6 @@ def select_character_encoding(message: str) -> tuple[str, int]:
             f"Could not encode message with any available encodings: {message}"
         )
 
-    print("Selected encoding", shortest_encoding)
     return shortest_encoded, shortest_encoding
 
 
@@ -644,6 +687,7 @@ class Agent:
         try:
             encoded, encoding_id = select_character_encoding(message)
         except ValueError as e:
+            # TODO: Lossy encoding when no encodings cover the message domain
             print(e)
             return list(range(52))
 
@@ -655,7 +699,12 @@ class Agent:
         with_checksum = checked_bits + checksum
 
         c = find_c_for_message(with_checksum)
-        card_encoded = bottom_cards_encode(from_bit_string(with_checksum), c)
+        try:
+            card_encoded = bottom_cards_encode(from_bit_string(with_checksum), c)
+        except ValueError as e:
+            # TODO: Lossy encoding when message length > available bits in card deck
+            print(e)
+            return list(range(52))
 
         # Debugging
         # print("Message:", encoded)
@@ -683,12 +732,32 @@ class Agent:
                     return out_message
                 except ValueError:
                     self.failed_decodes += 1
+                    print("Failed to decode:", deck)
         return "NULL"
+
+
+def uniform_random_message(character_set: str, length: int) -> str:
+    return "".join(random.choices(character_set, k=length))
+
+
+def shuffle(n, deck):
+    rng = np.random.default_rng()
+    shuffles = rng.integers(0, 52, n)
+    for pos in shuffles:
+        top_card = deck[0]
+        deck = deck[1:]
+        deck = deck[:pos] + [top_card] + deck[pos:]
+    return deck
 
 
 if __name__ == "__main__":
     agent = Agent()
-    pprint(agent.encoding)
+
+    for c in ascii_letters + digits + punctuation:
+        deck = agent.encode(c)
+        rted = agent.decode(deck)
+        if rted != c:
+            print("Failed to encode:", c)
 
     for n in range(1, 52):
         assert (

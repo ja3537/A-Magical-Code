@@ -100,12 +100,15 @@ class Mission:
 
 
     def score_partial(self, m, decoded_m):
-        #print(decoded_m.removeprefix("PARTIAL: "))
-        return 0
+        if m.startswith(decoded_m):
+            return len(decoded_m)/(len(m) + 1)
+        else:
+            return 0
 
     def score_message(self, m, decoded_m):
         if decoded_m.startswith("PARTIAL: "):
-            return self.score_partial(m, decoded_m)
+            stripped_m = decoded_m.removeprefix("PARTIAL: ")
+            return self.score_partial(m, stripped_m)
         if m == decoded_m:
             return 1
         else:
@@ -131,10 +134,10 @@ class Mission:
                         f.write('shuffled deck: ' + str(self.shuffled_decks[i][run]) + '\n')
                     f.write(self.decoded[i][run] + '\n')
                     f.write("score " + str(self.scores[i][run]) + '\n')
-                f.write("total score for agent on this message: {}/{}\n".format(sum(self.scores[i]), self.runs))
+                f.write("total score for agent on this message: {:.3f}/{}\n".format(sum(self.scores[i]), self.runs))
                 f.write('\n')
             f.write('\n')
-            f.write('total score for agent: {}/{}'.format(self.total_score, len(self.messages)*self.runs))
+            f.write('total score for agent: {:.3f}/{}'.format(self.total_score, len(self.messages)*self.runs))
 
 
 
