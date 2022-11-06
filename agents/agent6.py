@@ -71,13 +71,12 @@ class ArtihmaticCodingAgent:
 
         getcontext().prec = 100
 
-        self.weight_dict = {
-            1: [0.4, 0.4, 0.001, 0.2], #alphabetical + symbols + alphabeticalCaps
-            2: [0.499, 0.499, 0.002,0], #alphabetical + symbols
-            3: [0.999, 0, 0.001,0], #only alphabetical
-            4: [0, 0, 0.001, 0.999], #only alphabeticalCaps
-            5: [0, 0.999, 0.001,0], #Only Numerical Symbols
-        }
+        #index:
+        #0 : lower Alphabet
+        #1 : symbols
+        #2 : number
+        #3 : base
+        #4 : Capital Alphabet
 
         #arithmetic coding based on these frequencies
         #https://www3.nd.edu/~busiforc/handouts/cryptography/letterfrequencies.html
@@ -123,11 +122,46 @@ class ArtihmaticCodingAgent:
             self.alpha_caps[i] = 1/len(self.caps)
 
         #all Symbol/Number Freq
-        #unused symbols: 
-        self.num_symbols = "0123456789!#$%&'*,-/?@[]_`()<=>;:^{|}~\\+"
-        self.symbol_num_freq = {}
-        for i in self.num_symbols:
-            self.symbol_num_freq[i] = 1/len(self.num_symbols)
+        #unused symbols: None
+        self.num= "0123456789"
+        self.num_freq = {}
+        for i in self.num:
+            self.num_freq[i] = 1/len(self.num)
+
+        self.symbols = "!#$%&'*,-/?@[]_`()<=>;:^{|}~\\+"
+        self.symbol_freq = {}
+        for i in self.symbols:
+            self.symbol_freq[i] = 1/len(self.symbols)
+
+
+        #TODO: create script to finalize proportions of encoding
+        #Group 1: lowercase alphabet + base + ","
+        #Group 2: capital alphabet + number + " "
+        #Group 3: passwords: lowercase letters + numbers + (no spaces)
+
+        #USE Special Method
+        #Group 4: number (always 4 decimals) + north/south + west/east
+            #EG. 23.5504 S, 46.6339 W
+
+        #Group 5: number + Lowercase Alphabet + base + " -#' "
+            #Add encoding because all words start with uppercase
+
+        #Group 6: lowercase Alphabet + base
+        #Group 7: longer words + coordinates (?)
+        #Group 8: lowercase Alphabet + base
+            #EG. Names + Places, all have capital first character
+
+        #General Encoder + for each group 
+        #sort by length of messages (where shortest messages should be the highest weight)
+        self.freq_d = [self.alphabet_freq, self.symbol_freq, self.num_freq, self.base_freq, self.alpha_caps]
+        self.weight_dict = {
+            1: [0.4, 0.3, 0.199, 0.001, 0.1], #alphabetical + number + symbols + alphabeticalCaps + base
+            2: [0.499, 0.499, 0.002, 0], #
+            3: [0.999, 0, 0, 0.001, 0], #only alphabetical + base
+            4: [0, 0, 0.001, 0.999], #only alphabeticalCaps
+            5: [0, 0.999, 0.001, 0], #Numerical + Symbols + base
+            6: [0, 0.7, 0.1, 0.2] # For Group4: Numbers + Base + Capital
+        }
 
     def change_frequencies(self, freq, maximum):
 
@@ -145,15 +179,13 @@ class ArtihmaticCodingAgent:
 
     def get_boundaries_based_on_lead_number(self, number):
 
-        freq_d = [self.alphabet_freq, self.symbol_num_freq, self.base_freq, self.alpha_caps]
-
         weights = self.weight_dict[int(number)]
 
         d = {}
 
         for i in range(4):
             if weights[i] > 0:
-                d.update(self.change_frequencies(freq_d[i], weights[i]))
+                d.update(self.change_frequencies(self.freq_d[i], weights[i]))
         
         return d
 
@@ -311,8 +343,13 @@ class ArtihmaticCodingAgent:
                 if word_count[word] > max_word_count:
                     max_word_count = word_count[word]
                     max_word = word
-
-        return max_word[:-1] if max_word is not None else "NULL"
+        print(word_count)
+        
+        if max_word in word_count and word_count[max_word] > 1:
+            return max_word[:-1]
+        else:
+            return "NULL"
+        #return max_word[:-1] if max_word is not None else "NULL"
 
 
 ########################################################################################################
@@ -542,7 +579,7 @@ class Agent:
 if __name__ == "__main__":
     agent = ArtihmaticCodingAgent()
     
-    message = "hello i am maximo oen. bye"
+    message = "hello i am maximo oen. bye bye"
     deck = agent.encode(message)
     print(deck)
     print(agent.decode(deck))
