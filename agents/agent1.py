@@ -9,7 +9,11 @@ import numpy as np
 import cards
 
 
-logging.disable(logging.INFO)
+log_format = "%(levelname)s: %(funcName)s(): %(message)s"
+logging.basicConfig(level=logging.INFO, format=log_format)
+logger = logging.getLogger(__name__)
+# logger.disabled = True
+
 # Permutations of input strings
 alpha = " abcdefghijklmnopqrstuvwxyz"
 numeric = " 0123456789"
@@ -17,12 +21,13 @@ alpha_numeric = alpha + numeric[1:]  # Don't include space twice
 alpha_numeric_punc = alpha_numeric + "."
 
 
-def calc_checksum(deck: list[int], mod_prime=40213, mode="blake", base=239):
+def calc_checksum(deck: list[int], mod_prime=40213, mode="blake2b", base=239):
     """Calculate the checksum from an interger repr the binary data
     Args:
         deck: List of cards making up the message
-        mod_prime: Modulus value. Checksum will always be less than this.
+        mod_prime: Maximum value of the checksum. Better if it's a prime number.
             Values: [113, 719, 4973, 40213, 362867]
+        mode: Which checksum to use (blake or polynomial)
         base: The base of the number system. Should be equal to the len of the message sequence.
     """
     if mode not in ["blake2b", "polynomial"]:
@@ -43,28 +48,16 @@ def calc_checksum(deck: list[int], mod_prime=40213, mode="blake", base=239):
 
 # ------- str to perm and vice-versa ----------------- #
 class Perm:
-    def __init__(self, valid_cards=tuple(range(52 - 12, 52)), valid_char_str=alpha, max_msg_len=12):
+    def __init__(self, valid_cards=tuple(range(52 - 12, 52)), valid_char_str=alpha):
         """Borrowed and modified from group 7"""
         self.encoding_len = len(valid_cards)
-        self.max_msg_len = max_msg_len
+        self.max_msg_len = math.floor(math.log(math.factorial(self.encoding_len), len(valid_char_str)))
         self.perm_zero = valid_cards
         factorials = [0] * self.encoding_len
         for i in range(self.encoding_len):
             factorials[i] = math.factorial(self.encoding_len - i - 1)
         self.factorials = factorials
         self.char_list = valid_char_str
-
-    def perm_to_num(self, permutation):
-        n = len(permutation)
-        number = 0
-
-        for i in range(n):
-            k = 0
-            for j in range(i + 1, n):
-                if permutation[j] < permutation[i]:
-                    k += 1
-            number += k * self.factorials[i]
-        return number
 
     def check_num_too_large(self, num):
         items = list(self.perm_zero[:])
@@ -77,7 +70,7 @@ class Perm:
 
     def num_to_perm(self, n):
         if self.check_num_too_large(n):
-            logging.warning(f"Input text too long to encode into {self.encoding_len} cards.")
+            logger.warning(f"Input text too long to encode into {self.encoding_len} cards.")
             return []
 
         perm = []
@@ -89,6 +82,7 @@ class Perm:
         return perm
 
     def str_to_num(self, message):
+        """Convert a message string into a decimal"""
         # Stop match string at unknown char, to meet with partial requirements
         tokens = []
         for ch in message:
@@ -100,44 +94,59 @@ class Perm:
             tokens.append(" ")
         tokens = tokens[::-1]
 
-        # Convert char to int
-        max_trials = 100
-        while max_trials > 0:
-            max_trials -= 1
-            num = 0
-            for idx, ch in enumerate(tokens):
-                num += self.char_list.index(ch) * len(self.char_list) ** idx
+        if len(message) > len(tokens):
+            logger.warning(f"Input text too long to encode. "
+                            f"Shortening message to '{''.join(tokens[::-1])}'")
 
-            # Check if message can fit in N cards
-            if num // self.factorials[0] < len(self.perm_zero):
+        # Convert char to int
+        num = 0
+        final_tokens = []
+        for idx, ch in enumerate(tokens):
+            num_ = self.char_list.index(ch) * len(self.char_list) ** idx
+            if (num + num_) // self.factorials[0] > len(self.perm_zero):
+                logger.warning(f"Input text too long to encode into {self.encoding_len} cards. "
+                                f"Shortening message to '{''.join(final_tokens)}'")
                 break
-            else:
-                tokens = tokens[1:]
-        if max_trials < 100 and tokens[0] != " ":
-            logging.warning(f"Input text too long to encode into {self.encoding_len} cards. Shortening message to "
-                            f"'{''.join(tokens[::-1])}'")
+            num += num_
+            final_tokens.append(ch)
+
         return num
 
     def str_to_perm(self, message):
+        """Convert a message string into a sequence of cards"""
         # TODO: Add notation for unknown chars. Make it a partial match
         # TODO: If there is a space exactly where the msg is cut off, we don't recognize that as a partial match
         max_chars = self.max_msg_len
         if len(message) > max_chars:
             message = message[:max_chars]
-            logging.warning(f"Input text longer than {max_chars} characters. Shortening message to "
+            logger.warning(f"Input text longer than {max_chars} characters. Shortening message to "
                             f"'{message}'")
 
         num = self.str_to_num(message)
         perm = self.num_to_perm(num)
         return perm
 
+    def perm_to_num(self, permutation):
+        """Convert a sequence of cards into a decimal number"""
+        n = len(permutation)
+        number = 0
+
+        for i in range(n):
+            k = 0
+            for j in range(i + 1, n):
+                if permutation[j] < permutation[i]:
+                    k += 1
+            number += k * self.factorials[i]
+        return number
+
     def num_to_str(self, num):
+        """Convert a decimal number into a string of characters.
+        Treat the characters as a number system of base (num of unique characters)"""
         words = []
         break_next = False
         while True:
-            index = num % len(self.char_list)
+            num, index = divmod(num, len(self.char_list))
             words.append(self.char_list[index])
-            num = num // len(self.char_list)
             if break_next:
                 break
             if num == 0:
@@ -145,6 +154,7 @@ class Perm:
         return ''.join(words[::-1]).strip()
 
     def perm_to_str(self, perm):
+        """Convert a sequence of cards into a message string"""
         num = self.perm_to_num(perm)
         msg = self.num_to_str(num)
         return msg
@@ -328,12 +338,15 @@ class Agent:
         self.char_set = alpha
         self.max_msg_len = math.floor(math.log(math.factorial(self.encode_len), len(self.char_set)))
         self.valid_cards_p = tuple(range(52 - self.encode_len, 52))
-        self.perm = Perm(self.valid_cards_p, self.char_set, self.max_msg_len)
+        self.perm = Perm(self.valid_cards_p, self.char_set)
 
-        self.cksum_len = 7
+        self.cksum_len = 8
         self.valid_cards_c = tuple(range(52 - self.encode_len - self.cksum_len, 52 - self.encode_len))
-        max_ck_len = math.floor(math.log(math.factorial(self.cksum_len), len(self.char_set)))
-        self.perm_ck = Perm(self.valid_cards_c, self.char_set, max_ck_len)
+        # max_ck_len = math.floor(math.log(math.factorial(self.cksum_len), len(self.char_set)))
+        self.perm_ck = Perm(self.valid_cards_c, self.char_set)
+
+        self.mod_prime = 40213
+        self.mod_mode = "blake2b"
 
         # Only used for debugging
         self.checksum_encode = None
@@ -345,14 +358,13 @@ class Agent:
         max_chars = self.max_msg_len
         if len(message) > max_chars:
             message = " " + message[:max_chars-1]
-            logging.warning(f"Input text longer than {max_chars} characters. Shortening message to "
-                            f"'{message}'")
+            logger.debug(f"Input text longer than {max_chars} characters. Shortening message to '{message}'")
 
         num = self.perm.str_to_num(message)
         seq_encode = self.perm.num_to_perm(num)
 
         # Calculate Checksum
-        checksum = calc_checksum(seq_encode)
+        checksum = calc_checksum(seq_encode, mod_prime=self.mod_prime, mode=self.mod_mode)
         self.checksum_encode = checksum
         seq_checksum = self.perm_ck.num_to_perm(checksum)
 
@@ -373,8 +385,9 @@ class Agent:
         self.checksum_decode = decoded_checksum
 
         # Try to recover message (unscramble if necessary)
-        unscramble = Unscramble(seq_encode, decoded_checksum, max_trials=1000000)
-        seq_fixed = unscramble.unscramble()
+        max_trials = len(self.char_set) ^ 3 + 1  # Greater than depth 3 is ineffective (from our tests)
+        unscramble = Unscramble(seq_encode, decoded_checksum, max_trials=max_trials)
+        seq_fixed = unscramble.unscramble(mod_prime=self.mod_prime, mode=self.mod_mode)
 
         if seq_fixed is None:
             decoded_str = "NULL"
@@ -386,8 +399,8 @@ class Agent:
 
 
 if __name__ == "__main__":
-    logging.disable(logging.NOTSET)
-    logging.basicConfig(level=logging.DEBUG)
+    logger.disabled = False
+    logging.basicConfig(level=logger.DEBUG, format=log_format)
     test_agent = False
     test_perm = False
     test_huff = False
@@ -420,7 +433,7 @@ if __name__ == "__main__":
     if test_perm:
         encode_len = 12
         valid_cards = tuple(range(52 - encode_len, 52))
-        test_perm = Perm(valid_cards, alpha, 20)
+        test_perm = Perm(valid_cards, alpha)
         card_perm = test_perm.str_to_perm("hel loworld")
         # card_perm = test_perm.str_to_perm("helloworld")
         # card_perm = test_perm.str_to_perm("123456987")
@@ -444,7 +457,7 @@ if __name__ == "__main__":
         # COMPARE HUFF VS DIRECT ENCODE
         encode_len = 12
         valid_cards = tuple(range(52 - encode_len, 52))
-        test_perm = Perm(valid_cards, alpha, 20)
+        test_perm = Perm(valid_cards, alpha)
         card_perm1 = test_perm.str_to_perm(msg)
         decode1 = test_perm.perm_to_str(card_perm1)
 
@@ -460,7 +473,7 @@ if __name__ == "__main__":
                 break
 
         if max_trials < 29:
-            logging.warning(f"Huff: Message too large to encode. Shortening to : '{msg}'")
+            logger.warning(f"Huff: Message too large to encode. Shortening to : '{msg}'")
         card_perm2 = test_perm.num_to_perm(num)
         decode2 = test_perm.perm_to_num(card_perm2)
         decode2 = huff.num_to_binstr(decode2)
