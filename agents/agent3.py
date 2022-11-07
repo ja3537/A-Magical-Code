@@ -224,7 +224,7 @@ class DomainDetector:
 
 class MessageTransformer(ABC):
     @abstractmethod
-    def compress(self, msg: str) -> Bits:
+    def compress(self, msg: str) -> tuple[str, Bits]:
         pass
 
     @abstractmethod
@@ -236,17 +236,21 @@ class GenericTransformer(MessageTransformer):
     def __init__(self):
         self.huffman = Huffman()
 
-    def compress(self, msg: str) -> Bits:
+    def compress(self, msg: str) -> tuple[str, Bits]:
         bits = self.huffman.encode(msg, padding_len=0)
         debug(f'GenericTransformer: "{msg}" -> {bits.bin}')
 
-        return bits
+        return msg, bits
 
     def uncompress(self, bits: Bits) -> str:
         msg = self.huffman.decode(bits, padding_len=0)
         debug(f'GenericTransformer: "{bits.bin}" -> {msg}')
 
         return msg
+
+    @classmethod
+    def __str__(cls) -> str:
+        return "GenericTransformer"
 
 class WordTransformer(MessageTransformer):
     def __init__(self, delimiter=" ", wordlist=None, huffman_encoding=None):
@@ -280,14 +284,14 @@ class WordTransformer(MessageTransformer):
                     self.abrev2word[shortened] = full
                     self.word2abrev[full] = shortened
 
-    def compress(self, msg: str) -> Bits:
+    def compress(self, msg: str) -> tuple[str,Bits]:
         msg = self.delim.join([
             self.word2abrev[word] if word in self.word2abrev else word
             for word in msg.split(self.delim)
         ])
         bits = self.huffman.encode(msg, padding_len=0)
 
-        return bits
+        return msg, bits
 
     def uncompress(self, bits: Bits) -> str:
         decoded_message = self.huffman.decode(bits, padding_len=0)
@@ -297,6 +301,10 @@ class WordTransformer(MessageTransformer):
         ])
 
         return original_message
+
+    @classmethod
+    def __str__(cls) -> str:
+        return "WordTransformer"
 
 class PasswordsTransformer(MessageTransformer):
     def __init__(self):
@@ -311,7 +319,7 @@ class PasswordsTransformer(MessageTransformer):
                 self.abrev2word[shortened] = full
                 self.word2abrev[full] = shortened
 
-    def compress(self, msg: str) -> Bits:
+    def compress(self, msg: str) -> tuple[str, Bits]:
         msg = msg.replace("@", "")
         splitMsg = self._get_all_words(msg, self.word2abrev.keys())
 
@@ -322,7 +330,7 @@ class PasswordsTransformer(MessageTransformer):
         print(splitMsg, msg)
         #TODO: join on space or not?
         bits = self.huffman.encode(combinedMsg, padding_len=0)
-        return bits
+        return combinedMsg, bits
 
     def uncompress(self, bits: Bits) -> str:
         msg = self.huffman.decode(bits, padding_len=0)
@@ -381,11 +389,15 @@ class PasswordsTransformer(MessageTransformer):
 
         return words
 
+    @classmethod
+    def __str__(cls) -> str:
+        return "PasswordTransformer"
+
 class CoordsTransformer(MessageTransformer):
     def __init__(self):
         self.huffman = Huffman()
 
-    def compress(self, msg: str) -> Bits:
+    def compress(self, msg: str) -> tuple[str, Bits]:
         # 0-180 0000-9999 0-180 0000-9999 0-16
         info = re.split('[ .]', msg.replace(",", ""))
         lat, latMin, latDir, long, longMin, longDir = info
@@ -399,7 +411,7 @@ class CoordsTransformer(MessageTransformer):
                 pass
 
         #TODO: can I decrease the n bits for each number even more?
-        return Bits(bin=bits)
+        return msg, Bits(bin=bits)
 
     def uncompress(self, bits: Bits) -> str:
         bitstr = bits.bin
@@ -428,37 +440,49 @@ class CoordsTransformer(MessageTransformer):
             return "0"*(4 - len(num)) + num
         return num
 
+    @classmethod
+    def __str__(cls):
+        return "CoordsTransformer"
+
 class AddressTransformer(MessageTransformer): #TODO: later bc format not finalized
     def __init__(self):
         self.huffman = Huffman()
 
-    def compress(self, msg: str) -> Bits:
+    def compress(self, msg: str) -> tuple[str, Bits]:
         bits = self.huffman.encode(msg, padding_len=0)
         debug(f'GenericTransformer: "{msg}" -> {bits.bin}')
 
-        return bits
+        return msg, bits
 
     def uncompress(self, bits: Bits) -> str:
         msg = self.huffman.decode(bits, padding_len=0)
         debug(f'GenericTransformer: "{bits.bin}" -> {msg}')
 
         return msg
+
+    @classmethod
+    def __str__(cls) -> str:
+        return "AddressTransformer"
        
 class FlightsTransformer(MessageTransformer): #TODO: later bc format not finalized
     def __init__(self):
         self.huffman = Huffman()
 
-    def compress(self, msg: str) -> Bits:
+    def compress(self, msg: str) -> tuple[str, Bits]:
         bits = self.huffman.encode(msg, padding_len=0)
         debug(f'GenericTransformer: "{msg}" -> {bits.bin}')
 
-        return bits
+        return msg, bits
 
     def uncompress(self, bits: Bits) -> str:
         msg = self.huffman.decode(bits, padding_len=0)
         debug(f'GenericTransformer: "{bits.bin}" -> {msg}')
 
         return msg
+
+    @classmethod
+    def __str__(cls) -> str:
+        return "FlightsTransformer"
 
 # TODO: adding freq prevents cases of things not in it
 class WarWordsTransformer(MessageTransformer):
@@ -468,11 +492,15 @@ class WarWordsTransformer(MessageTransformer):
         self.word_file = "./messages/agent3/dicts/shortened_dicts/war_words_mini.txt"
         self.transformer = WordTransformer(wordlist=self.word_file, huffman_encoding=self.huffman)
 
-    def compress(self, msg: str) -> Bits: #TODO: maybe clean messages?
+    def compress(self, msg: str) -> tuple[str, Bits]: #TODO: maybe clean messages?
         return self.transformer.compress(msg)
 
     def uncompress(self, bits: Bits) -> str:
         return self.transformer.uncompress(bits)
+
+    @classmethod
+    def __str__(cls) -> str:
+        return "WarWordsTransformer"
 
 class PlacesAndNamesTransformer(MessageTransformer):
     def __init__(self):
@@ -481,13 +509,17 @@ class PlacesAndNamesTransformer(MessageTransformer):
         self.word_file = "./messages/agent3/dicts/shortened_dicts/places_and_names_mini.txt"
         self.transformer = WordTransformer(wordlist=self.word_file, huffman_encoding=self.huffman)
 
-    def compress(self, msg: str) -> Bits:
+    def compress(self, msg: str) -> tuple[str, Bits]:
         return self.transformer.compress(msg.lower())
 
     def uncompress(self, bits: Bits) -> str:
         decoded_msg = self.transformer.uncompress(bits)
         capitalized_msg = [word.capitalize() for word in decoded_msg.split()]
         return " ".join(capitalized_msg)
+
+    @classmethod
+    def __str__(cls) -> str:
+        return "PlacesAndNamesTransformer"
 
 class SixWordsTransformer(MessageTransformer):#TODO: change this to idxs??
     def __init__(self):
@@ -496,28 +528,36 @@ class SixWordsTransformer(MessageTransformer):#TODO: change this to idxs??
         self.word_file = "./messages/agent3/dicts/shortened_dicts/six_words_mini.txt"
         self.transformer = WordTransformer(wordlist=self.word_file, huffman_encoding=self.huffman)
 
-    def compress(self, msg: str) -> Bits:
+    def compress(self, msg: str) -> tuple[str, Bits]:
         return self.transformer.compress(msg)
 
     def uncompress(self, bits: Bits) -> str:
         return self.transformer.uncompress(bits)
+
+    @classmethod
+    def __str__(cls) -> str:
+        return "SixWordsTransformer"
 
 class AlphaNumericTransformer(MessageTransformer):
     def __init__(self):
         self.freq = {"a": 1, "b": 1, "c": 1, "d": 1, "e": 1, "f": 1, "g": 1, "h": 1, "i": 1, "j": 1, "k": 1, "l": 1, "m": 1, "n": 1, "o": 1, "p": 1, "q": 1, "r": 1, "s": 1, "t": 1, "u": 1, "v": 1, "w": 1, "x": 1, "y": 1, "z": 1, "0": 1, "1": 1, "2": 1, "3": 1, "4": 1, "5": 1, "6": 1, "7": 1, "8": 1, "9": 1, ".": 1, ",": 1, " ": 1}
         self.huffman = Huffman(self.freq)
 
-    def compress(self, msg: str) -> Bits:
+    def compress(self, msg: str) -> tuple[str, Bits]:
         bits = self.huffman.encode(msg, padding_len=0)
         debug(f'GenericTransformer: "{msg}" -> {bits.bin}')
 
-        return bits
+        return msg, bits
 
     def uncompress(self, bits: Bits) -> str:
         msg = self.huffman.decode(bits, padding_len=0)
         debug(f'GenericTransformer: "{bits.bin}" -> {msg}')
 
         return msg
+
+    @classmethod
+    def __str__(cls) -> str:
+        return "AlphaNumericTransformer"
        
 
 # -----------------------------------------------------------------------------
@@ -755,6 +795,10 @@ class ChunkConverter(BDC):
 
         return Bits(bin=bit_str)
 
+    @classmethod
+    def __str__(cls) -> str:
+        return "ChunkConverter"
+
 class PermutationConverter(BDC):
     """Converts between bits and deck of cards by mapping each permutation of
     cards to a unique integer in its binary representation."""
@@ -769,6 +813,10 @@ class PermutationConverter(BDC):
         debug(f"recovered message deck: {msg} -> {bits.bin}")
 
         return bits
+
+    @classmethod
+    def __str__(cls) -> str:
+        return "PermutationConverter"
 
 def to_partial_deck(domain: Domain, msg_bits: Bits, free_cards: Deck) -> Optional[tuple[Deck, Deck, Deck]]:
     """Dynamically select the best BDC to encode bits to deck."""
@@ -980,12 +1028,16 @@ class Agent:
         #      b) message deck: contains the encoded message
         # 4. tangles the decks, trash cards, unused cards, stop cards into a
         #    final deck returned to the simulator
+        info(f"\n[ {msg} ] encode")
 
         domain = self.domain_detector.detect(msg)
+        info(f"[ {msg} ]", f"domain: {domain.name}")
 
-        debug(f"message domain: {domain.name}")
-
-        bits = self.domain2transformer[domain].compress(msg)
+        compressed_msg, bits = self.domain2transformer[domain].compress(msg)
+        info(f"[ {msg} ]",
+            f"transformer: {self.domain2transformer[domain]},",
+            f"compressed message: \"{compressed_msg}\",",
+            f"bits: {bits.bin}")
 
         # TODO: at this point, we already now the number of bits to encode to deck.
         # So it seems like *here* we can decide what *scheme* to use make our encoded
@@ -1023,11 +1075,18 @@ class Agent:
         # or modify the interface to also return cards used.
         free_cards = [card for card in range(self.trash_card_start_idx)]
         metadata_cards, message_metadata_cards, message_cards = to_partial_deck(domain, bits, free_cards)
+        info(f"[ {msg} ]", f"cards available for encoding message: {free_cards}")
+        info(f"[ {msg} ]",
+            f"metadata cards: {metadata_cards},",
+            f"message metadata cards: {message_metadata_cards},",
+            f"message cards: {message_cards},")
+
         final_deck = self._tangle_cards(metadata_cards, message_metadata_cards, message_cards)
+        info(f"[ {msg} ]", f"valid deck: {valid_deck(final_deck)}, ", f"final deck: {final_deck}")
 
         return final_deck
 
-    def decode(self, deck) -> str:
+    def decode(self, deck: Deck) -> str:
         # Decoding Steps:
         # 1. recover the deck that contains the message and metadata
         #    The metadata containing the bdc and domain is fixed size and are always at the end of the deck of message + metadata
@@ -1036,17 +1095,27 @@ class Agent:
         # 2. read the metadata to recover bdc and domain
         # 3. use bdc to convert message deck -> message bits
         # 4. use domain to convert message bits -> original message string
+        info(f"\ndecode, deck: {deck}")
         
         metadata, message_metadata, message = self._untangle_cards(deck)
+        info(f"untangled deck: ",
+            f"metadata cards: {metadata},",
+            f"message metadata cards: {message_metadata},",
+            f"message cards: {message}")
         if len(message) == 0:
             return "NULL"
 
         domain, bdc = MetaCodec().decode(metadata)
+        info(f"decoded metadata: domain: {domain.name}, bits <-> deck converter: {bdc.__str__()}")
 
         # deck -> message bits
         free_msg_cards = [card for card in range(32) if card not in metadata]
         message_bits = bdc(free_msg_cards).to_bits(message, message_metadata)
+        info(f"deck -> bits using {bdc.__str__()}: {message_metadata} -> {message_bits.bin}")
+
         orig_msg = self.domain2transformer[domain].uncompress(message_bits)
+        info(f"using transformer: {self.domain2transformer[domain]},",
+            f"uncompressed message: \"{orig_msg}\"")
 
         return orig_msg
 
