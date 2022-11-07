@@ -4,19 +4,47 @@ from dahuffman import load_shakespeare
 import sys
 import math
 import numpy as np
-import re
+import re, pickle
+import copy, itertools
+
+vocab_paths = ['', '', '', '', '', 'messages/agent2/g6_vocab.txt', 'messages/agent2/g7_vocab.txt', 'messages/agent2/g8_vocab.txt']
 
 def english_codec_w_digit():
-    # TODO: special characters?
     # https://en.wikipedia.org/wiki/Letter_frequency
     letter_freq = np.array([8.167, 1.492, 2.782, 4.253, 12.702, 2.228, 2.015, 6.094, 6.966, 0.153, 0.772, 4.025, 2.406, 6.749, 7.507, 1.929, 0.095, 5.987, 6.327, 9.056, 2.758, 0.978, 2.36, 0.15, 1.974, 0.074])
-    letter_freq = letter_freq / letter_freq.sum() * 0.92 # reserve 92% for lettes
+    letter_freq = letter_freq / letter_freq.sum() * 0.92 # reserve 92% for letters
     digit_freq = np.ones(10) / letter_freq.sum() * 0.03 # reserve 3% for digits
     space_freq = np.ones(1) * 0.05 # reserve 5% for space
     freq = np.concatenate([letter_freq/100*95, digit_freq, space_freq]).tolist()
     chars = list(map(chr, range(97, 123))) + list(map(str, range(10))) + [' ']
     freq_table = {c:f for c, f in zip(chars, freq)}
-    return HuffmanCodec.from_frequencies(freq_table)
+    return HuffmanCodec.from_frequencies(freq_table) # 37 characters
+
+def get_map(codec, mode, length, group):
+        with open(vocab_paths[group-1], 'r') as f:
+            vocab = f.read().replace('\t', '').split('\n')
+
+        # rank by bits needed to encode each combination
+        chars = list(codec.get_code_table().keys())[1:]
+        code_table = codec.get_code_table()
+        all_combi = [(combi, sum([code_table[c][0] for c in combi])) for combi in itertools.combinations_with_replacement(chars, length)]
+        ranked_combi = [combi for combi, _ in sorted(all_combi, key=lambda x:x[1])]
+
+        # map word in vocab to 3-char permutations
+        str_map = {}
+        i = 0
+        for combi in ranked_combi:
+            target_strs = set([''.join(p) for p in itertools.permutations(combi)])
+            for target in target_strs:
+                if mode == 'encode':
+                    str_map[vocab[i]] = target
+                else:
+                    str_map[target] = vocab[i]
+                i += 1
+                if i >= len(vocab): break
+            if i >= len(vocab): break
+
+        return str_map
 
 def perm_encode(A):
     if len(A) == 0:
@@ -45,7 +73,7 @@ def perm_decode(value, n):
 
 class Agent:
     def __init__(self):
-        self.codec = english_codec_w_digit()
+        #self.codec = english_codec_w_digit()
         #self.codec.print_code_table()
         self.N_MAX = 30
         self.checksum = 2**16 -1 #sum(range(53))
@@ -84,19 +112,19 @@ class Agent:
             encoded = self.add_checksum(encoded)
             perm = int.from_bytes(encoded, byteorder='big')
             perm = self.add_partial_flag(perm)
+            perm = self.add_encoder_choice(perm) # IMPORTANT: add placeholder bits for length calculation
             if perm > max_perm:
+                s = s[:-1] 
                 truncated = True
-            s = s[:-1] # note that the last truncation is not counted
 
-        #print("ENCODED" + str(encoded))
-        N = 1
+        print(s)
+        N = 4
         while math.factorial(N) <= perm:
             N += 1
-
-        #print(s, N)
-        #print("perm: " + str(perm))
         self.N = N
-        self.start = 52 - self.N 
+
+        perm, _ = self.remove_encoder_choice(perm)
+        perm, _ = self.remove_partial_flag(perm)
 
         return perm, truncated
 
@@ -109,30 +137,84 @@ class Agent:
         partial = bool(perm - (perm >> 1 << 1))
         return perm >> 1, partial
 
+    def add_encoder_choice(self, perm, choice=0):
+        '''Use 3 bits to encode encoder'''
+        return (perm << 3) + choice
+
+    def remove_encoder_choice(self, perm):
+        '''Remove and use last 3 bits to determine the encoder'''
+        choice = perm - (perm >> 3 << 3)
+        return perm >> 3, choice
 
     def add_checksum(self,message):
         checksum = self.checksum - sum(message)
-        #print("cs" + str(checksum))
         sb = checksum.to_bytes(2,"big")
         new_message = message + sb
-        #print(sb)
         return new_message
 
-    def encode(self, message):
+    def encode_default(self, message):
+        self.codec = english_codec_w_digit()
         partial = False
-        # print("message: " + message)
         message, truncated = self.clean_text(message)
         partial |= truncated
-        #print("message: " + message)
         perm, truncated = self.truncate_and_encode(message)
         partial |= truncated
-        perm, _ = self.remove_partial_flag(perm)
+        return perm, partial
+
+    def decode_default(self, b):
+        return self.codec.decode(b)
+
+    def encode_w_vocab(self, message, group):
+        length = 3 # 37^3 = 50653
+        partial = False
+
+        self.codec = english_codec_w_digit()
+
+        # map word in vocab to 3-char permutations
+        encode_map = get_map(self.codec, mode='encode', length=length, group=group)
+        em = encode_map
+
+        words = message.split(' ') if group == 8 else message.lower().split(' ')
+        short_message = ''
+
+        for w in words:
+            if w in encode_map:
+                short_message += encode_map[w]
+            else:
+                partial = True
+
+        perm, truncated = self.truncate_and_encode(short_message)
+        partial |= truncated
+
+        return perm, partial
+
+    def decode_w_vocab(self, b, group):
+        short_message = self.codec.decode(b)
+        print(short_message)
+        decode_map = get_map(self.codec, mode='decode', length=3, group=group)
+        words = []
+        for i in range(len(short_message) // 3):
+            mapped_word = short_message[3*i:3*i+3]
+            if mapped_word in decode_map:
+                words.append(decode_map[mapped_word])
+        return ' '.join(words)
+
+    def encode(self, message):
+        # TODO: select encoder with the smallest perm
+        group = 6
+        perm, partial = self.encode_w_vocab(message, group=group)
+        choice = 1
+
+        # use 1 bit to encode partial
         perm = self.add_partial_flag(perm, partial)
-        #print("trunc and encode: " + str(perm))
+
+        # use 3 bits to encode encoder choice
+        perm = self.add_encoder_choice(perm, choice)
+
         ordered_deck = perm_decode(perm, self.N)
-        #print("ordered deck: " + str(ordered_deck))
+        #print(self.N, ordered_deck)
+        self.start = 52 - self.N 
         deck = list(range(self.start)) + [card+self.start for card in ordered_deck]
-        #print("deck: " + str(deck))
         return deck
 
     def decode(self, deck):
@@ -145,12 +227,14 @@ class Agent:
 
             n_decode += 1 # do not put this after retrieve_coded_cards... N_MAX would be wrong
             ordered_deck = self.retrieve_coded_cards(deck, n_decode)
+            #print(n_decode, ordered_deck)
             #if n_decode == N_MAX: print(ordered_deck)
 
             perm = perm_encode(ordered_deck)
             #print("perm: " + str(perm))
 
             if perm > 0:
+                perm, choice = self.remove_encoder_choice(perm)
                 perm, partial = self.remove_partial_flag(perm)
                 byte_length = (max(perm.bit_length(), 1) + 7) // 8
                 b = (perm).to_bytes(byte_length, byteorder='big')
@@ -169,7 +253,9 @@ class Agent:
             #print(n_decode)
             msg = "NULL"
         else:
-            msg = self.codec.decode(b[:-2])
+            # TODO: select decoder
+            group = 6
+            msg = self.decode_w_vocab(b[:-2], group=group)
             if partial:
                 msg  = 'PARTIAL: ' + msg
         return msg
