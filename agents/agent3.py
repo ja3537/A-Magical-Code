@@ -234,35 +234,36 @@ class GenericTransformer(MessageTransformer):
         return msg
 
 class WordTransformer(MessageTransformer):
-    def __init__(self, delimiter=" ", wordlist=None):
-        self.huffman = Huffman()
+    def __init__(self, delimiter=" ", wordlist=None, huffman_encoding=None):
+        self.huffman = Huffman() if huffman_encoding is None else huffman_encoding
 
         #---------------------------------------------------------------------
         #  Obtain abbreviation for words in a dictionary.
         #---------------------------------------------------------------------
         # Note: self.word2abrev stores the mapping of word to abbreviation
+        self.delim = delimiter
 
         # if can use precomp, comment this out
-        self.delim = delimiter
-        r = requests.get(
-            'https://raw.githubusercontent.com/mwcheng21/minified-text/main/minified.txt'
-        )
-        minified_text = r.text
-        self.abrev2word = {}
-        self.word2abrev = {}
-        for line in minified_text.splitlines():
-            [shortened, full] = line.split(' ')
-            self.abrev2word[shortened] = full
-            self.word2abrev[full] = shortened
-
-        # then uncomment this
-        # with open('minified.txt', 'r') as f:
-        #     self.abrev2word = {}
-        #     self.word2abrev = {}
-        #     for line in f.splitlines():
-        #         [shortened, full] = line.split(' ')
-        #         self.abrev2word[shortened] = full
-        #         self.word2abrev[full] = shortened
+        if wordlist is None:
+            r = requests.get(
+                'https://raw.githubusercontent.com/mwcheng21/minified-text/main/minified.txt'
+            )
+            minified_text = r.text
+            self.abrev2word = {}
+            self.word2abrev = {}
+            for line in minified_text.splitlines():
+                [shortened, full] = line.split(' ')
+                self.abrev2word[shortened] = full
+                self.word2abrev[full] = shortened
+        else:
+            with open(wordlist, 'r') as f:
+                self.abrev2word = {}
+                self.word2abrev = {}
+                for line in f.readlines():
+                    line = line.strip()
+                    [shortened, full] = line.split(' ')
+                    self.abrev2word[shortened] = full
+                    self.word2abrev[full] = shortened
 
     def compress(self, msg: str) -> Bits:
         msg = self.delim.join([
@@ -345,7 +346,44 @@ class FlightsTransformer(MessageTransformer):
         debug(f'GenericTransformer: "{bits.bin}" -> {msg}')
 
         return msg
-  
+
+class WarWordsTransformer(MessageTransformer):
+    def __init__(self):
+        self.huffman = Huffman()
+        self.word_file = "./messages/agent3/dicts/shortened_dicts/war_words_mini.txt"
+        self.transformer = WordTransformer(wordlist=self.word_file, huffman_encoding=self.huffman)
+
+    def compress(self, msg: str) -> Bits:
+        return self.transformer.compress(msg)
+
+    def uncompress(self, bits: Bits) -> str:
+        return self.transformer.uncompress(bits)
+
+class PlacesAndNamesTransformer(MessageTransformer):#all lowercase, make upper later
+    def __init__(self):
+        self.huffman = Huffman()
+        self.word_file = "./messages/agent3/dicts/shortened_dicts/places_and_names_mini.txt"
+        self.transformer = WordTransformer(wordlist=self.word_file, huffman_encoding=self.huffman)
+
+    def compress(self, msg: str) -> Bits:
+        return self.transformer.compress(msg)
+
+    def uncompress(self, bits: Bits) -> str:
+        return self.transformer.uncompress(bits)
+
+class SixWordsTransformer(MessageTransformer):#TODO: change this to idxs??
+    def __init__(self):
+        self.huffman = Huffman()
+        self.word_file = "./messages/agent3/dicts/shortened_dicts/six_words_mini.txt"
+        self.transformer = WordTransformer(wordlist=self.word_file, huffman_encoding=self.huffman)
+
+    def compress(self, msg: str) -> Bits:
+        return self.transformer.compress(msg)
+
+    def uncompress(self, bits: Bits) -> str:
+        return self.transformer.uncompress(bits)
+
+
 class AlphaNumericTransformer(MessageTransformer):
     def __init__(self):
         self.huffman = Huffman()
@@ -768,10 +806,10 @@ class Agent:
             Domain.COORDS: CoordsTransformer(),
             Domain.ADDRESS: AddressTransformer(),
             Domain.FLIGHTS: FlightsTransformer(),
-            Domain.WAR_WORDS: WordTransformer(),#dictionary=WAR_WORDSDICT
-            Domain.PLACES_AND_NAMES: WordTransformer(),#TODO: dictionary=PLACES_AND_NAMES_DICT
-            Domain.SIX_WORDS: WordTransformer(),#TODO: dictionary=SIX_WORDS_DICT
-            Domain.ALPHA_NUMERIC: WordTransformer()
+            Domain.WAR_WORDS: WarWordsTransformer(),
+            Domain.PLACES_AND_NAMES: PlacesAndNamesTransformer(),
+            Domain.SIX_WORDS: SixWordsTransformer(),
+            Domain.ALPHA_NUMERIC: AlphaNumericTransformer()
         }
  
     # TODO: there might be many _tangle_cards and _untangle_cards methods
@@ -820,7 +858,7 @@ class Agent:
 
         domain = self.domain_detector.detect(msg)
 
-        print(f"message domain: {domain.name}")
+        debug(f"message domain: {domain.name}")
 
         bits = self.domain2transformer[domain].compress(msg)
 
