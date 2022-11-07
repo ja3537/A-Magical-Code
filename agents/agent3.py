@@ -54,47 +54,14 @@ class PermutationGenerator:
         for i in range(1, 32):
             self.fact[i] = (self.fact[i - 1] * i)
 
-    def encode(self, cards, rank):
-        ''' Encode the given cards into a permutation of the given rank '''
-        base = self.alphabet[:len(cards)]
-
-        permutation = self._perm_unrank(rank, base)
-        if permutation is None:
-            print(
-                f"trying to create permuation for number {rank} with {len(cards)} cards"
-            )
-            return cards
-
-        return [cards[self.alphabet.index(i)] for i in permutation]
-
-    def decode(self, cards):
-        ''' Decode the given permuted cards into a rank '''
-        sortedCards = [
-            str(sortedCard)
-            for sortedCard in sorted([int(card) for card in cards])
-        ]
-
-        target = ''.join(
-            [self.alphabet[sortedCards.index(card)] for card in cards])
-        base = self.alphabet[:len(cards)]
-
-        return self._perm_rank(target, base)
-
-    def perm_count(self, s):
+    def _perm_count(self, s: str) -> int:
         ''' Count the total number of permutations of sorted sequence `s` '''
         n = fac(len(s))
         for _, g in groupby(s):
             n //= fac(sum(1 for u in g))
         return n
 
-    def n_needed(self, messageLength):
-        """Returns the number of cards needed to encode a message of
-        messageLength using permutation."""
-        for i in range(100):
-            if messageLength < self.fact[i]:
-                return i
-
-    def _perm_rank(self, target, base):
+    def _perm_rank(self, target: str, base: str) -> int:
         ''' Determine the permutation rank of string `target`
             given the rank zero permutation string `base`,
             i.e., the chars in `base` are in lexicographic order.
@@ -109,9 +76,9 @@ class PermutationGenerator:
                 return total + self._perm_rank(newtarget, newbase)
             elif i and c == base[i - 1]:
                 continue
-            total += self.perm_count(newbase)
+            total += self._perm_count(newbase)
 
-    def _perm_unrank(self, rank, base, head=''):
+    def _perm_unrank(self, rank: int, base: str, head='') -> list[str]:
         ''' Determine the permutation with given rank of the 
             rank zero permutation string `base`.
         '''
@@ -122,10 +89,44 @@ class PermutationGenerator:
         for i, c in enumerate(base):
             if i < 1 or c != base[i - 1]:
                 newbase = base[:i] + base[i + 1:]
-                newtotal = total + self.perm_count(newbase)
+                newtotal = total + self._perm_count(newbase)
                 if newtotal > rank:
                     return self._perm_unrank(rank - total, newbase, head + c)
                 total = newtotal
+
+    def encode(self, cards: list[str], rank: int) -> list[str]:
+        ''' Encode the given cards into a permutation of the given rank '''
+        base = self.alphabet[:len(cards)]
+
+        permutation = self._perm_unrank(rank, base)
+        if permutation is None:
+            print(
+                f"trying to create permuation for number {rank} with {len(cards)} cards"
+            )
+            return cards
+
+        return [cards[self.alphabet.index(i)] for i in permutation]
+
+    def decode(self, cards: list[str]) -> int:
+        ''' Decode the given permuted cards into a rank '''
+        sortedCards = [
+            str(sortedCard)
+            for sortedCard in sorted([int(card) for card in cards])
+        ]
+
+        target = ''.join(
+            [self.alphabet[sortedCards.index(card)] for card in cards])
+        base = self.alphabet[:len(cards)]
+
+        return self._perm_rank(target, base)
+
+    def n_needed(self, rank: int) -> int:
+        """Returns the number of cards needed to encode a message with
+        a bit pattern equal to rank using permutation."""
+        for i in range(100):
+            if rank < self.fact[i]:
+                return i
+
 
 # -----------------------------------------------------------------------------
 #   String -> Domain Detector
@@ -803,13 +804,43 @@ class PermutationConverter(BDC):
     """Converts between bits and deck of cards by mapping each permutation of
     cards to a unique integer in its binary representation."""
 
+    def __init__(self, cards):
+        super().__init__(cards)
+        self.permuter = PermutationGenerator()
+
     def to_deck(self, bits: Bits) -> Optional[tuple[Deck, Deck]]:
-        # TODO: actually encode the message
-        return [], [20]
+        bit_len = len(bits.bin)
+
+        num_msg_cards = self.permuter.n_needed(2 ** bit_len)
+        num_metdata_cards = 6 # 6! = 720, can handle bit length up to 720
+
+        if num_msg_cards + num_metdata_cards > len(self.cards):
+            # PermutationConverter needs more cards than given to
+            # encode the given bit pattern
+            return None
+
+        # TODO: use checksum instead of metadata for representing length of bits
+        msg_cards = list(map(str, self.cards[-num_msg_cards:]))
+        metadata_cards = list(map(str, self.cards[:num_metdata_cards]))
+
+        msg = [
+            int(card)
+            for card in self.permuter.encode(msg_cards, bits.uint)
+        ]
+        msg_metadata = [
+            int(card)
+            for card in self.permuter.encode(metadata_cards, bit_len)
+        ]
+
+        return msg_metadata, msg
 
     def to_bits(self, msg: Deck, msg_metadata: Deck) -> Optional[Bits]:
-        # TODO: actually decode the message
-        bits = Bits(uint=msg[0], length=5)
+        # TODO: dynamically detect message length
+        metadata_cards = list(map(str, msg_metadata[-6:]))
+        cards = list(map(str, msg))
+
+        metadata = self.permuter.decode(metadata_cards) # i.e. bit length
+        bits = Bits(uint=self.permuter.decode(cards), length=metadata)
         debug(f"recovered message deck: {msg} -> {bits.bin}")
 
         return bits
@@ -1074,7 +1105,12 @@ class Agent:
         # on the cards it used. Maybe move _tangle and _untangle into bdc?
         # or modify the interface to also return cards used.
         free_cards = [card for card in range(self.trash_card_start_idx)]
-        bdc, metadata_cards, message_metadata_cards, message_cards = to_partial_deck(domain, bits, free_cards)
+        partial_deck = to_partial_deck(domain, bits, free_cards)
+        if partial_deck is None:
+            info(f"[ {msg} ]", "msg too long, can't encode to deck")
+            return list(range(51,-1,-1))
+
+        bdc, metadata_cards, message_metadata_cards, message_cards = partial_deck
         info(f"[ {msg} ]", f"cards available for encoding message: {free_cards}")
         info(f"[ {msg} ] bits <-> deck converter: {bdc.__str__()}:",
             f"metadata cards: {metadata_cards},",
