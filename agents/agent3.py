@@ -305,7 +305,7 @@ class PasswordsTransformer(MessageTransformer):
             self.word2abrev[word] if word.isalpha() and word in self.word2abrev else word
             for word in splitMsg
         ])
-        print(splitMsg)
+        print(splitMsg, msg)
         #TODO: join on space or not?
         bits = self.huffman.encode(combinedMsg, padding_len=0)
         return bits
@@ -313,7 +313,7 @@ class PasswordsTransformer(MessageTransformer):
     def uncompress(self, bits: Bits) -> str:
         msg = self.huffman.decode(bits, padding_len=0)
         splitMsg = self._get_all_words(msg, self.abrev2word.keys())
-
+        print(splitMsg, msg)
         combinedMsg = '@' + ''.join([
             self.abrev2word[word] if word.isalpha() and word in self.abrev2word else word 
             for word in splitMsg
@@ -349,6 +349,9 @@ class PasswordsTransformer(MessageTransformer):
 
         Returns a list of words that can be extracted from the current_string
         (ie current_string = "hello" and wordlist = ["he", "llo"] -> ["he", "llo"])
+
+        #doesn't work for cases like "searchare" -> ['se', 'arc', 'hare'] and in abrev ['sear', 'chare'] instead of ['search', 'are']
+        However, we assume that this never happens, or rarely if it does
         '''
         if len(current_string) == 0:
             return words
