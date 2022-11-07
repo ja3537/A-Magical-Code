@@ -1,17 +1,25 @@
 from abc import abstractmethod, ABC
 from enum import Enum
-import logging
-from typing import List, Optional
-from cards import valid_deck
-import re
-from dahuffman import load_shakespeare, HuffmanCodec
-from bitstring import Bits
-import numpy as np
-from math import factorial as fac
 from itertools import groupby
+import logging
+from math import factorial as fac
+from os.path import isfile
+import re
+from typing import List, Optional
+
+from bitstring import Bits
+from dahuffman import load_shakespeare, HuffmanCodec
+import numpy as np
 import requests
 
-log_level = logging.DEBUG
+from cards import valid_deck
+
+
+# -----------------------------------------------------------------------------
+#   Logging
+# -----------------------------------------------------------------------------
+
+log_level = logging.INFO
 log_file = 'log/agent3.log'
 
 logger = logging.getLogger('Agent 3')
@@ -20,7 +28,13 @@ logger.addHandler(logging.FileHandler(log_file))
 
 
 def debug(*args) -> None:
+    logger.debug(" ".join(args))
+
+def info(*args) -> None:
     logger.info(" ".join(args))
+
+if isfile(log_file):
+    open(log_file, 'w').close()
 
 
 # -----------------------------------------------------------------------------
@@ -505,6 +519,7 @@ class AlphaNumericTransformer(MessageTransformer):
 
         return msg
        
+
 # -----------------------------------------------------------------------------
 #   Bits <-> Deck Converter (BDC)
 # -----------------------------------------------------------------------------
@@ -772,6 +787,7 @@ def to_partial_deck(domain: Domain, msg_bits: Bits, free_cards: Deck) -> Optiona
 
     return None
 
+
 # -----------------------------------------------------------------------------
 #   Bits <-> String Codec
 # -----------------------------------------------------------------------------
@@ -885,6 +901,10 @@ class Huffman:
 
         return decoded
 
+
+# -----------------------------------------------------------------------------
+#   Group 3 Agent
+# -----------------------------------------------------------------------------
 
 class Agent:
 
@@ -1030,10 +1050,10 @@ class Agent:
 
         return orig_msg
 
+
 # -----------------------------------------------------------------------------
 #   Unit Tests
 # -----------------------------------------------------------------------------
-
 
 def test_huffman_codec():
     # Note: shakespeare codec doesn't seem to be able to handle punctuations
