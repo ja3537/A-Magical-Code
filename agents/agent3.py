@@ -305,14 +305,13 @@ class PasswordsTransformer(MessageTransformer):
             self.word2abrev[word] if word.isalpha() and word in self.word2abrev else word
             for word in splitMsg
         ])
-
+        print(splitMsg)
         #TODO: join on space or not?
         bits = self.huffman.encode(combinedMsg, padding_len=0)
         return bits
 
     def uncompress(self, bits: Bits) -> str:
         msg = self.huffman.decode(bits, padding_len=0)
-
         splitMsg = self._get_all_words(msg, self.abrev2word.keys())
 
         combinedMsg = '@' + ''.join([
@@ -345,6 +344,12 @@ class PasswordsTransformer(MessageTransformer):
         return splitMsg
 
     def _get_word_helper(self, wordlist, words, current_string):
+        '''
+        Recursive helper function for _get_all_words
+
+        Returns a list of words that can be extracted from the current_string
+        (ie current_string = "hello" and wordlist = ["he", "llo"] -> ["he", "llo"])
+        '''
         if len(current_string) == 0:
             return words
         if current_string in wordlist:
@@ -455,7 +460,7 @@ class WarWordsTransformer(MessageTransformer):
 class PlacesAndNamesTransformer(MessageTransformer):
     def __init__(self):
         self.freq = {' ': 25000, 'a': 15393, 'e': 11709, 'n': 9319, 'l': 8288, 'r': 7848, 'i': 7821, 's': 6479, 'o': 5599, 't': 5435, 'h': 4205, 'm': 4110, 'd': 3968, 'c': 3925, 'k': 3022, 'y': 2902, 'b': 2377, 'u': 2122, 'g': 1805, 'j': 1767, 'v': 1601, 'w': 1476, 'p': 1375, 'f': 1041, 'z': 518, 'q': 323, 'x': 169}
-        self.huffman = Huffman()
+        self.huffman = Huffman(self.freq)
         self.word_file = "./messages/agent3/dicts/shortened_dicts/places_and_names_mini.txt"
         self.transformer = WordTransformer(wordlist=self.word_file, huffman_encoding=self.huffman)
 
