@@ -153,6 +153,7 @@ class Perm:
 class Unscramble:
     def __init__(self, card_deck, check_sum, max_trials=10000, orig_deck=None) -> None:
         """Will unscramble the input deck until it matches the checksum
+        
         Args:
             card_deck: The shuffled deck of cards
             check_sum: The checksum of the correct sequence of cards
