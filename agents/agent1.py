@@ -35,7 +35,8 @@ def calc_checksum(num: int, mod_prime=40213, mode="blake2b", base=239):
         raise ValueError
 
     # Convert bit string into a series of bytes
-    byte_seq = num.to_bytes(12, "big")  # Max possible message = 12 bytes long (after compression)
+    length = (max(num.bit_length(), 1) + 7) // 8
+    byte_seq = num.to_bytes(length, "big")  # Max possible message = 12 bytes long (after compression)
 
     if mode == "polynomial":
         checksum = 0
@@ -123,7 +124,7 @@ class Perm:
         if len(message) > max_chars:
             message = message[:max_chars]
             logger.warning(f"Input text longer than {max_chars} characters. Shortening message to "
-                            f"'{message}'")
+                           f"'{message}'")
 
         num = self.str_to_num(message)
         perm = self.num_to_perm(num)
@@ -209,13 +210,15 @@ class Huffman:
     def __init__(self):
         # characters for huffman tree
         self.chars = ['e', 'm', 'a', 'h', 'r', 'g', 'i', 'b', 'o', 'f', 't', 'y', 'n', 'w', 's',
-                      'k', 'l', 'v', 'c', 'x', 'u', 'z', 'd', 'j', 'p', 'q', '/']
+                      'k', 'l', 'v', 'c', 'x', 'u', 'z', 'd', 'j', 'p', 'q',
+                      '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.', ]
 
         # frequency of characters
         # Ref: https://www3.nd.edu/~busiforc/handouts/cryptography/letterfrequencies.html
         self.freq = [11.1607, 3.0129, 8.4966, 3.0034, 7.5809, 2.4705, 7.5448, 2.072, 7.1635,
                      1.8121, 6.9509, 1.7779, 6.6544, 1.2899, 5.7351, 1.1016, 5.4893, 1.0074,
-                     4.5388, 0.2902, 3.6308, 0.2722, 3.3844, 0.1965, 3.1671, 0.1962, 0.0001]
+                     4.5388, 0.2902, 3.6308, 0.2722, 3.3844, 0.1965, 3.1671, 0.1962,
+                     0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.11, ]
 
         # list containing unused nodes
         nodes = []
@@ -245,14 +248,24 @@ class Huffman:
         self.nodes = nodes
         self.encoding_dict = nodes[0].encoding_dict
 
+        self.decoding_dict = {}
+        for letter, binstr in self.encoding_dict.items():
+            self.decoding_dict[binstr] = letter
+
     def print_codes(self):
         self.nodes[0].print_codes()
 
     def encode(self, message):
         encoding = ""
+        clipped = False
         for letter in message:
-            encoding += self.encoding_dict[letter]
-        return encoding
+            try:
+                encoding += self.encoding_dict[letter]
+            except KeyError:
+                logger.debug(f"Unsupported char '{letter}' in message '{message}'. Clipping.")
+                clipped = True
+                break
+        return encoding, clipped
 
     def decode(self, encoded_data):
         huffman_tree = self.nodes[0]
@@ -269,8 +282,22 @@ class Huffman:
             if huffman_tree.left is None and huffman_tree.right is None:
                 decoded_output.append(huffman_tree.symbol)
                 huffman_tree = tree_head
-
         string = ''.join([str(item) for item in decoded_output])
+        # msg = []
+        # len_seq = 1
+        # while len_seq <= len(encoded_data):
+        #     seq = encoded_data[:len_seq]
+        #     try:
+        #         msg.append(self.decoding_dict[seq])
+        #         try:
+        #             encoded_data = encoded_data[len_seq:]
+        #             len_seq = 1
+        #         except IndexError:
+        #             encoded_data = []
+        #     except KeyError:
+        #         len_seq += 1
+        #
+        # string = ''.join(msg)
         return string
 
     @staticmethod
@@ -298,11 +325,12 @@ class Agent:
         self.mod_mode = "blake2b"
 
         # Message
-        self.encode_len = 21  # Max num of cards in seq
+        self.encode_len = 22  # Max num of cards in seq
         self.char_set = alpha
+        self.huff = Huffman()
         # self.max_msg_len = math.floor(math.log(math.factorial(self.encode_len), len(self.char_set)))
         self.max_msg_bits = math.floor(math.log(math.factorial(self.encode_len), 2))
-        self.max_msg_bits -= self.checksum_bits
+        self.max_msg_bits -= self.checksum_bits + 1
         self.valid_cards_p = tuple(range(52 - self.encode_len, 52))
         self.perm = Perm(self.valid_cards_p, self.char_set)
 
@@ -321,9 +349,7 @@ class Agent:
     def encode(self, message_):
         message = deepcopy(message_)
         while True:
-            msg_num = self.perm.str_to_num(message)
-            checksum = calc_checksum(msg_num, mod_prime=self.mod_prime, mode=self.mod_mode)
-            bit_msg = bin(msg_num)[2:]
+            bit_msg, clipped = self.huff.encode(message)
             if len(bit_msg) <= self.max_msg_bits:
                 break
             else:
@@ -332,9 +358,10 @@ class Agent:
         if len(message) < len(message_):
             logger.debug(f"Input text longer than {self.max_msg_bits} bits. Shortening message to '{message}'")
 
-        bit_msg = self.pad_bitstr(bit_msg, self.max_msg_bits)
+        msg_num = int(bit_msg, 2)
+        checksum = calc_checksum(msg_num, mod_prime=self.mod_prime, mode=self.mod_mode)
         bit_checksum = self.pad_bitstr(bin(checksum)[2:], self.checksum_bits)
-        bit_total = bit_checksum + bit_msg
+        bit_total = "1" + bit_checksum + bit_msg  # avoid confusion with leading zeros
         num_total = int(bit_total, 2)
         seq_encode = self.perm.num_to_perm(num_total)
 
@@ -346,10 +373,8 @@ class Agent:
 
     def verify_msg(self, deck):
         num = self.perm.perm_to_num(deck)
-        try:
-            bit_total = self.pad_bitstr(bin(num)[2:], self.checksum_bits + self.max_msg_bits)
-        except ValueError:
-            return None  # Got a permutation that is too large an int
+        bit_total = bin(num)[2:]
+        bit_total = bit_total[1:]  # Ignore the extra bit we added to avoid confusion with leading zeros
         bit_checksum = bit_total[:self.checksum_bits]
         bit_msg = bit_total[self.checksum_bits:]
 
@@ -357,7 +382,7 @@ class Agent:
         num_msg = int(bit_msg, 2)
         checksum_calculated = calc_checksum(num_msg, mod_prime=self.mod_prime, mode=self.mod_mode)
         if checksum_calculated == checksum_decoded:
-            msg = self.perm.num_to_str(num_msg)
+            msg = self.huff.decode(bit_msg)
             return msg
         else:
             return None
@@ -403,7 +428,7 @@ if __name__ == "__main__":
     test_huff = False
 
     # Testing Agent
-    test_agent = True
+    # test_agent = True
     if test_agent:
         agent = Agent()
         msg = "abc"
@@ -438,60 +463,49 @@ if __name__ == "__main__":
         decoded_str = test_perm.perm_to_str(card_perm)
         print("recovered string = " + decoded_str)
 
-    # test_huff = True
+    test_huff = True
     if test_huff:
         huff = Huffman()
         huff.print_codes()
 
-        msg = "qqq"
-        encoding = huff.encode(msg)
+        msg = "byouth"
+        encoding, clipped = huff.encode(msg)
         print(f"Encoding - {msg}: {encoding}")
         decoded_msg = huff.decode(encoding)
         print(f"Decoding - {encoding}: {decoded_msg}")
-        num = huff.encoding_to_num(encoding)
-        print(f"Encoding as a num: {num}")
+        print(f"Decoding Test: {decoded_msg == msg}")
+        # num = huff.encoding_to_num(encoding)
+        # print(f"Encoding as a num: {num}")
 
-        # COMPARE HUFF VS DIRECT ENCODE
-        encode_len = 12
-        valid_cards = tuple(range(52 - encode_len, 52))
-        test_perm = Perm(valid_cards, alpha)
-        card_perm1 = test_perm.str_to_perm(msg)
-        decode1 = test_perm.perm_to_str(card_perm1)
+        # # COMPARE HUFF VS DIRECT ENCODE
+        # encode_len = 12
+        # valid_cards = tuple(range(52 - encode_len, 52))
+        # test_perm = Perm(valid_cards, alpha)
+        # card_perm1 = test_perm.str_to_perm(msg)
+        # decode1 = test_perm.perm_to_str(card_perm1)
+        #
+        # max_trials = 30
+        # while max_trials > 0:
+        #     encoding, clipped = huff.encode(msg)
+        #     num = huff.encoding_to_num(encoding)
+        #     if test_perm.check_num_too_large(num):
+        #         max_trials -= 1
+        #         msg = msg[:-1]
+        #         continue
+        #     else:
+        #         break
+        #
+        # if max_trials < 29:
+        #     logger.warning(f"Huff: Message too large to encode. Shortening to : '{msg}'")
+        # card_perm2 = test_perm.num_to_perm(num)
+        # decode2 = test_perm.perm_to_num(card_perm2)
+        # decode2 = huff.num_to_binstr(decode2)
+        # decode2 = huff.decode(decode2)
+        #
+        # print(f"Direct Encode to Seq: {card_perm1}")
+        # print(f"Direct Decode: {decode1}")
+        # print(f"Huffma Encode to Seq: {card_perm2}")
+        # print(f"Huffma Decode: {decode2}")
 
-        max_trials = 30
-        while max_trials > 0:
-            encoding = huff.encode(msg)
-            num = huff.encoding_to_num(encoding)
-            if test_perm.check_num_too_large(num):
-                max_trials -= 1
-                msg = msg[:-1]
-                continue
-            else:
-                break
-
-        if max_trials < 29:
-            logger.warning(f"Huff: Message too large to encode. Shortening to : '{msg}'")
-        card_perm2 = test_perm.num_to_perm(num)
-        decode2 = test_perm.perm_to_num(card_perm2)
-        decode2 = huff.num_to_binstr(decode2)
-        decode2 = huff.decode(decode2)
-
-        print(f"Direct Encode to Seq: {card_perm1}")
-        print(f"Direct Decode: {decode1}")
-        print(f"Huffma Encode to Seq: {card_perm2}")
-        print(f"Huffma Decode: {decode2}")
-
-    # Test Unscramble
-    if True:
-        deck = [45, 46, 47, 48, 49, 50, 51]
-        sdeck = [46, 45, 47, 48, 49, 50, 51]
-        check_sum = calc_checksum(deck)
-        unscramble = Unscramble(sdeck, check_sum, max_trials=10000)
-        udeck = unscramble.unscramble()
-
-        if udeck == deck:
-            print(f"Unscramble success")
-        else:
-            print(f"Unscramble Fail")
     print("Done")
 
