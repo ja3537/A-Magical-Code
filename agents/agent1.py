@@ -3,6 +3,7 @@ import heapq
 import logging
 import math
 from collections import deque
+from copy import deepcopy
 
 import numpy as np
 
@@ -10,7 +11,7 @@ import cards
 
 
 log_format = "%(levelname)s: %(funcName)s(): %(message)s"
-logging.basicConfig(level=logging.INFO, format=log_format)
+logging.basicConfig(level=logging.DEBUG, format=log_format)
 logger = logging.getLogger(__name__)
 # logger.disabled = True
 
@@ -21,10 +22,10 @@ alpha_numeric = alpha + numeric[1:]  # Don't include space twice
 alpha_numeric_punc = alpha_numeric + "."
 
 
-def calc_checksum(deck: list[int], mod_prime=40213, mode="blake2b", base=239):
+def calc_checksum(num: int, mod_prime=40213, mode="blake2b", base=239):
     """Calculate the checksum from an interger repr the binary data
     Args:
-        deck: List of cards making up the message
+        num: Decimal representing message
         mod_prime: Maximum value of the checksum. Better if it's a prime number.
             Values: [113, 719, 4973, 40213, 362867]
         mode: Which checksum to use (blake or polynomial)
@@ -33,14 +34,16 @@ def calc_checksum(deck: list[int], mod_prime=40213, mode="blake2b", base=239):
     if mode not in ["blake2b", "polynomial"]:
         raise ValueError
 
+    # Convert bit string into a series of bytes
+    byte_seq = num.to_bytes(12, "big")  # Max possible message = 12 bytes long (after compression)
+
     if mode == "polynomial":
         checksum = 0
-        for card in deck:
-            checksum = ((checksum + card) * base) % mod_prime
+        for n in byte_seq:
+            checksum = ((checksum + n) * base) % mod_prime
     else:
         h = hashlib.blake2b(digest_size=2)
-        for card in deck:
-            h.update(card.to_bytes(1, "little"))  # Max value of card = 51 < 1 byte
+        h.update(byte_seq)  # Max value of card = 51 < 1 byte
         hash = int.from_bytes(h.digest(), "little")
         checksum = hash % mod_prime
     return checksum
@@ -90,23 +93,23 @@ class Perm:
                 tokens.append(ch)
             else:
                 break
-        while len(tokens) < self.max_msg_len:
-            tokens.append(" ")
+        # while len(tokens) < self.max_msg_len:
+        #     tokens.append(" ")
         tokens = tokens[::-1]
 
         if len(message) > len(tokens):
-            logger.warning(f"Input text too long to encode. "
-                            f"Shortening message to '{''.join(tokens[::-1])}'")
+            logger.warning(f"Invalid characters found in message '{message}. "
+                           f"Clipping message to '{''.join(tokens[::-1])}'")
 
         # Convert char to int
         num = 0
         final_tokens = []
         for idx, ch in enumerate(tokens):
             num_ = self.char_list.index(ch) * len(self.char_list) ** idx
-            if (num + num_) // self.factorials[0] > len(self.perm_zero):
-                logger.warning(f"Input text too long to encode into {self.encoding_len} cards. "
-                                f"Shortening message to '{''.join(final_tokens)}'")
-                break
+            # if (num + num_) // self.factorials[0] > len(self.perm_zero):
+            #     logger.warning(f"Input text too long to encode into {self.encoding_len} cards. "
+            #                    f"Shortening message to '{''.join(final_tokens[::-1])}'")
+            #     break
             num += num_
             final_tokens.append(ch)
 
@@ -158,51 +161,6 @@ class Perm:
         num = self.perm_to_num(perm)
         msg = self.num_to_str(num)
         return msg
-
-
-class Unscramble:
-    def __init__(self, card_deck, check_sum, max_trials=10000, orig_deck=None) -> None:
-        """Will unscramble the input deck until it matches the checksum
-        
-        Args:
-            card_deck: The shuffled deck of cards
-            check_sum: The checksum of the correct sequence of cards
-            max_trials: Will terminate after these many trials
-            orig_deck: For testing only. The original unshuffled deck
-        """
-        self.card_deck = card_deck
-        self.check_sum = check_sum
-        self.max_trials = max_trials
-        self.orig_deck = orig_deck
-
-    @staticmethod
-    def deshuffle1(deck):
-        """Gets a list of decks by moving each card to the top"""
-        ds_decks = []
-        for idx in range(1, len(deck)):
-            deck_in = deck.copy()
-            top_card = deck_in.pop(idx)
-            deck_in.insert(0, top_card)
-            ds_decks.append(deck_in)
-        return ds_decks
-
-    def unscramble(self, mod_prime=None, mode=None):
-        dque = deque([])
-        dque.append(self.card_deck)
-        trials = self.max_trials
-        while trials > 0 and len(dque) > 0:
-            ddeck = dque.popleft()
-            if mod_prime is None:
-                msg_checksum = calc_checksum(ddeck)
-            else:
-                msg_checksum = calc_checksum(ddeck, mod_prime, mode)
-
-            if msg_checksum == self.check_sum:
-                return ddeck
-            else:
-                dque.extend(self.deshuffle1(ddeck))
-                trials -= 1
-        return None
 
 
 # --------------------------- huffman_decoding --------------------------- #
@@ -331,68 +289,107 @@ class Huffman:
 
 class Agent:
     def __init__(self):
-        self.encode_len = 20  # Max num of cards in seq
         self.seed = 0
-        self.rng = np.random.default_rng(self.seed)
+        # self.rng = np.random.default_rng(self.seed)
 
+        # Checksum
+        self.checksum_bits = 16
+        self.mod_prime = 65423  # 16 bits
+        self.mod_mode = "blake2b"
+
+        # Message
+        self.encode_len = 21  # Max num of cards in seq
         self.char_set = alpha
-        self.max_msg_len = math.floor(math.log(math.factorial(self.encode_len), len(self.char_set)))
+        # self.max_msg_len = math.floor(math.log(math.factorial(self.encode_len), len(self.char_set)))
+        self.max_msg_bits = math.floor(math.log(math.factorial(self.encode_len), 2))
+        self.max_msg_bits -= self.checksum_bits
         self.valid_cards_p = tuple(range(52 - self.encode_len, 52))
         self.perm = Perm(self.valid_cards_p, self.char_set)
 
-        self.cksum_len = 8
-        self.valid_cards_c = tuple(range(52 - self.encode_len - self.cksum_len, 52 - self.encode_len))
-        # max_ck_len = math.floor(math.log(math.factorial(self.cksum_len), len(self.char_set)))
-        self.perm_ck = Perm(self.valid_cards_c, self.char_set)
+        # Unscrambling
+        self.dque = deque([])
+        self.max_trials = len(self.char_set) ^ 3 + 1
 
-        self.mod_prime = 40213
-        self.mod_mode = "blake2b"
+    def pad_bitstr(self, bitstr: str, length: int):
+        """Pad a bit str with leading zeros to req length"""
+        lb = len(bitstr)
+        if lb > length:
+            raise ValueError(f"Bitstr longer than length")
+        bit = "0"*(length - lb) + bitstr
+        return bit
 
-        # Only used for debugging
-        self.checksum_encode = None
-        self.checksum_decode = None
-        self.encode_seq = None
-        self.checksum_seq = None
+    def encode(self, message_):
+        message = deepcopy(message_)
+        while True:
+            msg_num = self.perm.str_to_num(message)
+            checksum = calc_checksum(msg_num, mod_prime=self.mod_prime, mode=self.mod_mode)
+            bit_msg = bin(msg_num)[2:]
+            if len(bit_msg) <= self.max_msg_bits:
+                break
+            else:
+                message = message[:-1]
 
-    def encode(self, message):
-        max_chars = self.max_msg_len
-        if len(message) > max_chars:
-            message = " " + message[:max_chars-1]
-            logger.debug(f"Input text longer than {max_chars} characters. Shortening message to '{message}'")
+        if len(message) < len(message_):
+            logger.debug(f"Input text longer than {self.max_msg_bits} bits. Shortening message to '{message}'")
 
-        num = self.perm.str_to_num(message)
-        seq_encode = self.perm.num_to_perm(num)
-
-        # Calculate Checksum
-        checksum = calc_checksum(seq_encode, mod_prime=self.mod_prime, mode=self.mod_mode)
-        self.checksum_encode = checksum
-        seq_checksum = self.perm_ck.num_to_perm(checksum)
+        bit_msg = self.pad_bitstr(bit_msg, self.max_msg_bits)
+        bit_checksum = self.pad_bitstr(bin(checksum)[2:], self.checksum_bits)
+        bit_total = bit_checksum + bit_msg
+        num_total = int(bit_total, 2)
+        seq_encode = self.perm.num_to_perm(num_total)
 
         # Scramble the rest of the cards above message
-        seq_rand = [c for c in range(52) if c not in self.valid_cards_p+self.valid_cards_c]
-        self.rng.shuffle(seq_rand)
-        seq_total = seq_rand + seq_encode + seq_checksum
-
-        self.encode_seq = seq_encode
-        self.checksum_seq = seq_checksum
+        seq_rand = [c for c in range(52) if c not in self.valid_cards_p]
+        # self.rng.shuffle(seq_rand)
+        seq_total = seq_rand + seq_encode
         return seq_total
+
+    def verify_msg(self, deck):
+        num = self.perm.perm_to_num(deck)
+        try:
+            bit_total = self.pad_bitstr(bin(num)[2:], self.checksum_bits + self.max_msg_bits)
+        except ValueError:
+            return None  # Got a permutation that is too large an int
+        bit_checksum = bit_total[:self.checksum_bits]
+        bit_msg = bit_total[self.checksum_bits:]
+
+        checksum_decoded = int(bit_checksum, 2)
+        num_msg = int(bit_msg, 2)
+        checksum_calculated = calc_checksum(num_msg, mod_prime=self.mod_prime, mode=self.mod_mode)
+        if checksum_calculated == checksum_decoded:
+            msg = self.perm.num_to_str(num_msg)
+            return msg
+        else:
+            return None
+
+    @staticmethod
+    def deshuffle1(deck):
+        """Gets a list of decks by moving each card to the top"""
+        ds_decks = []
+        for idx in range(1, len(deck)):
+            deck_in = deck.copy()
+            top_card = deck_in.pop(idx)
+            deck_in.insert(0, top_card)
+            ds_decks.append(deck_in)
+        return ds_decks
 
     def decode(self, deck):
         seq_encode = [c for c in deck if c in self.valid_cards_p]
 
-        seq_checksum = tuple([c for c in deck if c in self.valid_cards_c])
-        decoded_checksum = self.perm_ck.perm_to_num(seq_checksum)
-        self.checksum_decode = decoded_checksum
-
         # Try to recover message (unscramble if necessary)
         max_trials = len(self.char_set) ^ 3 + 1  # Greater than depth 3 is ineffective (from our tests)
-        unscramble = Unscramble(seq_encode, decoded_checksum, max_trials=max_trials)
-        seq_fixed = unscramble.unscramble(mod_prime=self.mod_prime, mode=self.mod_mode)
-
-        if seq_fixed is None:
-            decoded_str = "NULL"
-        else:
-            decoded_str = self.perm.perm_to_str(seq_fixed)
+        dque = deque([])
+        dque.append(seq_encode)
+        decoded_str = "NULL"
+        while max_trials > 0 and len(dque) > 0:
+            ddeck = dque.popleft()
+            msg = self.verify_msg(ddeck)
+            if msg is not None:
+                decoded_str = msg
+                break
+            else:
+                dque.extend(self.deshuffle1(ddeck))
+                max_trials -= 1
 
         # TODO: Add case for partial strings
         return decoded_str
@@ -400,7 +397,7 @@ class Agent:
 
 if __name__ == "__main__":
     logger.disabled = False
-    logging.basicConfig(level=logger.DEBUG, format=log_format)
+    logging.basicConfig(level=logging.DEBUG, format=log_format)
     test_agent = False
     test_perm = False
     test_huff = False
