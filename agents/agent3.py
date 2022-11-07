@@ -286,9 +286,9 @@ class WordTransformer(MessageTransformer):
 
 class PasswordsTransformer(MessageTransformer):
     def __init__(self):
-        self.freq = {'a': 1, 'b': 1, 'c': 1, 'd': 1, 'e': 1, 'f': 1, 'g': 1, 'h': 1, 'i': 1, 'j': 1, 'k': 1, 'l': 1, 'm': 1, 'n': 1, 'o': 1, 'p': 1, 'q': 1, 'r': 1, 's': 1, 't': 1, 'u': 1, 'v': 1, 'w': 1, 'x': 1, 'y': 1, 'z': 1, '0': 1, '1': 1, '2': 1, '3': 1, '4': 1, '5': 1, '6': 1, '7': 1, '8': 1, '9': 1}#TODO: get actual freq
+        self.freq = {'1': 10000, '2': 10000, '3': 10000, '4': 10000, '5': 10000, '6': 10000, '7': 10000, '8': 10000, '9': 10000, '0': 10000, 'e': 12351, 'a': 10065, 's': 9847, 'r': 8604, 'i': 8586, 't': 7560, 'n': 7484, 'o': 7095, 'c': 5985, 'l': 5970, 'd': 5057, 'p': 4221, 'm': 4148, 'u': 3405, 'g': 3281, 'h': 3040, 'b': 2787, 'f': 2164, 'y': 1891, 'v': 1602, 'w': 1579, 'k': 1390, 'x': 532, 'j': 486, 'z': 371, 'q': 284} #TODO: change numerical freqs to be more realistic
         self.huffman = Huffman(self.freq)
-        with open("messages/agent3/default.txt", 'r') as f:
+        with open("messages/agent3/dicts/shortened_dicts/six_words_mini.txt", 'r') as f:
             self.abrev2word = {}
             self.word2abrev = {}
             for line in f.readlines():
@@ -300,16 +300,19 @@ class PasswordsTransformer(MessageTransformer):
     def compress(self, msg: str) -> Bits:
         msg = msg.replace("@", "")
         splitMsg = self._get_all_words(msg, self.word2abrev.keys())
+
         combinedMsg = ''.join([
             self.word2abrev[word] if word.isalpha() and word in self.word2abrev else word
             for word in splitMsg
         ])
+
         #TODO: join on space or not?
         bits = self.huffman.encode(combinedMsg, padding_len=0)
         return bits
 
     def uncompress(self, bits: Bits) -> str:
         msg = self.huffman.decode(bits, padding_len=0)
+
         splitMsg = self._get_all_words(msg, self.abrev2word.keys())
 
         combinedMsg = '@' + ''.join([
@@ -331,7 +334,8 @@ class PasswordsTransformer(MessageTransformer):
         splitMsg = []
         for word in words:
             if word.isalpha():
-                extractedWords = self._get_word_helper(wordlist, [], word)
+                extractedWords = list(reversed(self._get_word_helper(wordlist, [], word)))
+
                 if len(extractedWords) == 0:
                     splitMsg.append(word)
                 else:
@@ -347,13 +351,12 @@ class PasswordsTransformer(MessageTransformer):
             words.append(current_string)
             return words
         
-        runningPrefix = ""
-        for letter in current_string:
-            runningPrefix += letter
-            if runningPrefix in wordlist:
-                words.append(runningPrefix)
-                words = self._get_word_helper(wordlist, words, current_string[len(runningPrefix):])
-                return words
+        for i in range(len(current_string)):
+            currWord = current_string[i:]
+            if currWord in wordlist:
+                words.append(currWord)
+                return self._get_word_helper(wordlist, words, current_string[:i])
+
         return words
 
 class CoordsTransformer(MessageTransformer):
