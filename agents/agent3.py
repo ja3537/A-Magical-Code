@@ -288,7 +288,7 @@ class PasswordsTransformer(MessageTransformer):
     def __init__(self):
         self.freq = {'1': 10000, '2': 10000, '3': 10000, '4': 10000, '5': 10000, '6': 10000, '7': 10000, '8': 10000, '9': 10000, '0': 10000, 'e': 12351, 'a': 10065, 's': 9847, 'r': 8604, 'i': 8586, 't': 7560, 'n': 7484, 'o': 7095, 'c': 5985, 'l': 5970, 'd': 5057, 'p': 4221, 'm': 4148, 'u': 3405, 'g': 3281, 'h': 3040, 'b': 2787, 'f': 2164, 'y': 1891, 'v': 1602, 'w': 1579, 'k': 1390, 'x': 532, 'j': 486, 'z': 371, 'q': 284} #TODO: change numerical freqs to be more realistic
         self.huffman = Huffman(self.freq)
-        with open("messages/agent3/dicts/shortened_dicts/six_words_mini.txt", 'r') as f:
+        with open("messages/agent3/dicts/shortened_dicts/passwords_mini.txt", 'r') as f:
             self.abrev2word = {}
             self.word2abrev = {}
             for line in f.readlines():
