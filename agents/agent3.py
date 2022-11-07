@@ -3,7 +3,7 @@ from enum import Enum
 import logging
 from typing import List, Optional
 from cards import valid_deck
-
+import re
 from dahuffman import load_shakespeare, HuffmanCodec
 from bitstring import Bits
 import numpy as np
@@ -128,12 +128,67 @@ class GenericRule:
 
 class PasswordRule:
     def verdict(self, msg: str) -> bool:
-        return len(msg) > 0 and msg[0] == "@"
+        pattern = re.compile("^@[a-z0-9,.]+$") #TODO: can't handle capitals
+        return pattern.match(msg)
+
+class RandomAlphaNumericRule: #not tested
+    def verdict(self, msg: str) -> bool:
+        pattern = re.compile("^[a-z0-9,.]+$")
+        return pattern.match(msg)
+
+class CoordinatesRule:
+    def verdict(self, msg: str) -> bool:
+        pattern = re.compile("^[0-9]{1,}.[0-9]{4} [NESW], [0-9]{1,}.[0-9]{4} [NESW]$") #TODO: assumes sigfigs of 4
+        return pattern.match(msg)
+
+class AddressRule:
+    def verdict(self, msg: str) -> bool:
+        road_words = ["Street", "Road", "Avenue", "Boulevard", "Drive", "Court", "Place", "Square", "Lane", "Roadway", "Trail", "Parkway", "Commons", "Av", "Av.", "Ave", "St.", "St", "Rd", "Rd.", "Mall", "Plaza", "Route", "Highway", "Pike", "Pkwy", "Blvd", "Blvd.", "Turnpike", "Expy", "Ct", "Ct.", "Freeway"] #TODO: are there more?
+        for word in road_words:
+            if word in msg:
+                return True
+        return False
+
+class SixWordRule: #not tested much
+    def verdict(self, msg: str) -> bool:
+        pattern = re.compile("^([a-z]+ ){5}([a-z]+)$")
+        with open("./messages/agent7/30k.txt") as f:
+            all_words = [word.strip() for word in f.read().splitlines()]
+        return pattern.match(msg) and all([word in all_words for word in msg.split(" ")])
+
+class AirplaneFlightRule:
+    def verdict(self, msg: str) -> bool:
+        striped_msg = ' '.join([word.strip() for word in msg.split()])
+        pattern = re.compile("^([A-Z0-9]{3} )([A-Z.'-]* )+([0-9]+)$")#TODO: can't handle lowercase or numbers in middle
+        return pattern.match(striped_msg)
+
+class PlaceNameRule: #not tested much
+    def verdict(self, msg: str) -> bool:
+        pattern = re.compile("^([A-Z][a-z]+) ([A-Z][a-z]+)$")
+        with open("./messages/agent8/names.txt") as f:
+            all_words = [word.strip() for word in f.read().splitlines()]
+        with open("./messages/agent8/places.txt") as f:
+            all_words += [word.strip() for word in f.read().splitlines()]
+        return pattern.match(msg) and all([word in all_words for word in msg.split(" ")])
+
+class WarWordsRule:
+    def verdict(self, msg: str) -> bool:
+        pattern = re.compile("^([a-z]+ )*([a-z]+)$") #TODO: can't handle numbers
+        with open("./messages/agent6/corpus-ngram-1.txt") as f:
+            all_words = [word.strip() for word in f.read().splitlines()]
+        return pattern.match(msg) and all([word in all_words for word in msg.split(" ")])
+
 
 class Domain(Enum):
     GENERIC  = GenericRule
     PASSWORD = PasswordRule
-    # COORDS   = 2
+    ALPHA_NUMERIC = RandomAlphaNumericRule
+    COORDS = CoordinatesRule
+    ADDRESS = AddressRule
+    SIX_WORDS = SixWordRule
+    FLIGHTS = AirplaneFlightRule
+    PLACES_AND_NAMES = PlaceNameRule
+    WAR_WORDS = WarWordsRule
 
 class DomainDetector:
     def __init__(self, domains: list[Domain], default_domain=Domain.GENERIC):
@@ -179,7 +234,7 @@ class GenericTransformer(MessageTransformer):
         return msg
 
 class WordTransformer(MessageTransformer):
-    def __init__(self, delimiter=" "):
+    def __init__(self, delimiter=" ", wordlist=None):
         self.huffman = Huffman()
 
         #---------------------------------------------------------------------
@@ -226,8 +281,87 @@ class WordTransformer(MessageTransformer):
         ])
 
         return original_message
-        
 
+class PasswordsTransformer(MessageTransformer):
+    def __init__(self):
+        self.huffman = Huffman()
+
+    def compress(self, msg: str) -> Bits:
+        bits = self.huffman.encode(msg, padding_len=0)
+        debug(f'GenericTransformer: "{msg}" -> {bits.bin}')
+
+        return bits
+
+    def uncompress(self, bits: Bits) -> str:
+        msg = self.huffman.decode(bits, padding_len=0)
+        debug(f'GenericTransformer: "{bits.bin}" -> {msg}')
+
+        return msg
+
+class CoordsTransformer(MessageTransformer):
+    def __init__(self):
+        self.huffman = Huffman()
+
+    def compress(self, msg: str) -> Bits:
+        bits = self.huffman.encode(msg, padding_len=0)
+        debug(f'GenericTransformer: "{msg}" -> {bits.bin}')
+
+        return bits
+
+    def uncompress(self, bits: Bits) -> str:
+        msg = self.huffman.decode(bits, padding_len=0)
+        debug(f'GenericTransformer: "{bits.bin}" -> {msg}')
+
+        return msg
+  
+class AddressTransformer(MessageTransformer):
+    def __init__(self):
+        self.huffman = Huffman()
+
+    def compress(self, msg: str) -> Bits:
+        bits = self.huffman.encode(msg, padding_len=0)
+        debug(f'GenericTransformer: "{msg}" -> {bits.bin}')
+
+        return bits
+
+    def uncompress(self, bits: Bits) -> str:
+        msg = self.huffman.decode(bits, padding_len=0)
+        debug(f'GenericTransformer: "{bits.bin}" -> {msg}')
+
+        return msg
+       
+class FlightsTransformer(MessageTransformer):
+    def __init__(self):
+        self.huffman = Huffman()
+
+    def compress(self, msg: str) -> Bits:
+        bits = self.huffman.encode(msg, padding_len=0)
+        debug(f'GenericTransformer: "{msg}" -> {bits.bin}')
+
+        return bits
+
+    def uncompress(self, bits: Bits) -> str:
+        msg = self.huffman.decode(bits, padding_len=0)
+        debug(f'GenericTransformer: "{bits.bin}" -> {msg}')
+
+        return msg
+  
+class AlphaNumericTransformer(MessageTransformer):
+    def __init__(self):
+        self.huffman = Huffman()
+
+    def compress(self, msg: str) -> Bits:
+        bits = self.huffman.encode(msg, padding_len=0)
+        debug(f'GenericTransformer: "{msg}" -> {bits.bin}')
+
+        return bits
+
+    def uncompress(self, bits: Bits) -> str:
+        msg = self.huffman.decode(bits, padding_len=0)
+        debug(f'GenericTransformer: "{bits.bin}" -> {msg}')
+
+        return msg
+       
 # -----------------------------------------------------------------------------
 #   Bits <-> Deck Converter (BDC)
 # -----------------------------------------------------------------------------
@@ -502,12 +636,30 @@ def to_partial_deck(domain: Domain, msg_bits: Bits, free_cards: Deck) -> Optiona
 class MetaCodec:
     """Codec for (domain, BDC) <-> deck"""
     def __init__(self):
-        self.domains = [Domain.PASSWORD, Domain.GENERIC]
+        self.domains = [
+                Domain.PASSWORD, Domain.COORDS, # format specific
+                Domain.ADDRESS, Domain.FLIGHTS, # format specific with dictionary
+                Domain.WAR_WORDS, Domain.PLACES_AND_NAMES, Domain.SIX_WORDS, # dictionary domains
+                Domain.ALPHA_NUMERIC, # format generic
+                Domain.GENERIC #generic all
+            ]
         self.BDCs = [ChunkConverter, PermutationConverter]
+        self.domain_mappings = {
+            Domain.PASSWORD: 0,
+            Domain.COORDS: 1,
+            Domain.ADDRESS: 2,
+            Domain.FLIGHTS: 3,
+            Domain.WAR_WORDS: 4,
+            Domain.PLACES_AND_NAMES: 5,
+            Domain.SIX_WORDS: 6,
+            Domain.ALPHA_NUMERIC: 7,
+            Domain.GENERIC: 7,# map generic to alpha numeric
+        }
+
 
     def encode(self, domain: Domain, bdc: BDC) -> Deck:
         # use the index to represent domain and BDC
-        domain_idx = self.domains.index(domain)
+        domain_idx = self.domain_mappings[domain]
         bdc_idx = self.BDCs.index(bdc)
 
         # metadata bit representation:
@@ -599,13 +751,27 @@ class Agent:
         self.trash_cards = list(range(self.trash_card_start_idx, 51))
         self.rng = np.random.default_rng(seed=42)
 
+        # ordering here matters since we check them linearlly
+        # a subset of a less efficient one should be found sooner (ie alpha numeric last since WAR_WORDS is a more efficient subset)
         self.domain_detector = DomainDetector(
-            [Domain.PASSWORD]
+            [
+                Domain.PASSWORD, Domain.COORDS, # format specific
+                Domain.ADDRESS, Domain.FLIGHTS, # format specific with dictionary
+                Domain.WAR_WORDS, Domain.PLACES_AND_NAMES, Domain.SIX_WORDS, # dictionary domains
+                Domain.ALPHA_NUMERIC # format generic
+            ]
         )
 
         self.domain2transformer = {
             Domain.GENERIC: WordTransformer(),
-            Domain.PASSWORD: WordTransformer()
+            Domain.PASSWORD: PasswordsTransformer(),
+            Domain.COORDS: CoordsTransformer(),
+            Domain.ADDRESS: AddressTransformer(),
+            Domain.FLIGHTS: FlightsTransformer(),
+            Domain.WAR_WORDS: WordTransformer(),#dictionary=WAR_WORDSDICT
+            Domain.PLACES_AND_NAMES: WordTransformer(),#TODO: dictionary=PLACES_AND_NAMES_DICT
+            Domain.SIX_WORDS: WordTransformer(),#TODO: dictionary=SIX_WORDS_DICT
+            Domain.ALPHA_NUMERIC: AlphaNumericTransformer()
         }
  
     # TODO: there might be many _tangle_cards and _untangle_cards methods
@@ -653,7 +819,8 @@ class Agent:
         #    final deck returned to the simulator
 
         domain = self.domain_detector.detect(msg)
-        debug(f"message domain: {domain.name}")
+
+        print(f"message domain: {domain.name}")
 
         bits = self.domain2transformer[domain].compress(msg)
 
