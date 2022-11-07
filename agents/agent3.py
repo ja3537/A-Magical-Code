@@ -818,7 +818,7 @@ class PermutationConverter(BDC):
     def __str__(cls) -> str:
         return "PermutationConverter"
 
-def to_partial_deck(domain: Domain, msg_bits: Bits, free_cards: Deck) -> Optional[tuple[Deck, Deck, Deck]]:
+def to_partial_deck(domain: Domain, msg_bits: Bits, free_cards: Deck) -> Optional[tuple[BDC, Deck, Deck, Deck]]:
     """Dynamically select the best BDC to encode bits to deck."""
     meta_codec = MetaCodec()
 
@@ -831,7 +831,7 @@ def to_partial_deck(domain: Domain, msg_bits: Bits, free_cards: Deck) -> Optiona
         msg_deck = bdc(free_msg_cards).to_deck(msg_bits)
 
         if msg_deck is not None:
-            return metadata_deck, *msg_deck
+            return bdc, metadata_deck, *msg_deck
 
     return None
 
@@ -860,7 +860,7 @@ class MetaCodec:
             Domain.PLACES_AND_NAMES: 5,
             Domain.SIX_WORDS: 6,
             Domain.ALPHA_NUMERIC: 7,
-            Domain.GENERIC: 7,# TODO: map to default, what should default be?
+            Domain.GENERIC: 8
         }
 
 
@@ -870,8 +870,8 @@ class MetaCodec:
         bdc_idx = self.BDCs.index(bdc)
 
         # metadata bit representation:
-        # domain (3 bits) + BDC (1 bit) => metadata (4 bits)
-        domain_bits = Bits(uint=domain_idx, length=3)
+        # domain (4 bits) + BDC (1 bit) => metadata (5 bits)
+        domain_bits = Bits(uint=domain_idx, length=4)
         bdc_bit = Bits(uint=bdc_idx, length=1)
         metadata = Bits(bin=f'0b{domain_bits.bin}{bdc_bit.bin}')
 
@@ -887,7 +887,7 @@ class MetaCodec:
         return deck
 
     def decode(self, deck: Deck) -> tuple[Domain, BDC]:
-        metadata = Bits(uint=deck[0], length=4)
+        metadata = Bits(uint=deck[0], length=5)
         bdc_bit, domain_bits = metadata.bin[-1], metadata.bin[:-1]
 
         bdc_idx = int(bdc_bit, 2)
@@ -1074,9 +1074,9 @@ class Agent:
         # on the cards it used. Maybe move _tangle and _untangle into bdc?
         # or modify the interface to also return cards used.
         free_cards = [card for card in range(self.trash_card_start_idx)]
-        metadata_cards, message_metadata_cards, message_cards = to_partial_deck(domain, bits, free_cards)
+        bdc, metadata_cards, message_metadata_cards, message_cards = to_partial_deck(domain, bits, free_cards)
         info(f"[ {msg} ]", f"cards available for encoding message: {free_cards}")
-        info(f"[ {msg} ]",
+        info(f"[ {msg} ] bits <-> deck converter: {bdc.__str__()}:",
             f"metadata cards: {metadata_cards},",
             f"message metadata cards: {message_metadata_cards},",
             f"message cards: {message_cards},")
