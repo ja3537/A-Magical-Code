@@ -165,7 +165,7 @@ class AirplaneFlightRule:
 class PlaceNameRule: #not tested much
     def verdict(self, msg: str) -> bool:
         pattern = re.compile("^([A-Z][a-z]+) ([A-Z][a-z]+)$")
-        with open("./messages/agent8/names.txt") as f:
+        with open("./messages/agent8/names.txt") as f: #TODO: find giant list of names and places
             all_words = [word.strip() for word in f.read().splitlines()]
         with open("./messages/agent8/places.txt") as f:
             all_words += [word.strip() for word in f.read().splitlines()]
@@ -174,7 +174,7 @@ class PlaceNameRule: #not tested much
 class WarWordsRule:
     def verdict(self, msg: str) -> bool:
         pattern = re.compile("^([a-z]+ )*([a-z]+)$") #TODO: can't handle numbers
-        with open("./messages/agent6/corpus-ngram-1.txt") as f:
+        with open("./messages/agent6/corpus-ngram-1.txt") as f: #TODO not sure the actual format
             all_words = [word.strip() for word in f.read().splitlines()]
         return pattern.match(msg) and all([word in all_words for word in msg.split(" ")])
 
@@ -771,7 +771,7 @@ class Agent:
             Domain.WAR_WORDS: WordTransformer(),#dictionary=WAR_WORDSDICT
             Domain.PLACES_AND_NAMES: WordTransformer(),#TODO: dictionary=PLACES_AND_NAMES_DICT
             Domain.SIX_WORDS: WordTransformer(),#TODO: dictionary=SIX_WORDS_DICT
-            Domain.ALPHA_NUMERIC: AlphaNumericTransformer()
+            Domain.ALPHA_NUMERIC: WordTransformer()
         }
  
     # TODO: there might be many _tangle_cards and _untangle_cards methods
