@@ -11,7 +11,7 @@ import cards
 
 
 log_format = "%(levelname)s: %(funcName)s(): %(message)s"
-logging.basicConfig(level=logging.DEBUG, format=log_format)
+logging.basicConfig(level=logging.INFO, format=log_format)
 logger = logging.getLogger(__name__)
 # logger.disabled = True
 
@@ -330,7 +330,7 @@ class Agent:
         self.huff = Huffman()
         # self.max_msg_len = math.floor(math.log(math.factorial(self.encode_len), len(self.char_set)))
         self.max_msg_bits = math.floor(math.log(math.factorial(self.encode_len), 2))
-        self.max_msg_bits -= self.checksum_bits + 1
+        self.max_msg_bits -= self.checksum_bits + 2  # partial bit and pad bit
         self.valid_cards_p = tuple(range(52 - self.encode_len, 52))
         self.perm = Perm(self.valid_cards_p, self.char_set)
 
@@ -348,6 +348,7 @@ class Agent:
 
     def encode(self, message_):
         message = deepcopy(message_)
+        partial = "0"
         while True:
             bit_msg, clipped = self.huff.encode(message)
             if len(bit_msg) <= self.max_msg_bits:
@@ -356,12 +357,14 @@ class Agent:
                 message = message[:-1]
 
         if len(message) < len(message_):
+            partial = "1"
             logger.debug(f"Input text longer than {self.max_msg_bits} bits. Shortening message to '{message}'")
 
         msg_num = int(bit_msg, 2)
         checksum = calc_checksum(msg_num, mod_prime=self.mod_prime, mode=self.mod_mode)
         bit_checksum = self.pad_bitstr(bin(checksum)[2:], self.checksum_bits)
-        bit_total = "1" + bit_checksum + bit_msg  # avoid confusion with leading zeros
+        bit_total = partial + bit_checksum + bit_msg
+        bit_total = "1" + bit_total  # avoid confusion with leading zeros
         num_total = int(bit_total, 2)
         seq_encode = self.perm.num_to_perm(num_total)
 
@@ -369,12 +372,21 @@ class Agent:
         seq_rand = [c for c in range(52) if c not in self.valid_cards_p]
         # self.rng.shuffle(seq_rand)
         seq_total = seq_rand + seq_encode
+
+        if not cards.valid_deck(seq_total):
+            raise ValueError(f"Not a valid deck from encode?")
+
         return seq_total
 
     def verify_msg(self, deck):
         num = self.perm.perm_to_num(deck)
         bit_total = bin(num)[2:]
-        bit_total = bit_total[1:]  # Ignore the extra bit we added to avoid confusion with leading zeros
+        if bit_total[1] == "1":
+            partial = True
+        else:
+            partial = False
+        bit_total = bit_total[2:]  # Ignore the extra bits we added to avoid confusion with leading zeros
+
         bit_checksum = bit_total[:self.checksum_bits]
         bit_msg = bit_total[self.checksum_bits:]
 
@@ -383,6 +395,8 @@ class Agent:
         checksum_calculated = calc_checksum(num_msg, mod_prime=self.mod_prime, mode=self.mod_mode)
         if checksum_calculated == checksum_decoded:
             msg = self.huff.decode(bit_msg)
+            if partial:
+                msg = "PARTIAL: " + msg
             return msg
         else:
             return None
