@@ -367,26 +367,31 @@ class CoordsTransformer(MessageTransformer):
         # 0-180 0000-9999 0-180 0000-9999 0-16
         info = re.split('[ .]', msg.replace(",", ""))
         lat, latMin, latDir, long, longMin, longDir = info
+        for i in range(2, 9):
+            try:
+                bits = self._intstr_to_bitstr(lat, i) + self._intstr_to_bitstr(latMin, i+6)
+                bits += self._intstr_to_bitstr(long, i) + self._intstr_to_bitstr(longMin, i+6)
+                bits += ("0" if latDir == "N" else "1") + ("0" if longDir == "E" else "1")
+                break
+            except ValueError:
+                pass
 
-        bits = self._intstr_to_bitstr(lat, 8) + self._intstr_to_bitstr(latMin, 14)
-        bits += self._intstr_to_bitstr(long, 8) + self._intstr_to_bitstr(longMin, 14)
-        bits += ("0" if latDir == "N" else "1") + ("0" if longDir == "E" else "1")
-
-        #TODO: can I decrease the n bits for each number?
+        #TODO: can I decrease the n bits for each number even more?
         return Bits(bin=bits)
 
     def uncompress(self, bits: Bits) -> str:
         bitstr = bits.bin
+        if len(bitstr) - 14 < 8 or (len(bitstr) -14) % 4 != 0:
+            return "NULL(Weird, look into, happens 4 times)"
 
-        if len(bitstr) != 46:
-            return "NULL(Weird, look into, happens 4 times"
-        lat = self._bitstr_to_intstr(bitstr[:8], 8)
+        i = int((len(bitstr) - 14) / 4)
 
-        latMin = self._bitstr_to_intstr(bitstr[8:22], 14)
-        long = self._bitstr_to_intstr(bitstr[22:30], 8)
-        longMin = self._bitstr_to_intstr(bitstr[30:44], 14)
-        latDir = "N" if bitstr[44] == "0" else "S"
-        longDir = "E" if bitstr[45] == "0" else "W"
+        lat = self._bitstr_to_intstr(bitstr[:i])
+        latMin = self._bitstr_to_intstr(bitstr[i:i+i+6], padding=4)
+        long = self._bitstr_to_intstr(bitstr[i+i+6:i+i+6+i])
+        longMin = self._bitstr_to_intstr(bitstr[i+i+6+i:i+i+6+i+i+6], padding=4)
+        latDir = "N" if bitstr[i+i+6+i+i+6] == "0" else "S"
+        longDir = "E" if bitstr[i+i+6+i+i+6+1] == "0" else "W"
 
         formatedOutput = f"{lat}.{latMin} {latDir}, {long}.{longMin} {longDir}"
 
@@ -395,8 +400,11 @@ class CoordsTransformer(MessageTransformer):
     def _intstr_to_bitstr(self, num: str, num_bits: int) -> Bits:
         return Bits(uint=int(num), length=num_bits).bin
   
-    def _bitstr_to_intstr(self, bits: str, num_bits: int) -> str:
-        return str(int(bits[:num_bits], 2))
+    def _bitstr_to_intstr(self, bits: str, padding=0) -> str:
+        num = str(int(bits, 2))
+        if padding:
+            return "0"*(4 - len(num)) + num
+        return num
 
 class AddressTransformer(MessageTransformer): #TODO: later bc format not finalized
     def __init__(self):
