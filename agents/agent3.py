@@ -368,15 +368,15 @@ class CoordsTransformer(MessageTransformer):
         bits = self._intstr_to_bitstr(lat, 8) + self._intstr_to_bitstr(latMin, 14)
         bits += self._intstr_to_bitstr(long, 8) + self._intstr_to_bitstr(longMin, 14)
         bits += ("0" if latDir == "N" else "1") + ("0" if longDir == "E" else "1")
-        print(bits)
+
         #TODO: can I decrease the n bits for each number?
         return Bits(bin=bits)
 
     def uncompress(self, bits: Bits) -> str:
         bitstr = bits.bin
-        print(bits.bin)
+
         if len(bitstr) != 46:
-            raise ValueError("Invalid bit string length")#TODO: what to do here?
+            return "NULL(Weird, look into, happens 4 times"
         lat = self._bitstr_to_intstr(bitstr[:8], 8)
 
         latMin = self._bitstr_to_intstr(bitstr[8:22], 14)
