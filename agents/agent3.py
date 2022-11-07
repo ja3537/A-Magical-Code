@@ -151,7 +151,8 @@ class AddressRule:
 
 class SixWordRule: #not tested much
     def verdict(self, msg: str) -> bool:
-        pattern = re.compile("^([a-z]+ ){5}([a-z]+)$")
+        # pattern = re.compile("^([a-z]+ ){5}([a-z]+)$") # Changed to accept any num words that are in it 
+        pattern = re.compile("^([a-z]+ )*([a-z]+)$")
         with open("./messages/agent7/30k.txt") as f:
             all_words = [word.strip() for word in f.read().splitlines()]
         return pattern.match(msg) and all([word in all_words for word in msg.split(" ")])
@@ -315,7 +316,7 @@ class CoordsTransformer(MessageTransformer):
 
         return msg
   
-class AddressTransformer(MessageTransformer):
+class AddressTransformer(MessageTransformer): #TODO: later bc format not finalized
     def __init__(self):
         self.huffman = Huffman()
 
@@ -331,7 +332,7 @@ class AddressTransformer(MessageTransformer):
 
         return msg
        
-class FlightsTransformer(MessageTransformer):
+class FlightsTransformer(MessageTransformer): #TODO: later bc format not finalized
     def __init__(self):
         self.huffman = Huffman()
 
@@ -347,33 +348,39 @@ class FlightsTransformer(MessageTransformer):
 
         return msg
 
+# TODO: adding freq prevents cases of things not in it
 class WarWordsTransformer(MessageTransformer):
     def __init__(self):
-        self.huffman = Huffman()
+        self.freq = {' ': 15000, 'e': 2490, 's': 1960, 'a': 1852, 'r': 1672, 'i': 1648, 't': 1488, 'n': 1482, 'o': 1307, 'd': 1168, 'l': 1147, 'c': 1106, 'p': 835, 'm': 727, 'g': 668, 'u': 645, 'h': 542, 'b': 483, 'f': 468, 'v': 367, 'w': 348, 'k': 322, 'y': 312, '0': 140, '1': 96, '2': 77, 'j': 68, 'z': 58, '5': 55, 'x': 52, '3': 50, '4': 45, '7': 34, '9': 34, 'q': 30, '8': 29, '6': 25}
+        self.huffman = Huffman(self.freq)
         self.word_file = "./messages/agent3/dicts/shortened_dicts/war_words_mini.txt"
         self.transformer = WordTransformer(wordlist=self.word_file, huffman_encoding=self.huffman)
 
-    def compress(self, msg: str) -> Bits:
+    def compress(self, msg: str) -> Bits: #TODO: maybe clean messages?
         return self.transformer.compress(msg)
 
     def uncompress(self, bits: Bits) -> str:
         return self.transformer.uncompress(bits)
 
-class PlacesAndNamesTransformer(MessageTransformer):#all lowercase, make upper later
+class PlacesAndNamesTransformer(MessageTransformer):
     def __init__(self):
+        self.freq = {' ': 25000, 'a': 15393, 'e': 11709, 'n': 9319, 'l': 8288, 'r': 7848, 'i': 7821, 's': 6479, 'o': 5599, 't': 5435, 'h': 4205, 'm': 4110, 'd': 3968, 'c': 3925, 'k': 3022, 'y': 2902, 'b': 2377, 'u': 2122, 'g': 1805, 'j': 1767, 'v': 1601, 'w': 1476, 'p': 1375, 'f': 1041, 'z': 518, 'q': 323, 'x': 169}
         self.huffman = Huffman()
         self.word_file = "./messages/agent3/dicts/shortened_dicts/places_and_names_mini.txt"
         self.transformer = WordTransformer(wordlist=self.word_file, huffman_encoding=self.huffman)
 
     def compress(self, msg: str) -> Bits:
-        return self.transformer.compress(msg)
+        return self.transformer.compress(msg.lower())
 
     def uncompress(self, bits: Bits) -> str:
-        return self.transformer.uncompress(bits)
+        decoded_msg = self.transformer.uncompress(bits)
+        capitalized_msg = [word.capitalize() for word in decoded_msg.split()]
+        return " ".join(capitalized_msg)
 
 class SixWordsTransformer(MessageTransformer):#TODO: change this to idxs??
     def __init__(self):
-        self.huffman = Huffman()
+        self.freq = {' ': 60000, 'e': 12351, 'a': 10065, 's': 9847, 'r': 8604, 'i': 8586, 't': 7560, 'n': 7484, 'o': 7095, 'c': 5985, 'l': 5970, 'd': 5057, 'p': 4221, 'm': 4148, 'u': 3405, 'g': 3281, 'h': 3040, 'b': 2787, 'f': 2164, 'y': 1891, 'v': 1602, 'w': 1579, 'k': 1390, 'x': 532, 'j': 486, 'z': 371, 'q': 284}
+        self.huffman = Huffman(self.freq)
         self.word_file = "./messages/agent3/dicts/shortened_dicts/six_words_mini.txt"
         self.transformer = WordTransformer(wordlist=self.word_file, huffman_encoding=self.huffman)
 
@@ -383,10 +390,10 @@ class SixWordsTransformer(MessageTransformer):#TODO: change this to idxs??
     def uncompress(self, bits: Bits) -> str:
         return self.transformer.uncompress(bits)
 
-
 class AlphaNumericTransformer(MessageTransformer):
     def __init__(self):
-        self.huffman = Huffman()
+        self.freq = {"a": 1, "b": 1, "c": 1, "d": 1, "e": 1, "f": 1, "g": 1, "h": 1, "i": 1, "j": 1, "k": 1, "l": 1, "m": 1, "n": 1, "o": 1, "p": 1, "q": 1, "r": 1, "s": 1, "t": 1, "u": 1, "v": 1, "w": 1, "x": 1, "y": 1, "z": 1, "0": 1, "1": 1, "2": 1, "3": 1, "4": 1, "5": 1, "6": 1, "7": 1, "8": 1, "9": 1, ".": 1, ",": 1, " ": 1}
+        self.huffman = Huffman(self.freq)
 
     def compress(self, msg: str) -> Bits:
         bits = self.huffman.encode(msg, padding_len=0)
@@ -691,7 +698,7 @@ class MetaCodec:
             Domain.PLACES_AND_NAMES: 5,
             Domain.SIX_WORDS: 6,
             Domain.ALPHA_NUMERIC: 7,
-            Domain.GENERIC: 7,# map generic to alpha numeric
+            Domain.GENERIC: 7,# TODO: map to default, what should default be?
         }
 
 
@@ -789,13 +796,13 @@ class Agent:
         self.trash_cards = list(range(self.trash_card_start_idx, 51))
         self.rng = np.random.default_rng(seed=42)
 
-        # ordering here matters since we check them linearlly
+        # IMPORTANT: ordering here matters since we check them linearlly
         # a subset of a less efficient one should be found sooner (ie alpha numeric last since WAR_WORDS is a more efficient subset)
         self.domain_detector = DomainDetector(
             [
                 Domain.PASSWORD, Domain.COORDS, # format specific
                 Domain.ADDRESS, Domain.FLIGHTS, # format specific with dictionary
-                Domain.WAR_WORDS, Domain.PLACES_AND_NAMES, Domain.SIX_WORDS, # dictionary domains
+                Domain.SIX_WORDS, Domain.WAR_WORDS, Domain.PLACES_AND_NAMES, # dictionary domains
                 Domain.ALPHA_NUMERIC # format generic
             ]
         )
