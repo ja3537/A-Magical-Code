@@ -286,36 +286,115 @@ class WordTransformer(MessageTransformer):
 
 class PasswordsTransformer(MessageTransformer):
     def __init__(self):
-        self.huffman = Huffman()
+        self.freq = {'a': 1, 'b': 1, 'c': 1, 'd': 1, 'e': 1, 'f': 1, 'g': 1, 'h': 1, 'i': 1, 'j': 1, 'k': 1, 'l': 1, 'm': 1, 'n': 1, 'o': 1, 'p': 1, 'q': 1, 'r': 1, 's': 1, 't': 1, 'u': 1, 'v': 1, 'w': 1, 'x': 1, 'y': 1, 'z': 1, '0': 1, '1': 1, '2': 1, '3': 1, '4': 1, '5': 1, '6': 1, '7': 1, '8': 1, '9': 1}#TODO: get actual freq
+        self.huffman = Huffman(self.freq)
+        with open("messages/agent3/default.txt", 'r') as f:
+            self.abrev2word = {}
+            self.word2abrev = {}
+            for line in f.readlines():
+                line = line.strip()
+                [shortened, full] = line.split(' ')
+                self.abrev2word[shortened] = full
+                self.word2abrev[full] = shortened
 
     def compress(self, msg: str) -> Bits:
-        bits = self.huffman.encode(msg, padding_len=0)
-        debug(f'GenericTransformer: "{msg}" -> {bits.bin}')
-
+        msg = msg.replace("@", "")
+        splitMsg = self._get_all_words(msg, self.word2abrev.keys())
+        combinedMsg = ''.join([
+            self.word2abrev[word] if word.isalpha() and word in self.word2abrev else word
+            for word in splitMsg
+        ])
+        #TODO: join on space or not?
+        bits = self.huffman.encode(combinedMsg, padding_len=0)
         return bits
 
     def uncompress(self, bits: Bits) -> str:
         msg = self.huffman.decode(bits, padding_len=0)
-        debug(f'GenericTransformer: "{bits.bin}" -> {msg}')
+        splitMsg = self._get_all_words(msg, self.abrev2word.keys())
 
-        return msg
+        combinedMsg = '@' + ''.join([
+            self.abrev2word[word] if word.isalpha() and word in self.abrev2word else word 
+            for word in splitMsg
+        ])
+
+        return combinedMsg
+
+    def _get_all_words(self, msg: str, wordlist) -> list[str]:
+        words = []
+        startIdx = 0
+        for i in range(1, len(msg)):
+            if msg[i].isalpha() != msg[i-1].isalpha():
+                words.append(msg[startIdx:i])
+                startIdx = i
+        words.append(msg[startIdx:])
+
+        splitMsg = []
+        for word in words:
+            if word.isalpha():
+                extractedWords = self._get_word_helper(wordlist, [], word)
+                if len(extractedWords) == 0:
+                    splitMsg.append(word)
+                else:
+                    splitMsg.extend(extractedWords)
+            else:
+                splitMsg.append(word)
+        return splitMsg
+
+    def _get_word_helper(self, wordlist, words, current_string):
+        if len(current_string) == 0:
+            return words
+        if current_string in wordlist:
+            words.append(current_string)
+            return words
+        
+        runningPrefix = ""
+        for letter in current_string:
+            runningPrefix += letter
+            if runningPrefix in wordlist:
+                words.append(runningPrefix)
+                words = self._get_word_helper(wordlist, words, current_string[len(runningPrefix):])
+                return words
+        return words
 
 class CoordsTransformer(MessageTransformer):
     def __init__(self):
         self.huffman = Huffman()
 
     def compress(self, msg: str) -> Bits:
-        bits = self.huffman.encode(msg, padding_len=0)
-        debug(f'GenericTransformer: "{msg}" -> {bits.bin}')
+        # 0-180 0000-9999 0-180 0000-9999 0-16
+        info = re.split('[ .]', msg.replace(",", ""))
+        lat, latMin, latDir, long, longMin, longDir = info
 
-        return bits
+        bits = self._intstr_to_bitstr(lat, 8) + self._intstr_to_bitstr(latMin, 14)
+        bits += self._intstr_to_bitstr(long, 8) + self._intstr_to_bitstr(longMin, 14)
+        bits += ("0" if latDir == "N" else "1") + ("0" if longDir == "E" else "1")
+        print(bits)
+        #TODO: can I decrease the n bits for each number?
+        return Bits(bin=bits)
 
     def uncompress(self, bits: Bits) -> str:
-        msg = self.huffman.decode(bits, padding_len=0)
-        debug(f'GenericTransformer: "{bits.bin}" -> {msg}')
+        bitstr = bits.bin
+        print(bits.bin)
+        if len(bitstr) != 46:
+            raise ValueError("Invalid bit string length")#TODO: what to do here?
+        lat = self._bitstr_to_intstr(bitstr[:8], 8)
 
-        return msg
+        latMin = self._bitstr_to_intstr(bitstr[8:22], 14)
+        long = self._bitstr_to_intstr(bitstr[22:30], 8)
+        longMin = self._bitstr_to_intstr(bitstr[30:44], 14)
+        latDir = "N" if bitstr[44] == "0" else "S"
+        longDir = "E" if bitstr[45] == "0" else "W"
+
+        formatedOutput = f"{lat}.{latMin} {latDir}, {long}.{longMin} {longDir}"
+
+        return formatedOutput
+
+    def _intstr_to_bitstr(self, num: str, num_bits: int) -> Bits:
+        return Bits(uint=int(num), length=num_bits).bin
   
+    def _bitstr_to_intstr(self, bits: str, num_bits: int) -> str:
+        return str(int(bits[:num_bits], 2))
+
 class AddressTransformer(MessageTransformer): #TODO: later bc format not finalized
     def __init__(self):
         self.huffman = Huffman()
