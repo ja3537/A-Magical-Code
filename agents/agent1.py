@@ -283,21 +283,6 @@ class Huffman:
                 decoded_output.append(huffman_tree.symbol)
                 huffman_tree = tree_head
         string = ''.join([str(item) for item in decoded_output])
-        # msg = []
-        # len_seq = 1
-        # while len_seq <= len(encoded_data):
-        #     seq = encoded_data[:len_seq]
-        #     try:
-        #         msg.append(self.decoding_dict[seq])
-        #         try:
-        #             encoded_data = encoded_data[len_seq:]
-        #             len_seq = 1
-        #         except IndexError:
-        #             encoded_data = []
-        #     except KeyError:
-        #         len_seq += 1
-        #
-        # string = ''.join(msg)
         return string
 
     @staticmethod
@@ -463,7 +448,6 @@ if __name__ == "__main__":
         print(f"Shuffled deck: {deck}")
         print(f"Decoded Message: {msg_decoded}")
 
-
     # Testing the str-to-perm and back
     # test_perm = True
     if test_perm:
@@ -471,13 +455,11 @@ if __name__ == "__main__":
         valid_cards = tuple(range(52 - encode_len, 52))
         test_perm = Perm(valid_cards, alpha)
         card_perm = test_perm.str_to_perm("hel loworld")
-        # card_perm = test_perm.str_to_perm("helloworld")
-        # card_perm = test_perm.str_to_perm("123456987")
         print("card seq = " + str(card_perm))
         decoded_str = test_perm.perm_to_str(card_perm)
         print("recovered string = " + decoded_str)
 
-    test_huff = True
+    # test_huff = True
     if test_huff:
         huff = Huffman()
         huff.print_codes()
@@ -488,38 +470,6 @@ if __name__ == "__main__":
         decoded_msg = huff.decode(encoding)
         print(f"Decoding - {encoding}: {decoded_msg}")
         print(f"Decoding Test: {decoded_msg == msg}")
-        # num = huff.encoding_to_num(encoding)
-        # print(f"Encoding as a num: {num}")
-
-        # # COMPARE HUFF VS DIRECT ENCODE
-        # encode_len = 12
-        # valid_cards = tuple(range(52 - encode_len, 52))
-        # test_perm = Perm(valid_cards, alpha)
-        # card_perm1 = test_perm.str_to_perm(msg)
-        # decode1 = test_perm.perm_to_str(card_perm1)
-        #
-        # max_trials = 30
-        # while max_trials > 0:
-        #     encoding, clipped = huff.encode(msg)
-        #     num = huff.encoding_to_num(encoding)
-        #     if test_perm.check_num_too_large(num):
-        #         max_trials -= 1
-        #         msg = msg[:-1]
-        #         continue
-        #     else:
-        #         break
-        #
-        # if max_trials < 29:
-        #     logger.warning(f"Huff: Message too large to encode. Shortening to : '{msg}'")
-        # card_perm2 = test_perm.num_to_perm(num)
-        # decode2 = test_perm.perm_to_num(card_perm2)
-        # decode2 = huff.num_to_binstr(decode2)
-        # decode2 = huff.decode(decode2)
-        #
-        # print(f"Direct Encode to Seq: {card_perm1}")
-        # print(f"Direct Decode: {decode1}")
-        # print(f"Huffma Encode to Seq: {card_perm2}")
-        # print(f"Huffma Decode: {decode2}")
 
     print("Done")
 
