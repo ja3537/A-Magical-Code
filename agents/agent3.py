@@ -942,6 +942,7 @@ class Huffman:
             self.codec = HuffmanCodec.from_frequencies(dictionary)
         else:
             self.codec = load_shakespeare()
+        self.modified_codec = {symbol: bin(val)[2:].rjust(bits-1, '0') for symbol, (bits, val) in self.codec.get_code_table().items()}
 
     def _add_padding(self, msg: Bits, padding_len: int) -> Bits:
 
@@ -966,19 +967,35 @@ class Huffman:
         return original_encoding
 
     def encode(self, msg: str, padding_len: int = 5) -> Bits:
-        bytes = self.codec.encode(msg)
-        bits = Bits(bytes=bytes)
+
+        encoded_message = []
+        for char in msg:
+            if not char in self.modified_codec:
+                raise ValueError()
+            encoded_message.append(self.modified_codec[char])
+
+        bits = Bits(bin=''.join(encoded_message))
+        
         debug('[ Huffman.encode ]', f'msg: {msg} -> bits: {bits.bin}')
         padded_bits = self._add_padding(bits, padding_len)
 
         return padded_bits
 
     def decode(self, bits: Bits, padding_len: int = 5) -> str:
+        decoded_message = ""
         bits = self._remove_padding(bits, padding_len)
-        decoded = self.codec.decode(bits.tobytes())
-        debug('[ Huffman.decode ]', f'bits: {bits.bin} -> msg: {decoded}')
+        encoded_message = bits.bin
+        while encoded_message:
+            for symbol, code in sorted(self.modified_codec.items(), key=lambda x: len(x[1]), reverse=True):
+                if encoded_message.startswith(code):
+                    decoded_message += symbol
+                    encoded_message = encoded_message[len(code):]
+                    break
+            else:
+                raise ValueError()
+        debug('[ Huffman.decode ]', f'bits: {bits.bin} -> msg: {decoded_message}')
 
-        return decoded
+        return decoded_message
 
 
 # -----------------------------------------------------------------------------
