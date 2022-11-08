@@ -10,7 +10,6 @@ from typing import List, Optional
 
 from bitstring import Bits
 from dahuffman import load_shakespeare, HuffmanCodec
-import numpy as np
 import requests
 
 from cards import valid_deck
@@ -39,6 +38,15 @@ def error(*args) -> None:
 
 if isfile(log_file):
     open(log_file, 'w').close()
+
+
+# -----------------------------------------------------------------------------
+#   Custom Errors
+# -----------------------------------------------------------------------------
+
+class NullDeckException(Exception):
+    """Raise when a deck doesn't contain a message."""
+    pass
 
 
 # -----------------------------------------------------------------------------
@@ -974,15 +982,25 @@ class MetaCodec:
         return deck
 
     def decode(self, deck: Deck) -> tuple[bool, Domain, BDC]:
-        metadata = Bits(uint=deck[0] * 32 + deck[1], length=6)
-        bdc_bit, partial_match_bit, domain_bits = metadata.bin[-1], metadata.bin[-2], metadata.bin[:-2]
+        """Decodes the metadata deck into a tuple of (partial_match, domain, bdc).
+        
+        Raises NullDeckException if decoding fails.
+        """
+        try:
+            metadata = Bits(uint=deck[0] * 32 + deck[1], length=6)
+            bdc_bit, partial_match_bit, domain_bits = metadata.bin[-1], metadata.bin[-2], metadata.bin[:-2]
 
-        bdc_idx = int(bdc_bit, 2)
-        partial_match = bool(int(partial_match_bit, 2))
-        domain_idx = int(domain_bits, 2)
+            bdc_idx = int(bdc_bit, 2)
+            partial_match = bool(int(partial_match_bit, 2))
+            domain_idx = int(domain_bits, 2)
 
-        bdc = self.BDCs[bdc_idx]
-        domain = self.domains[domain_idx]
+            bdc = self.BDCs[bdc_idx]
+            domain = self.domains[domain_idx]
+        except Exception as e:
+            raise NullDeckException(f"can't decode metadata: {e}")
+        
+        if domain is None:
+            raise NullDeckException("can't deccode metadata: domain in metadata is non-existent")
 
         info('MetaCodec decode:  %s (deck) -> %s (domain), %s (BDC)' %
             (str(deck), domain.name, bdc.__str__()))
@@ -1234,8 +1252,11 @@ class Agent:
                 orig_msg += "*"
             info(f"using transformer: {self.domain2transformer[domain]},",
                 f"uncompressed message: \"{orig_msg}\"")
+        except NullDeckException as e:
+            error("(NullDeckException)", e)
+            orig_msg = NULL_MESSAGE
         except Exception as e:
-            error(f"decoding failed: {e}")
+            error(f"({type(e).__name__})", f"decoding failed with uncaught exeception: {e}")
             orig_msg = NULL_MESSAGE
         finally:
             return orig_msg
