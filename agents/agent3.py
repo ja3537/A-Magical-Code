@@ -807,7 +807,12 @@ class PermutationConverter(BDC):
         self.permuter = PermutationGenerator()
 
     def to_deck(self, bits: Bits) -> Optional[tuple[Deck, Deck]]:
-        bit_len = len(bits.bin)
+        # optimization: truncate trailing zeros in bits
+        _bits = Bits(bin=bits.bin.rstrip('0'))
+        bit_len = len(_bits.bin)
+        if bit_len < len(bits.bin):
+            info(f"{self.__str__()} optimiation: truncating",
+            f"{len(bits.bin) - bit_len} trailing zeros, new bit len: {bit_len}")
 
         num_msg_cards = self.permuter.n_needed(2 ** bit_len)
         num_metdata_cards = 6 # 6! = 720, can handle bit length up to 720
@@ -823,7 +828,7 @@ class PermutationConverter(BDC):
 
         msg = [
             int(card)
-            for card in self.permuter.encode(msg_cards, bits.uint)
+            for card in self.permuter.encode(msg_cards, _bits.uint)
         ]
         msg_metadata = [
             int(card)
