@@ -269,12 +269,159 @@ class ASCII_Frequencies:
         '\x1e': 6.338218895840436e-08
     }
 
+    # Domains definitions:
+    G1_lower_num_punc = {
+        ' ': 0.1780878364077455,
+        'e': 0.09150969693107569,
+        't': 0.06727164677467966,
+        'a': 0.06510236506472278,
+        'n': 0.05849347585309161,
+        'i': 0.05824820818529814,
+        'o': 0.05759371198637441,
+        's': 0.05514507707171018,
+        'r': 0.054760907472856536,
+        'l': 0.034203017499622436,
+        'd': 0.033892205904126955,
+        'h': 0.027837307711428345,
+        'c': 0.026572909434997873,
+        'u': 0.02045657644058884,
+        'm': 0.019279412888078322,
+        'p': 0.018452468122949903,
+        'f': 0.016739501486223718,
+        'g': 0.013608819019675708,
+        '.': 0.011749473189839063,
+        'y': 0.011577832976288458,
+        'b': 0.010996223241674676,
+        'w': 0.010166583967699306,
+        ',': 0.009176756142772862,
+        'v': 0.008310202097594303,
+        '0': 0.006290667716806582,
+        'k': 0.005256313133184318,
+        '1': 0.005247892793037605,
+        '2': 0.002929335292959801,
+        '8': 0.002713100957992203,
+        '5': 0.002685616967753331,
+        '9': 0.002595620372265259,
+        'x': 0.002451262060790006,
+        '3': 0.002323879155050527,
+        '6': 0.0020404841870727435,
+        '4': 0.0019539904530857044,
+        '7': 0.0019389012035427944,
+        'q': 0.0010718756193160179,
+        'j': 0.0006563823551165961,
+        'z': 0.0006124618609113395
+    }
+
+    G2_airport = {
+        ' ': 0.7329604369403089,
+        '0': 0.025890654024231335,
+        '1': 0.021598879924588983,
+        'S': 0.013514929718040422,
+        'T': 0.013429260583880895,
+        'C': 0.013067454046411046,
+        '2': 0.012056336466217527,
+        '8': 0.011166375557958358,
+        '5': 0.011053259031301119,
+        'A': 0.010837006847985805,
+        '9': 0.01068285785577643,
+        '3': 0.009564445923091853,
+        'I': 0.009146635615071114,
+        '6': 0.008398070365133493,
+        '4': 0.008042086001829827,
+        '7': 0.00797998281072389,
+        'M': 0.007932573678227842,
+        'B': 0.007605422939366215,
+        'P': 0.006076131858382545,
+        'E': 0.00565943053591727,
+        'N': 0.005580969807868253,
+        'F': 0.005337824724832959,
+        'R': 0.00482796861570878,
+        'D': 0.004780004990435,
+        'U': 0.004560703096842164,
+        'L': 0.004393800770744961,
+        'G': 0.004072472206049516,
+        'J': 0.0038556655299564722,
+        'H': 0.0038284953838476255,
+        'O': 0.0035914497213673795,
+        'W': 0.0035204746458177383,
+        'K': 0.0016656963043056364,
+        'V': 0.001118134686295711,
+        'Y': 0.0011020543957414954,
+        'Q': 0.00043749480163020874,
+        'Z': 0.0003770550888574676,
+        'X': 0.0002875045052538191
+    }
+
+    G3_password = {
+        'e': 0.11424631235218419,
+        't': 0.08398604549695467,
+        'a': 0.0812777813006228,
+        'n': 0.07302683908909208,
+        'i': 0.07272063190532521,
+        'o': 0.0719035187502912,
+        's': 0.06884649289752395,
+        'r': 0.0683668720326455,
+        'l': 0.042701142629641024,
+        'd': 0.04231310639072306,
+        'h': 0.034753800509678114,
+        'c': 0.03317524823302224,
+        'u': 0.02553924338147595,
+        'm': 0.024069600278942047,
+        'p': 0.023037191768114793,
+        'f': 0.02089861926715143,
+        'g': 0.016990083462272265,
+        'y': 0.014454476049316765,
+        'b': 0.013728358822004733,
+        'w': 0.01269258632124321,
+        'v': 0.010374965456028363,
+        '0': 0.007853655000293508,
+        'k': 0.006562303364275874,
+        '1': 0.006551790895731282,
+        '2': 0.00365716165704089,
+        '8': 0.003387201464815777,
+        '5': 0.00335288876748623,
+        '9': 0.0032405315036816346,
+        'x': 0.003060305742953156,
+        '3': 0.002901273118810574,
+        '6': 0.0025474654774737984,
+        '4': 0.002439481400583753,
+        '7': 0.0024206430569518452,
+        'q': 0.001338195195852335,
+        'j': 0.000819467947988006,
+        'z': 0.0007646349120594161,
+        '@': 8.409974835673296e-08
+    }
+
+    G4_location = {
+        '0' : 1/17,
+        '1' : 1/17,
+        '2' : 1/17,
+        '3' : 1/17,
+        '4' : 1/17,
+        '5' : 1/17,
+        '6' : 1/17,
+        '7' : 1/17,
+        '8' : 1/17,
+        '9' : 1/17,
+        '.' : 2/17,
+        ' ' : 3/17,
+        ',' : 1/17,
+        'N' : 1/17,
+        'S' : 1/17,
+        'E' : 1/17,
+        'W' : 1/17
+    }
+
 encodings = {
-    'lower': ASCII_Frequencies.lower_freq_with_space,
-    'upper': ASCII_Frequencies.upper_freq_with_space,
+    'lower': ASCII_Frequencies.G1_lower_num_punc,
+    'airport': ASCII_Frequencies.G2_airport,
+    'password': ASCII_Frequencies.G3_password,
+    'location': ASCII_Frequencies.G4_location,
+    # 'lower': ASCII_Frequencies.lower_freq_with_space,
+    # 'upper': ASCII_Frequencies.upper_freq_with_space,
     'printable': ASCII_Frequencies.all_printable_ascii,
-    'number': ASCII_Frequencies.num_freq,
-    'letters': ASCII_Frequencies.letter_freq_with_space
+    # 'number': ASCII_Frequencies.num_freq,
+    # 'letters': ASCII_Frequencies.letter_freq_with_space
 }
 
 def generate_huffman_code(type):
@@ -284,10 +431,12 @@ def generate_huffman_code(type):
 
 # HUFFMAN ENCODING FOR VARIETY OF WORDS
 LOWERCASE_HUFFMAN = generate_huffman_code('lower')
-UPPERCASE_HUFFMAN = generate_huffman_code('upper')
+AIRPORT_HUFFMAN = generate_huffman_code('airport')
+PASSPORT_HUFFMAN = generate_huffman_code('password')
+LOCATION_HUFFMAN = generate_huffman_code('location')
 PRINTTABLE_HUFFMAN = generate_huffman_code('printable')
-NUMBER_HUFFMAN = generate_huffman_code('number')
-LETTERS_HUFFMAN = generate_huffman_code('letters')
+# NUMBER_HUFFMAN = generate_huffman_code('number')
+# LETTERS_HUFFMAN = generate_huffman_code('letters')
 
 def encode_msg_bin(msg, encoding) -> str:
     """
@@ -382,16 +531,22 @@ class Agent:
 
     def __init__(self):
        self.scheme_id_to_encoding = { "001" : LOWERCASE_HUFFMAN,
-                                      "010" : UPPERCASE_HUFFMAN,
-                                      "011" : LETTERS_HUFFMAN,
-                                      "100" : NUMBER_HUFFMAN,
-                                      "101" : PRINTTABLE_HUFFMAN}
+                                      "010" : AIRPORT_HUFFMAN,
+                                      "011" : PASSPORT_HUFFMAN,
+                                      "100" : LOCATION_HUFFMAN,
+                                    #   "011" : LETTERS_HUFFMAN,
+                                    #   "100" : NUMBER_HUFFMAN,
+                                      "101" : PRINTTABLE_HUFFMAN
+                                    }
 
        self.encoding_to_scheme_id = { "LOWERCASE_HUFFMAN" : "001",
-                                      "UPPERCASE_HUFFMAN" : "010",
-                                      "LETTERS_HUFFMAN" : "011",
-                                      "NUMBER_HUFFMAN" : "100",
-                                      "PRINTTABLE_HUFFMAN" : "101"}
+                                      "AIRPORT_HUFFMAN" : "010",
+                                      "PASSPORT_HUFFMAN" : "011",
+                                      "LOCATION_HUFFMAN" : "100",
+                                    #   "LETTERS_HUFFMAN" : "011",
+                                    #   "NUMBER_HUFFMAN" : "100",
+                                      "PRINTTABLE_HUFFMAN" : "101"
+                                    }
         #self.encoding = huffman_code(node)
         
     def compute_crc8_checksum(self, data) -> str:
@@ -445,21 +600,27 @@ class Agent:
         FYI: use 'encode_msg_bin' to compress a message to binary
         """
         ms = set(message)
-        if ms.issubset(ASCII_Frequencies.lower_freq_with_space.keys()):
+        if ms.issubset(ASCII_Frequencies.G1_lower_num_punc.keys()):
             encoding = LOWERCASE_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["LOWERCASE_HUFFMAN"]
-        elif ms.issubset(ASCII_Frequencies.upper_freq_with_space.keys()):
-            encoding = UPPERCASE_HUFFMAN
-            scheme_id = self.encoding_to_scheme_id["UPPERCASE_HUFFMAN"]
-        elif ms.issubset(ASCII_Frequencies.letter_freq_with_space.keys()):
-            encoding = LETTERS_HUFFMAN
-            scheme_id = self.encoding_to_scheme_id["LETTERS_HUFFMAN"]
-        elif ms.issubset(ASCII_Frequencies.num_freq.keys()):
-            encoding = NUMBER_HUFFMAN
-            scheme_id = self.encoding_to_scheme_id["NUMBER_HUFFMAN"]
-        else:
-            encoding = PRINTTABLE_HUFFMAN
-            scheme_id = self.encoding_to_scheme_id["PRINTTABLE_HUFFMAN"]
+        elif ms.issubset(ASCII_Frequencies.G2_airport.keys()):
+            encoding = AIRPORT_HUFFMAN
+            scheme_id = self.encoding_to_scheme_id["AIRPORT_HUFFMAN"]
+        elif ms.issubset(ASCII_Frequencies.G3_password.keys()):
+            encoding = PASSPORT_HUFFMAN
+            scheme_id = self.encoding_to_scheme_id["PASSPORT_HUFFMAN"]
+        elif ms.issubset(ASCII_Frequencies.G4_location.keys()):
+            encoding = LOCATION_HUFFMAN
+            scheme_id = self.encoding_to_scheme_id["LOCATION_HUFFMAN"]
+        # elif ms.issubset(ASCII_Frequencies.letter_freq_with_space.keys()):
+        #     encoding = LETTERS_HUFFMAN
+        #     scheme_id = self.encoding_to_scheme_id["LETTERS_HUFFMAN"]
+        # elif ms.issubset(ASCII_Frequencies.num_freq.keys()):
+        #     encoding = NUMBER_HUFFMAN
+        #     scheme_id = self.encoding_to_scheme_id["NUMBER_HUFFMAN"]
+        # else:
+        #     encoding = PRINTTABLE_HUFFMAN
+        #     scheme_id = self.encoding_to_scheme_id["PRINTTABLE_HUFFMAN"]
         
         msg_huffman_binary = encode_msg_bin(message, encoding)
        
