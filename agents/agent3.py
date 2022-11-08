@@ -48,6 +48,9 @@ class NullDeckException(Exception):
     """Raise when a deck doesn't contain a message."""
     pass
 
+def agent_assert(condition, action):
+    if condition: raise action
+
 
 # -----------------------------------------------------------------------------
 #   Agent Parameters
@@ -436,7 +439,7 @@ class CoordsTransformer(MessageTransformer):
     def uncompress(self, bits: Bits) -> str:
         bitstr = bits.bin
         if len(bitstr) - 14 < 8 or (len(bitstr) -14) % 4 != 0:
-            return "NULL(Weird, look into, happens 4 times)"
+            raise NullDeckException("NULL(Weird, look into, happens 4 times)")
 
         i = int((len(bitstr) - 14) / 4)
 
@@ -1125,6 +1128,11 @@ class Agent:
         return deck if valid_deck(deck) else list(range(52))
 
     def _untangle_cards(self, cards: Deck) -> tuple[Deck, Deck, Deck]:
+        """Untangles deck of 52 cards into metadata deck, msg metadata deck, and msg deck
+        after removing trash cards.
+        
+        Raises NullDeckException if the decks untangled are invalid, e.g. deck size incorrect.
+        """
         def remove_trash_cards(deck) -> List[int]:
             for i in self.trash_cards:
                 deck.remove(i)
@@ -1133,6 +1141,10 @@ class Agent:
         deck = remove_trash_cards(cards)
         stop_card = deck.index(self.stop_card)
         message_metadata, message, metadata = deck[:stop_card], deck[stop_card+1:-2], deck[-2:]
+
+        agent_assert(len(message) == 0, NullDeckException("empty message"))
+        agent_assert(len(metadata) != 2,
+            NullDeckException(f"expect 2 metadata cards, but got {len(metadata)}"))
 
         return metadata, message_metadata, message
 
@@ -1226,18 +1238,16 @@ class Agent:
 
         # TODO: uses a series of rules to detect if the deck contains a message
         
-        metadata, message_metadata, message = self._untangle_cards(deck)
-        info(f"untangled deck: ",
-            f"metadata cards: {metadata},",
-            f"message metadata cards: {message_metadata},",
-            f"message cards: {message}")
-        if len(message) == 0:
-            return NULL_MESSAGE
-
         # if an error occurs during decoding, it means the message is corrupted
         # or the deck doesn't contain a message, we catch the error and return
         # the NULL_MESSAGE.
         try:
+            metadata, message_metadata, message = self._untangle_cards(deck)
+            info(f"untangled deck: ",
+                f"metadata cards: {metadata},",
+                f"message metadata cards: {message_metadata},",
+                f"message cards: {message}")
+
             partial_match, domain, bdc = MetaCodec().decode(metadata)
             info(f"decoded metadata: partial match: {partial_match},",
                 f"domain: {domain.name}, bits <-> deck converter: {bdc.__str__()}")
