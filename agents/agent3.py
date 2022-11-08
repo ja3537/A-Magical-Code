@@ -45,6 +45,7 @@ if isfile(log_file):
 #   Agent Parameters
 # -----------------------------------------------------------------------------
 
+MAX_PERMUTATION_N = 31
 MAX_CHUNK_SIZE = 6
 
 
@@ -55,7 +56,8 @@ class PermutationGenerator:
         self.alphabet = '0123456789abcdefghijklmnopqrstuvwxyz'
         self.fact = [0] * 34
         self.fact[0] = 1
-        for i in range(1, 32):
+        self.max_fact_n = 31
+        for i in range(1, self.max_fact_n + 1):
             self.fact[i] = (self.fact[i - 1] * i)
 
     def _perm_count(self, s: str) -> int:
@@ -130,6 +132,10 @@ class PermutationGenerator:
         for i in range(100):
             if rank < self.fact[i]:
                 return i
+        else:
+            # return a really large n to indicate to the caller that
+            # encoding the rank using permutation won't work
+            return sys.maxsize
 
 
 # -----------------------------------------------------------------------------
