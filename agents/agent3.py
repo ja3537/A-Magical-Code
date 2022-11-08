@@ -47,6 +47,7 @@ if isfile(log_file):
 
 MAX_PERMUTATION_N = 31
 MAX_CHUNK_SIZE = 6
+NULL_MESSAGE = "NULL"
 
 
 class PermutationGenerator:
@@ -56,7 +57,7 @@ class PermutationGenerator:
         self.alphabet = '0123456789abcdefghijklmnopqrstuvwxyz'
         self.fact = [0] * 34
         self.fact[0] = 1
-        self.max_fact_n = 31
+        self.max_fact_n = MAX_PERMUTATION_N
         for i in range(1, self.max_fact_n + 1):
             self.fact[i] = (self.fact[i - 1] * i)
 
@@ -129,7 +130,7 @@ class PermutationGenerator:
     def n_needed(self, rank: int) -> int:
         """Returns the number of cards needed to encode a message with
         a bit pattern equal to rank using permutation."""
-        for i in range(100):
+        for i in range(self.max_fact_n + 1):
             if rank < self.fact[i]:
                 return i
         else:
@@ -1213,24 +1214,31 @@ class Agent:
             f"message metadata cards: {message_metadata},",
             f"message cards: {message}")
         if len(message) == 0:
-            return "NULL"
+            return NULL_MESSAGE
 
-        partial_match, domain, bdc = MetaCodec().decode(metadata)
-        info(f"decoded metadata: partial match: {partial_match},",
-            f"domain: {domain.name}, bits <-> deck converter: {bdc.__str__()}")
+        # if an error occurs during decoding, it means the message is corrupted
+        # or the deck doesn't contain a message, we catch the error and return
+        # the NULL_MESSAGE.
+        try:
+            partial_match, domain, bdc = MetaCodec().decode(metadata)
+            info(f"decoded metadata: partial match: {partial_match},",
+                f"domain: {domain.name}, bits <-> deck converter: {bdc.__str__()}")
 
-        # deck -> message bits
-        free_msg_cards = [card for card in self.free_cards if card not in metadata]
-        message_bits = bdc(free_msg_cards).to_bits(message, message_metadata)
-        info(f"deck -> bits using {bdc.__str__()}: {message_metadata} -> {message_bits.bin}")
+            # deck -> message bits
+            free_msg_cards = [card for card in self.free_cards if card not in metadata]
+            message_bits = bdc(free_msg_cards).to_bits(message, message_metadata)
+            info(f"deck -> bits using {bdc.__str__()}: {message_metadata} -> {message_bits.bin}")
 
-        orig_msg = self.domain2transformer[domain].uncompress(message_bits)
-        if partial_match:
-            orig_msg += "*"
-        info(f"using transformer: {self.domain2transformer[domain]},",
-            f"uncompressed message: \"{orig_msg}\"")
-
-        return orig_msg
+            orig_msg = self.domain2transformer[domain].uncompress(message_bits)
+            if partial_match:
+                orig_msg += "*"
+            info(f"using transformer: {self.domain2transformer[domain]},",
+                f"uncompressed message: \"{orig_msg}\"")
+        except Exception as e:
+            error(f"decoding failed: {e}")
+            orig_msg = NULL_MESSAGE
+        finally:
+            return orig_msg
 
 
 # -----------------------------------------------------------------------------
