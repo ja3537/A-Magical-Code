@@ -847,12 +847,22 @@ class PermutationConverter(BDC):
     def __str__(cls) -> str:
         return "PermutationConverter"
 
-def to_partial_deck(domain: Domain, msg_bits: Bits, free_cards: Deck) -> Optional[tuple[BDC, Deck, Deck, Deck]]:
-    """Dynamically select the best BDC to encode bits to deck."""
+def to_partial_deck(
+    partial_match: bool,
+    domain:        Domain,
+    msg_bits:      Bits,
+    free_cards:    Deck
+) -> Optional[tuple[BDC, Deck, Deck, Deck]]:
+    """Dynamically select the best BDC to encode bits to deck.
+    
+    Returns None if all BDCs failed. Otherwise, returns the BDC that
+    encodes the bits with the fewest number of cards, i.e. a tuple of
+        (BDC, metadata deck, message metadata deck, message deck)
+    """
     meta_codec = MetaCodec()
 
     def _to_partial_deck(bdc: BDC) -> Optional[tuple[Deck, Deck]]:
-        metadata_deck = meta_codec.encode(domain, bdc)
+        metadata_deck = meta_codec.encode(partial_match, domain, bdc)
 
         # compute cards availabe for encoding the message, to avoid
         # collision between metadata cards and message cards
@@ -917,18 +927,21 @@ class MetaCodec:
         }
 
 
-    def encode(self, domain: Domain, bdc: BDC) -> Deck:
+    def encode(self, partial_match: bool, domain: Domain, bdc: BDC) -> Deck:
         # use the index to represent domain and BDC
         domain_idx = self.domain_mappings[domain]
         bdc_idx = self.BDCs.index(bdc)
 
         # metadata bit representation:
-        # domain (4 bits) + BDC (1 bit) => metadata (5 bits)
+        # domain (4 bits) + partial match (1 bit) + BDC (1 bit) => metadata (6 bits)
         domain_bits = Bits(uint=domain_idx, length=4)
         bdc_bit = Bits(uint=bdc_idx, length=1)
-        metadata = Bits(bin=f'0b{domain_bits.bin}{bdc_bit.bin}')
+        partial_match_bit = Bits(uint=int(partial_match), length=1)
+        metadata = Bits(bin=f'0b{domain_bits.bin}{partial_match_bit.bin}{bdc_bit.bin}')
 
         # Bit -> Card
+        # since domain is max 8, max of metadata is 1000 1 1 = 35
+        # if we use 4 - 35 instead of 0 - 31, we can represent the metadata with a single card.
         deck = [metadata.uint]
 
         # logging
@@ -939,10 +952,11 @@ class MetaCodec:
 
         return deck
 
-    def decode(self, deck: Deck) -> tuple[Domain, BDC]:
-        metadata = Bits(uint=deck[0], length=5)
-        bdc_bit, domain_bits = metadata.bin[-1], metadata.bin[:-1]
+    def decode(self, deck: Deck) -> tuple[bool, Domain, BDC]:
+        metadata = Bits(uint=deck[0], length=6)
+        bdc_bit, partial_match_bit, domain_bits = metadata.bin[-1], metadata.bin[-2], metadata.bin[:-2]
 
+        partial_match = bool(int(partial_match_bit, 2))
         bdc_idx = int(bdc_bit, 2)
         domain_idx = int(domain_bits, 2)
 
@@ -954,7 +968,7 @@ class MetaCodec:
         debug( "%-7d %-5s %5d %-5s %10s" %
             (domain_idx, domain_bits, bdc_idx, bdc_bit, metadata.bin))
 
-        return domain, bdc
+        return partial_match, domain, bdc
 
 
 class Huffman:
@@ -1011,9 +1025,11 @@ class Agent:
 
     def __init__(self) -> None:
         self.stop_card = 51
-        self.trash_card_start_idx = 32
-        self.trash_cards = list(range(self.trash_card_start_idx, 51))
-        self.rng = np.random.default_rng(seed=42)
+
+        # see MetadataCodec.encode for the explanation for
+        # this specific choice offree_cards and trash_cards
+        self.free_cards = list(range(4, 35))
+        self.trash_cards = list(range(0, 3)) + list(range(36, 51))
 
         # IMPORTANT: ordering here matters since we check them linearlly
         # a subset of a less efficient one should be found sooner (ie alpha numeric last since WAR_WORDS is a more efficient subset)
@@ -1037,6 +1053,17 @@ class Agent:
             Domain.SIX_WORDS: SixWordsTransformer(),
             Domain.ALPHA_NUMERIC: AlphaNumericTransformer()
         }
+
+        # TODO
+        # bit legnths to partial match
+        # Permutation Converter:
+        #   32 - 2 (metadata) - 6 (message metadata) = 24 cards to use for message
+        #   argmax(n) of n! - 2^24 => 79
+        #                     2^25 => 83
+        #                     2^26 => 88
+        #                     2^27 => 93
+        #                     2^28 => 97
+        self.partial_match_len = [79]
  
     # TODO: there might be many _tangle_cards and _untangle_cards methods
     # such as using checksum vs using trashcards, so this should be extracted
@@ -1069,6 +1096,19 @@ class Agent:
 
         return metadata, message_metadata, message
 
+    def _encode(self, msg: str, domain: Domain, free_cards: Deck, partial: bool) -> tuple[Bits, Optional[List[int]]]:
+        compressed_msg, bits = self.domain2transformer[domain].compress(msg)
+        info(f"[ {msg} ]",
+            f"transformer: {self.domain2transformer[domain]},",
+            f"compressed message: \"{compressed_msg}\",",
+            f"bits: {bits.bin}")
+
+        partial_deck = to_partial_deck(partial, domain, bits, free_cards)
+        if partial_deck is None:
+            info(f"[ {msg} ]", "msg too long, can't encode to deck")
+        
+        return bits, partial_deck
+
     def encode(self, msg: str) -> List[int]:
         # Encoding Steps
         # 1. detect the domain of the message, if none matches, fall back to
@@ -1081,23 +1121,31 @@ class Agent:
         #      b) message deck: contains the encoded message
         # 4. tangles the decks, trash cards, unused cards, stop cards into a
         #    final deck returned to the simulator
+
         info(f"\n[ {msg} ] encode")
 
+        # step 1: domain detectiong
         domain = self.domain_detector.detect(msg)
         info(f"[ {msg} ]", f"domain: {domain.name}")
 
-        compressed_msg, bits = self.domain2transformer[domain].compress(msg)
-        info(f"[ {msg} ]",
-            f"transformer: {self.domain2transformer[domain]},",
-            f"compressed message: \"{compressed_msg}\",",
-            f"bits: {bits.bin}")
+        # step 2 & 3 (self._encode): message string -> bits -> partial deck
+        free_cards = self.free_cards
+        bits, partial_deck = self._encode(msg, domain, free_cards, False)
 
-        free_cards = [card for card in range(self.trash_card_start_idx)]
-        partial_deck = to_partial_deck(domain, bits, free_cards)
+        i = 0
+        # try for partial match by truncating the bits of the original message
+        while partial_deck is None and i < len(self.partial_match_len):
+            bit_len = self.partial_match_len[i]
+            bits = Bits(bin=bits.bin[:bit_len])
+
+            _, partial_deck = self._encode(msg, domain, free_cards, True)
+            i += 1
+
         if partial_deck is None:
             info(f"[ {msg} ]", "msg too long, can't encode to deck")
             return list(range(51,-1,-1))
 
+        # step 4: bits -> partial deck success => produce final deck
         bdc, metadata_cards, message_metadata_cards, message_cards = partial_deck
         info(f"[ {msg} ]", f"cards available for encoding message: {free_cards}")
         info(f"[ {msg} ] bits <-> deck converter: {bdc.__str__()}:",
@@ -1120,6 +1168,8 @@ class Agent:
         # 3. use bdc to convert message deck -> message bits
         # 4. use domain to convert message bits -> original message string
         info(f"\ndecode, deck: {deck}")
+
+        # TODO: uses a series of rules to detect if the deck contains a message
         
         metadata, message_metadata, message = self._untangle_cards(deck)
         info(f"untangled deck: ",
@@ -1129,15 +1179,18 @@ class Agent:
         if len(message) == 0:
             return "NULL"
 
-        domain, bdc = MetaCodec().decode(metadata)
-        info(f"decoded metadata: domain: {domain.name}, bits <-> deck converter: {bdc.__str__()}")
+        partial_match, domain, bdc = MetaCodec().decode(metadata)
+        info(f"decoded metadata: partial match: {partial_match},",
+            f"domain: {domain.name}, bits <-> deck converter: {bdc.__str__()}")
 
         # deck -> message bits
-        free_msg_cards = [card for card in range(32) if card not in metadata]
+        free_msg_cards = [card for card in self.free_cards if card not in metadata]
         message_bits = bdc(free_msg_cards).to_bits(message, message_metadata)
         info(f"deck -> bits using {bdc.__str__()}: {message_metadata} -> {message_bits.bin}")
 
         orig_msg = self.domain2transformer[domain].uncompress(message_bits)
+        if partial_match:
+            orig_msg += "*"
         info(f"using transformer: {self.domain2transformer[domain]},",
             f"uncompressed message: \"{orig_msg}\"")
 
