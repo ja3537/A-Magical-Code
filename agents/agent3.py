@@ -1096,18 +1096,19 @@ class Agent:
 
         return metadata, message_metadata, message
 
-    def _encode(self, msg: str, domain: Domain, free_cards: Deck, partial: bool) -> tuple[Bits, Optional[List[int]]]:
-        compressed_msg, bits = self.domain2transformer[domain].compress(msg)
-        info(f"[ {msg} ]",
-            f"transformer: {self.domain2transformer[domain]},",
-            f"compressed message: \"{compressed_msg}\",",
-            f"bits: {bits.bin}")
+    def _encode_bits_to_deck(
+        self,
+        bits:       Bits,
+        domain:     Domain,
+        partial:    bool,
+        free_cards: Deck
+    ) -> tuple[Bits, Optional[List[int]]]:
 
         partial_deck = to_partial_deck(partial, domain, bits, free_cards)
         if partial_deck is None:
-            info(f"[ {msg} ]", "msg too long, can't encode to deck")
+            info(f"bits too long, can't encode to deck: {bits.bin}")
         
-        return bits, partial_deck
+        return partial_deck
 
     def encode(self, msg: str) -> List[int]:
         # Encoding Steps
@@ -1124,21 +1125,29 @@ class Agent:
 
         info(f"\n[ {msg} ] encode")
 
-        # step 1: domain detectiong
+        # step 1: domain detection
         domain = self.domain_detector.detect(msg)
         info(f"[ {msg} ]", f"domain: {domain.name}")
 
-        # step 2 & 3 (self._encode): message string -> bits -> partial deck
+        # step 2: message str -> compressed msg str -> bits
+        compressed_msg, bits = self.domain2transformer[domain].compress(msg)
+        info(f"[ {msg} ]",
+            f"transformer: {self.domain2transformer[domain]},",
+            f"compressed message: \"{compressed_msg}\",",
+            f"bits: {bits.bin}")
+
+        # step 3 (self._encode): bits -> partial deck
         free_cards = self.free_cards
-        bits, partial_deck = self._encode(msg, domain, free_cards, False)
+        partial_deck = self._encode_bits_to_deck(bits, domain, False, free_cards)
 
         i = 0
         # try for partial match by truncating the bits of the original message
-        while partial_deck is None and i < len(self.partial_match_len):
+        # TODO: should we truncate bit patterns or truncate the original message?
+        while partial_deck is None and i < len(msg):
             bit_len = self.partial_match_len[i]
             bits = Bits(bin=bits.bin[:bit_len])
 
-            _, partial_deck = self._encode(msg, domain, free_cards, True)
+            partial_deck = self._encode_bits_to_deck(bits, domain, True, free_cards)
             i += 1
 
         if partial_deck is None:
