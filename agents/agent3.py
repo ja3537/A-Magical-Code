@@ -33,6 +33,9 @@ def debug(*args) -> None:
 def info(*args) -> None:
     logger.info(" ".join(args))
 
+def error(*args) -> None:
+    logger.error("error: " + " ".join(args))
+
 if isfile(log_file):
     open(log_file, 'w').close()
 
@@ -100,7 +103,7 @@ class PermutationGenerator:
 
         permutation = self._perm_unrank(rank, base)
         if permutation is None:
-            print(
+            error(
                 f"trying to create permuation for number {rank} with {len(cards)} cards"
             )
             return cards
@@ -328,7 +331,7 @@ class PasswordsTransformer(MessageTransformer):
             self.word2abrev[word] if word.isalpha() and word in self.word2abrev else word
             for word in splitMsg
         ])
-        print(splitMsg, msg)
+        debug(splitMsg, msg)
         #TODO: join on space or not?
         bits = self.huffman.encode(combinedMsg, padding_len=0)
         return combinedMsg, bits
@@ -336,7 +339,7 @@ class PasswordsTransformer(MessageTransformer):
     def uncompress(self, bits: Bits) -> str:
         msg = self.huffman.decode(bits, padding_len=0)
         splitMsg = self._get_all_words(msg, self.abrev2word.keys())
-        print(splitMsg, msg)
+        debug(splitMsg, msg)
         combinedMsg = '@' + ''.join([
             self.abrev2word[word] if word.isalpha() and word in self.abrev2word else word 
             for word in splitMsg
@@ -684,12 +687,7 @@ class ChunkConverter(BDC):
         Returns a tuple of is_able_to_encode, parts, start_padding,
                            end_padding, contains_no_duplicates.
         """
-        chunk_size = self.max_chunk_size
-
-        # TODO: why are we taking a max here, the second component will always
-        # be smaller than chunk_size.
-        padding = max(chunk_size,
-                      ((chunk_size - len(bit_str) % chunk_size) % chunk_size))
+        padding = chunk_size = self.max_chunk_size
         last_card_padding = 0
 
         for i in range(padding):
@@ -725,7 +723,6 @@ class ChunkConverter(BDC):
             canHash, step_size = self._can_hash_msg(int_deck)
             if canHash:
                 break
-        # TODO: where's the if block for this else block?
         else:
             return -1, None, None, None
 
@@ -1070,40 +1067,6 @@ class Agent:
             f"compressed message: \"{compressed_msg}\",",
             f"bits: {bits.bin}")
 
-        # TODO: at this point, we already now the number of bits to encode to deck.
-        # So it seems like *here* we can decide what *scheme* to use make our encoded
-        # message resilient to shuffles (e.g. trash cards, checksums)
-        #
-        # We could create an entity to represent this scheme, and it will have the
-        # following features:
-        #   - select cards it need, so that we can pass to BDC to tell it not to use
-        #     these cards
-        #   - a tanlge() method: creates the final deck given the 3 deck returned by
-        #     to_partial_deck()
-        #   - an untangle() method: untangles a given deck into 3 decks
-        #
-        # To achieve this, we'll also have to encode this enformation in the metadata
-        # deck (currently 4 bits of information, there's room for one more bit for this)
-        # to be able to know untangle() from which *scheme* to use during decoding.
-        # 
-        # Actually, we can't. Because, we need to untangle the deck first to get the
-        # metadata that we need to know which untangle to use. So it seems like we need
-        # to decide a single scheme to use apriori.
-        #
-        # This approach has two benefits
-        #   1. schemes to protect against shuffles could be used with *any* BDC
-        #   2. (NO) a scheme could be *dynamically* selected at runtime, per message
-        #   3. decouples the implementation of *BDC* and such against-shuffle safety
-        #      *scheme* [1]
-        #
-        # [1]: currently, they are coupled. For example, ChunkConverter has the
-        #      trash_card_start_idx hardcoded to be able to figure out what cards
-        #      to use and not use, so that it's consistent with the tangle and untangle
-        #      methods in the Agent class.
-
-        # TODO: to_partial_deck (bdc) needs to communicate with _tangle_cards
-        # on the cards it used. Maybe move _tangle and _untangle into bdc?
-        # or modify the interface to also return cards used.
         free_cards = [card for card in range(self.trash_card_start_idx)]
         partial_deck = to_partial_deck(domain, bits, free_cards)
         if partial_deck is None:
