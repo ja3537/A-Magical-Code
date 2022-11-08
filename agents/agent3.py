@@ -328,7 +328,6 @@ class PasswordsTransformer(MessageTransformer):
             self.word2abrev[word] if word.isalpha() and word in self.word2abrev else word
             for word in splitMsg
         ])
-        print(splitMsg, msg)
         #TODO: join on space or not?
         bits = self.huffman.encode(combinedMsg, padding_len=0)
         return combinedMsg, bits
@@ -336,7 +335,6 @@ class PasswordsTransformer(MessageTransformer):
     def uncompress(self, bits: Bits) -> str:
         msg = self.huffman.decode(bits, padding_len=0)
         splitMsg = self._get_all_words(msg, self.abrev2word.keys())
-        print(splitMsg, msg)
         combinedMsg = '@' + ''.join([
             self.abrev2word[word] if word.isalpha() and word in self.abrev2word else word 
             for word in splitMsg
@@ -976,7 +974,7 @@ class Huffman:
 
         # What we use to encode to
         old_bits = Bits(bytes=self.codec.encode(msg))
-        # debug(f'old_bits: {old_bits.bin}, new_bits: {bits.bin}')
+        # debug(f'old_bits: {len(old_bits.bin)}, new_bits: {len(bits.bin)}')
         debug('[ Huffman.encode ]', f'msg: {msg} -> bits: {bits.bin}')
 
         padded_bits = self._add_padding(bits, padding_len)
