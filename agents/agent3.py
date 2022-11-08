@@ -48,8 +48,9 @@ class NullDeckException(Exception):
     """Raise when a deck doesn't contain a message."""
     pass
 
-def agent_assert(condition, action):
-    if condition: raise action
+def agent_assert(condition: bool, action: Exception):
+    """Raise action when the condition/invariant is false/violated."""
+    if not condition: raise action
 
 
 # -----------------------------------------------------------------------------
@@ -794,6 +795,9 @@ class ChunkConverter(BDC):
         else:
             # linear probing
             cards = self._unhash_msg(msg, step_size)
+            agent_assert(len(cards) == len(lengths), NullDeckException(
+                "ChunkConverter failed to decode deck to bits: " +
+                f"expect message cards of length {len(lengths)}, but got {len(cards)} msg cards."))
 
         # decode message
         chunk_sizes = [
@@ -857,6 +861,10 @@ class PermutationConverter(BDC):
 
     def to_bits(self, msg: Deck, msg_metadata: Deck) -> Optional[Bits]:
         # TODO: dynamically detect message length
+        agent_assert(len(msg_metadata) >= 6, NullDeckException(
+                f"PermutationConverter expects message metadata of 6 cards, " +
+                f"but got a message metadata deck of size {len(msg_metadata)}."))
+
         metadata_cards = list(map(str, msg_metadata[-6:]))
         cards = list(map(str, msg))
 
@@ -1134,6 +1142,7 @@ class Agent:
         Raises NullDeckException if the decks untangled are invalid, e.g. deck size incorrect.
         """
         def remove_trash_cards(deck) -> List[int]:
+            deck = deck.copy()
             for i in self.trash_cards:
                 deck.remove(i)
             return deck
@@ -1142,8 +1151,17 @@ class Agent:
         stop_card = deck.index(self.stop_card)
         message_metadata, message, metadata = deck[:stop_card], deck[stop_card+1:-2], deck[-2:]
 
-        agent_assert(len(message) == 0, NullDeckException("empty message"))
-        agent_assert(len(metadata) != 2,
+        # estimate the number of shuffles through the position of the deck in the received deck
+        # if it's at the very top, then we are screwed, there's no hope of recovering the message,
+        # so can safely raise a NullDeckException
+        stop_card_orig_pos, msg_metadata_len = cards.index(self.stop_card), len(message_metadata)
+        agent_assert(stop_card_orig_pos >= msg_metadata_len, NullDeckException(
+            "received deck either doesn't contain a message or gets shuffled too many times: " +
+            f"stop card at index {stop_card_orig_pos}, but have msg metadata of {msg_metadata_len} cards"
+        ))
+
+        agent_assert(len(message) > 0, NullDeckException("empty message"))
+        agent_assert(len(metadata) == 2,
             NullDeckException(f"expect 2 metadata cards, but got {len(metadata)}"))
 
         return metadata, message_metadata, message
@@ -1236,8 +1254,6 @@ class Agent:
         # 4. use domain to convert message bits -> original message string
         info(f"\ndecode, deck: {deck}")
 
-        # TODO: uses a series of rules to detect if the deck contains a message
-        
         # if an error occurs during decoding, it means the message is corrupted
         # or the deck doesn't contain a message, we catch the error and return
         # the NULL_MESSAGE.
@@ -1257,6 +1273,7 @@ class Agent:
             message_bits = bdc(free_msg_cards).to_bits(message, message_metadata)
             info(f"deck -> bits using {bdc.__str__()}: {message_metadata} -> {message_bits.bin}")
 
+            # TODO: domain specific agent_assert's
             orig_msg = self.domain2transformer[domain].uncompress(message_bits)
             if partial_match:
                 orig_msg += "*"
@@ -1286,8 +1303,7 @@ def test_huffman_codec():
         encoded = huffman.encode(orig)
         decoded = huffman.decode(encoded)
 
-        assert type(
-            encoded) == Bits, 'error: encoded message is not of type Bits!'
+        assert type(encoded) == Bits, 'error: encoded message is not of type Bits!'
         assert orig == decoded, 'error: decoded message is not the same as the original'
 
     print('PASSED: Huffman codec using pre-traind shakespeare text')
@@ -1299,8 +1315,7 @@ def test_huffman_codec():
         encoded = huffman.encode(orig)
         decoded = huffman.decode(encoded)
 
-        assert type(
-            encoded) == Bits, 'error: encoded message is not of type Bits!'
+        assert type(encoded) == Bits, 'error: encoded message is not of type Bits!'
         assert orig == decoded, 'error: decoded message is not the same as the original'
 
     print('PASSED: Huffman codec using dictionary')
