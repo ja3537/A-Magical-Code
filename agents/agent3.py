@@ -5,6 +5,7 @@ import logging
 from math import factorial as fac
 from os.path import isfile
 import re
+import sys
 from typing import List, Optional
 
 from bitstring import Bits
@@ -28,13 +29,13 @@ logger.addHandler(logging.FileHandler(log_file))
 
 
 def debug(*args) -> None:
-    logger.debug(" ".join(args))
+    logger.debug(" ".join(map(str, args)))
 
 def info(*args) -> None:
-    logger.info(" ".join(args))
+    logger.info(" ".join(map(str, args)))
 
 def error(*args) -> None:
-    logger.error("error: " + " ".join(args))
+    logger.error("error: " + " ".join(map(str, args)))
 
 if isfile(log_file):
     open(log_file, 'w').close()
@@ -850,7 +851,7 @@ def to_partial_deck(domain: Domain, msg_bits: Bits, free_cards: Deck) -> Optiona
     """Dynamically select the best BDC to encode bits to deck."""
     meta_codec = MetaCodec()
 
-    for bdc in [ChunkConverter, PermutationConverter]:
+    def _to_partial_deck(bdc: BDC) -> Optional[tuple[Deck, Deck]]:
         metadata_deck = meta_codec.encode(domain, bdc)
 
         # compute cards availabe for encoding the message, to avoid
@@ -858,10 +859,34 @@ def to_partial_deck(domain: Domain, msg_bits: Bits, free_cards: Deck) -> Optiona
         free_msg_cards = [card for card in free_cards if card not in metadata_deck]
         msg_deck = bdc(free_msg_cards).to_deck(msg_bits)
 
-        if msg_deck is not None:
-            return bdc, metadata_deck, *msg_deck
+        return (bdc, metadata_deck, *msg_deck) if msg_deck is not None else None
 
-    return None
+    def _msg_deck_size(partial_deck: Optional[tuple[Deck, Deck]]) -> int:
+        if partial_deck is None:
+            return sys.maxsize
+        
+        bdc, metadata, msg_metadata, msg = partial_deck
+        deck_sizes = [len(metadata), len(msg_metadata), len(msg)]
+        info(f"{bdc.__str__()} encoded deck size: ",
+            f"{sum(deck_sizes)} = {' + '.join(map(str, deck_sizes))}")
+
+        return sum(deck_sizes)
+
+    BDCs = [ChunkConverter, PermutationConverter]
+    partial_decks = list(map(_to_partial_deck, BDCs))
+
+    # if all BDCs failed to encode the bits to deck, return None
+    for ans in partial_decks:
+        if ans is not None:
+            break
+    else:
+        return None
+
+    # some BDC succeeded, select the one that uses the least number of cards
+    sizes = list(map(_msg_deck_size, partial_decks))
+    min_partial_deck = partial_decks[sizes.index(min(sizes))]
+
+    return min_partial_deck
 
 
 # -----------------------------------------------------------------------------
