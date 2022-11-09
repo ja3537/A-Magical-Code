@@ -6,11 +6,11 @@ import math
 from math import factorial as fac
 from os.path import isfile
 import re
+import sys
 from typing import List, Optional
 
 from bitstring import Bits
 from dahuffman import load_shakespeare, HuffmanCodec
-import numpy as np
 import requests
 
 from cards import valid_deck
@@ -29,20 +29,38 @@ logger.addHandler(logging.FileHandler(log_file))
 
 
 def debug(*args) -> None:
-    logger.debug(" ".join(args))
+    logger.debug(" ".join(map(str, args)))
 
 def info(*args) -> None:
-    logger.info(" ".join(args))
+    logger.info(" ".join(map(str, args)))
+
+def error(*args) -> None:
+    logger.error("error: " + " ".join(map(str, args)))
 
 if isfile(log_file):
     open(log_file, 'w').close()
 
 
 # -----------------------------------------------------------------------------
+#   Custom Errors
+# -----------------------------------------------------------------------------
+
+class NullDeckException(Exception):
+    """Raise when a deck doesn't contain a message."""
+    pass
+
+def agent_assert(condition: bool, action: Exception):
+    """Raise action when the condition/invariant is false/violated."""
+    if not condition: raise action
+
+
+# -----------------------------------------------------------------------------
 #   Agent Parameters
 # -----------------------------------------------------------------------------
 
+MAX_PERMUTATION_N = 31
 MAX_CHUNK_SIZE = 6
+NULL_MESSAGE = "NULL"
 
 
 class PermutationGenerator:
@@ -52,7 +70,8 @@ class PermutationGenerator:
         self.alphabet = '0123456789abcdefghijklmnopqrstuvwxyz'
         self.fact = [0] * 34
         self.fact[0] = 1
-        for i in range(1, 32):
+        self.max_fact_n = MAX_PERMUTATION_N
+        for i in range(1, self.max_fact_n + 1):
             self.fact[i] = (self.fact[i - 1] * i)
 
     def _perm_count(self, s: str) -> int:
@@ -101,7 +120,7 @@ class PermutationGenerator:
 
         permutation = self._perm_unrank(rank, base)
         if permutation is None:
-            print(
+            error(
                 f"trying to create permuation for number {rank} with {len(cards)} cards"
             )
             return cards
@@ -124,9 +143,13 @@ class PermutationGenerator:
     def n_needed(self, rank: int) -> int:
         """Returns the number of cards needed to encode a message with
         a bit pattern equal to rank using permutation."""
-        for i in range(100):
+        for i in range(self.max_fact_n + 1):
             if rank < self.fact[i]:
                 return i
+        else:
+            # return a really large n to indicate to the caller that
+            # encoding the rank using permutation won't work
+            return sys.maxsize
 
 
 # -----------------------------------------------------------------------------
@@ -364,6 +387,7 @@ class PasswordsTransformer(MessageTransformer):
             self.word2abrev[word] if word.isalpha() and word in self.word2abrev else word
             for word in splitMsg
         ])
+
         #TODO: join on space or not?
         bits = self.huffman.encode(combinedMsg, padding_len=0)
 
@@ -372,6 +396,7 @@ class PasswordsTransformer(MessageTransformer):
     def uncompress(self, bits: Bits) -> str:
         msg = self.huffman.decode(bits, padding_len=0)
         splitMsg = self._get_all_words(msg, self.abrev2word.keys())
+
         combinedMsg = '@' + ''.join([
             self.abrev2word[word] if word.isalpha() and word in self.abrev2word else word 
             for word in splitMsg
@@ -452,7 +477,7 @@ class CoordsTransformer(MessageTransformer):
     def uncompress(self, bits: Bits) -> str:
         bitstr = bits.bin
         if len(bitstr) - 14 < 8 or (len(bitstr) -14) % 4 != 0:
-            return "NULL(Weird, look into, happens 4 times)"
+            raise NullDeckException("NULL(Weird, look into, happens 4 times)")
 
         i = int((len(bitstr) - 14) / 4)
 
@@ -717,12 +742,7 @@ class ChunkConverter(BDC):
         Returns a tuple of is_able_to_encode, parts, start_padding,
                            end_padding, contains_no_duplicates.
         """
-        chunk_size = self.max_chunk_size
-
-        # TODO: why are we taking a max here, the second component will always
-        # be smaller than chunk_size.
-        padding = max(chunk_size,
-                      ((chunk_size - len(bit_str) % chunk_size) % chunk_size))
+        padding = chunk_size = self.max_chunk_size
         last_card_padding = 0
 
         for i in range(padding):
@@ -758,7 +778,6 @@ class ChunkConverter(BDC):
             canHash, step_size = self._can_hash_msg(int_deck)
             if canHash:
                 break
-        # TODO: where's the if block for this else block?
         else:
             return -1, None, None, None
 
@@ -811,6 +830,9 @@ class ChunkConverter(BDC):
         else:
             # linear probing
             cards = self._unhash_msg(msg, step_size)
+            agent_assert(len(cards) == len(lengths), NullDeckException(
+                "ChunkConverter failed to decode deck to bits: " +
+                f"expect message cards of length {len(lengths)}, but got {len(cards)} msg cards."))
 
         # decode message
         chunk_sizes = [
@@ -842,7 +864,12 @@ class PermutationConverter(BDC):
         self.permuter = PermutationGenerator()
 
     def to_deck(self, bits: Bits) -> Optional[tuple[Deck, Deck]]:
-        bit_len = len(bits.bin)
+        # optimization: truncate trailing zeros in bits
+        _bits = Bits(bin=bits.bin.rstrip('0'))
+        bit_len = len(_bits.bin)
+        if bit_len < len(bits.bin):
+            info(f"{self.__str__()} optimiation: truncating",
+            f"{len(bits.bin) - bit_len} trailing zeros, new bit len: {bit_len}")
 
         num_msg_cards = self.permuter.n_needed(2 ** bit_len)
         num_metdata_cards = 6 # 6! = 720, can handle bit length up to 720
@@ -858,7 +885,7 @@ class PermutationConverter(BDC):
 
         msg = [
             int(card)
-            for card in self.permuter.encode(msg_cards, bits.uint)
+            for card in self.permuter.encode(msg_cards, _bits.uint)
         ]
         msg_metadata = [
             int(card)
@@ -869,6 +896,10 @@ class PermutationConverter(BDC):
 
     def to_bits(self, msg: Deck, msg_metadata: Deck) -> Optional[Bits]:
         # TODO: dynamically detect message length
+        agent_assert(len(msg_metadata) >= 6, NullDeckException(
+                f"PermutationConverter expects message metadata of 6 cards, " +
+                f"but got a message metadata deck of size {len(msg_metadata)}."))
+
         metadata_cards = list(map(str, msg_metadata[-6:]))
         cards = list(map(str, msg))
 
@@ -882,22 +913,60 @@ class PermutationConverter(BDC):
     def __str__(cls) -> str:
         return "PermutationConverter"
 
-def to_partial_deck(domain: Domain, msg_bits: Bits, free_cards: Deck) -> Optional[tuple[BDC, Deck, Deck, Deck]]:
-    """Dynamically select the best BDC to encode bits to deck."""
+def to_partial_deck(
+    partial_match: bool,
+    domain:        Domain,
+    msg_bits:      Bits,
+    free_cards:    Deck
+) -> Optional[tuple[BDC, Deck, Deck, Deck]]:
+    """Dynamically select the best BDC to encode bits to deck.
+    
+    Returns None if all BDCs failed. Otherwise, returns the BDC that
+    encodes the bits with the fewest number of cards, i.e. a tuple of
+        (BDC, metadata deck, message metadata deck, message deck)
+    """
     meta_codec = MetaCodec()
 
-    for bdc in [ChunkConverter, PermutationConverter]:
-        metadata_deck = meta_codec.encode(domain, bdc)
+    def _to_partial_deck(bdc: BDC) -> Optional[tuple[Deck, Deck]]:
+        metadata_deck = meta_codec.encode(partial_match, domain, bdc)
 
         # compute cards availabe for encoding the message, to avoid
         # collision between metadata cards and message cards
         free_msg_cards = [card for card in free_cards if card not in metadata_deck]
         msg_deck = bdc(free_msg_cards).to_deck(msg_bits)
 
-        if msg_deck is not None:
-            return bdc, metadata_deck, *msg_deck
+        if msg_deck is None:
+            info(f"{bdc.__str__()} can't encode bits",
+                f"(msg_bits: {len(msg_bits.bin)}) to deck:", msg_bits.bin)
 
-    return None
+        return (bdc, metadata_deck, *msg_deck) if msg_deck is not None else None
+
+    def _msg_deck_size(partial_deck: Optional[tuple[Deck, Deck]]) -> int:
+        if partial_deck is None:
+            return sys.maxsize
+        
+        bdc, metadata, msg_metadata, msg = partial_deck
+        deck_sizes = [len(metadata), len(msg_metadata), len(msg)]
+        info(f"{bdc.__str__()} encoded deck size: ",
+            f"{sum(deck_sizes)} = {' + '.join(map(str, deck_sizes))}")
+
+        return sum(deck_sizes)
+
+    BDCs = [ChunkConverter, PermutationConverter]
+    partial_decks = list(map(_to_partial_deck, BDCs))
+
+    # if all BDCs failed to encode the bits to deck, return None
+    for ans in partial_decks:
+        if ans is not None:
+            break
+    else:
+        return None
+
+    # some BDC succeeded, select the one that uses the least number of cards
+    sizes = list(map(_msg_deck_size, partial_decks))
+    min_partial_deck = partial_decks[sizes.index(min(sizes))]
+
+    return min_partial_deck
 
 
 # -----------------------------------------------------------------------------
@@ -908,64 +977,85 @@ class MetaCodec:
     """Codec for (domain, BDC) <-> deck"""
     def __init__(self):
         self.domains = [
+                None, # padding
                 Domain.PASSWORD, Domain.COORDS, # format specific
                 Domain.ADDRESS, Domain.FLIGHTS, # format specific with dictionary
                 Domain.WAR_WORDS, Domain.PLACES_AND_NAMES, Domain.SIX_WORDS, # dictionary domains
-                Domain.ALPHA_NUMERIC, # format generic
+                None, Domain.ALPHA_NUMERIC, # format generic
                 Domain.GENERIC #generic all
             ]
         self.BDCs = [ChunkConverter, PermutationConverter]
         self.domain_mappings = {
-            Domain.PASSWORD: 0,
-            Domain.COORDS: 1,
-            Domain.ADDRESS: 2,
-            Domain.FLIGHTS: 3,
-            Domain.WAR_WORDS: 4,
-            Domain.PLACES_AND_NAMES: 5,
-            Domain.SIX_WORDS: 6,
-            Domain.ALPHA_NUMERIC: 7,
-            Domain.GENERIC: 8
+            Domain.PASSWORD: 1,
+            Domain.COORDS: 2,
+            Domain.ADDRESS: 3,
+            Domain.FLIGHTS: 4,
+            Domain.WAR_WORDS: 5,
+            Domain.PLACES_AND_NAMES: 6,
+            Domain.SIX_WORDS: 7,
+            Domain.ALPHA_NUMERIC: 9,
+            Domain.GENERIC: 10
         }
 
 
-    def encode(self, domain: Domain, bdc: BDC) -> Deck:
+    def encode(self, partial_match: bool, domain: Domain, bdc: BDC) -> Deck:
         # use the index to represent domain and BDC
         domain_idx = self.domain_mappings[domain]
         bdc_idx = self.BDCs.index(bdc)
 
         # metadata bit representation:
-        # domain (4 bits) + BDC (1 bit) => metadata (5 bits)
+        # domain (4 bits) + partial match (1 bit) + BDC (1 bit) => metadata (6 bits)
         domain_bits = Bits(uint=domain_idx, length=4)
         bdc_bit = Bits(uint=bdc_idx, length=1)
-        metadata = Bits(bin=f'0b{domain_bits.bin}{bdc_bit.bin}')
+        partial_match_bit = Bits(uint=int(partial_match), length=1)
+        metadata = Bits(bin=f'0b{domain_bits.bin}{partial_match_bit.bin}{bdc_bit.bin}')
 
         # Bit -> Card
-        deck = [metadata.uint]
+        #   smallest of the least significant 5 bits is: _001 0 0 = 4
+        #   largest  of the least significant 5 bits is: _111 1 1 = 31
+        # if we split into metadata into 2 cards using 1 bit and 5 bits,
+        # there won't be collision: 0-2 & 4-31
+        deck = [int(metadata.bin[0], 2), int(metadata.bin[1:], 2)]
 
         # logging
-        debug('MetaCodec encode: %s (domain), %s (BDC) -> %s (deck)' % (domain.name, bdc, str(deck)))
-        debug("%-7s %-5s %5s %-5s %10s" % ("DOMAIN", "BITS", "BDC", "BITS", "METADATA"))
-        debug( "%-7d %-5s %5d %-5s %10s" %
-            (domain_idx, domain_bits.bin, bdc_idx, bdc_bit.bin, metadata.bin))
+        info('MetaCodec encode: %s (domain), %s (BDC) -> %s (deck)' % 
+            (domain.name, bdc.__str__(), str(deck)))
+        info("%5s %-5s %-8s %-5s %-7s %-5s %10s" %
+            ("BDC", "BITS", "PARTIAL", "BITS", "DOMAIN", "BITS", "METADATA"))
+        info( "%5d %-5s %-8d %-5s %-7d %-5s %10s" %
+            (bdc_idx, bdc_bit.bin, int(partial_match), partial_match_bit.bin, domain_idx, domain_bits.bin, metadata.bin))
 
         return deck
 
-    def decode(self, deck: Deck) -> tuple[Domain, BDC]:
-        metadata = Bits(uint=deck[0], length=5)
-        bdc_bit, domain_bits = metadata.bin[-1], metadata.bin[:-1]
+    def decode(self, deck: Deck) -> tuple[bool, Domain, BDC]:
+        """Decodes the metadata deck into a tuple of (partial_match, domain, bdc).
+        
+        Raises NullDeckException if decoding fails.
+        """
+        try:
+            metadata = Bits(uint=deck[0] * 32 + deck[1], length=6)
+            bdc_bit, partial_match_bit, domain_bits = metadata.bin[-1], metadata.bin[-2], metadata.bin[:-2]
 
-        bdc_idx = int(bdc_bit, 2)
-        domain_idx = int(domain_bits, 2)
+            bdc_idx = int(bdc_bit, 2)
+            partial_match = bool(int(partial_match_bit, 2))
+            domain_idx = int(domain_bits, 2)
 
-        bdc = self.BDCs[bdc_idx]
-        domain = self.domains[domain_idx]
+            bdc = self.BDCs[bdc_idx]
+            domain = self.domains[domain_idx]
+        except Exception as e:
+            raise NullDeckException(f"can't decode metadata: {e}")
+        
+        if domain is None:
+            raise NullDeckException("can't deccode metadata: domain in metadata is non-existent")
 
-        debug('MetaCodec decode:  %s (deck) -> %s (domain), %s (BDC)' % (str(deck), domain.name, bdc))
-        debug("%-7s %-5s %5s %-5s %10s" % ("DOMAIN", "BITS", "BDC", "BITS", "METADATA"))
-        debug( "%-7d %-5s %5d %-5s %10s" %
-            (domain_idx, domain_bits, bdc_idx, bdc_bit, metadata.bin))
+        info('MetaCodec decode:  %s (deck) -> %s (domain), %s (BDC)' %
+            (str(deck), domain.name, bdc.__str__()))
+        info("%5s %-5s %-8s %-5s %-7s %-5s %10s" %
+            ("BDC", "BITS", "PARTIAL", "BITS", "DOMAIN", "BITS", "METADATA"))
+        info( "%5d %-5s %-8d %-5s %-7d %-5s %10s" %
+            (bdc_idx, bdc_bit, int(partial_match), int(partial_match), domain_idx, domain_bits, metadata.bin))
 
-        return domain, bdc
+        return partial_match, domain, bdc
 
 
 class Huffman:
@@ -1045,9 +1135,10 @@ class Agent:
 
     def __init__(self) -> None:
         self.stop_card = 51
-        self.trash_card_start_idx = 32
-        self.trash_cards = list(range(self.trash_card_start_idx, 51))
-        self.rng = np.random.default_rng(seed=42)
+
+        # NOTE: this is coupled with MetadataCodec.encode
+        self.free_cards = list(range(0, 32))
+        self.trash_cards = list(range(32, 51))
 
         # IMPORTANT: ordering here matters since we check them linearlly
         # a subset of a less efficient one should be found sooner (ie alpha numeric last since WAR_WORDS is a more efficient subset)
@@ -1071,6 +1162,17 @@ class Agent:
             Domain.SIX_WORDS: SixWordsTransformer(),
             Domain.ALPHA_NUMERIC: AlphaNumericTransformer()
         }
+
+        # TODO
+        # bit legnths to partial match
+        # Permutation Converter:
+        #   32 - 2 (metadata) - 6 (message metadata) = 24 cards to use for message
+        #   argmax(n) of n! - 2^24 => 79
+        #                     2^25 => 83
+        #                     2^26 => 88
+        #                     2^27 => 93
+        #                     2^28 => 97
+        self.partial_match_len = [79]
  
     # TODO: there might be many _tangle_cards and _untangle_cards methods
     # such as using checksum vs using trashcards, so this should be extracted
@@ -1092,16 +1194,49 @@ class Agent:
         return deck if valid_deck(deck) else list(range(52))
 
     def _untangle_cards(self, cards: Deck) -> tuple[Deck, Deck, Deck]:
+        """Untangles deck of 52 cards into metadata deck, msg metadata deck, and msg deck
+        after removing trash cards.
+        
+        Raises NullDeckException if the decks untangled are invalid, e.g. deck size incorrect.
+        """
         def remove_trash_cards(deck) -> List[int]:
+            deck = deck.copy()
             for i in self.trash_cards:
                 deck.remove(i)
             return deck
 
         deck = remove_trash_cards(cards)
         stop_card = deck.index(self.stop_card)
-        message_metadata, message, metadata = deck[:stop_card], deck[stop_card+1:-1], deck[-1:]
+        message_metadata, message, metadata = deck[:stop_card], deck[stop_card+1:-2], deck[-2:]
+
+        # estimate the number of shuffles through the position of the deck in the received deck
+        # if it's at the very top, then we are screwed, there's no hope of recovering the message,
+        # so can safely raise a NullDeckException
+        stop_card_orig_pos, msg_metadata_len = cards.index(self.stop_card), len(message_metadata)
+        agent_assert(stop_card_orig_pos >= msg_metadata_len, NullDeckException(
+            "received deck either doesn't contain a message or gets shuffled too many times: " +
+            f"stop card at index {stop_card_orig_pos}, but have msg metadata of {msg_metadata_len} cards"
+        ))
+
+        agent_assert(len(message) > 0, NullDeckException("empty message"))
+        agent_assert(len(metadata) == 2,
+            NullDeckException(f"expect 2 metadata cards, but got {len(metadata)}"))
 
         return metadata, message_metadata, message
+
+    def _encode_bits_to_deck(
+        self,
+        bits:       Bits,
+        domain:     Domain,
+        partial:    bool,
+        free_cards: Deck
+    ) -> tuple[Bits, Optional[List[int]]]:
+
+        partial_deck = to_partial_deck(partial, domain, bits, free_cards)
+        if partial_deck is None:
+            info(f"bits too long, can't encode to deck: {bits.bin}")
+        
+        return partial_deck
 
     def encode(self, msg: str) -> List[int]:
         # Encoding Steps
@@ -1115,59 +1250,48 @@ class Agent:
         #      b) message deck: contains the encoded message
         # 4. tangles the decks, trash cards, unused cards, stop cards into a
         #    final deck returned to the simulator
+
         info(f"\n[ {msg} ] encode")
+
+        # step 1: domain detection
         domain = self.domain_detector.detect(msg)
         info(f"[ {msg} ]", f"domain: {domain.name}")
 
+        # step 2: message str -> compressed msg str -> bits
         compressed_msg, bits = self.domain2transformer[domain].compress(msg)
         info(f"[ {msg} ]",
             f"transformer: {self.domain2transformer[domain]},",
             f"compressed message: \"{compressed_msg}\",",
             f"bits: {bits.bin}")
 
-        # TODO: at this point, we already now the number of bits to encode to deck.
-        # So it seems like *here* we can decide what *scheme* to use make our encoded
-        # message resilient to shuffles (e.g. trash cards, checksums)
-        #
-        # We could create an entity to represent this scheme, and it will have the
-        # following features:
-        #   - select cards it need, so that we can pass to BDC to tell it not to use
-        #     these cards
-        #   - a tanlge() method: creates the final deck given the 3 deck returned by
-        #     to_partial_deck()
-        #   - an untangle() method: untangles a given deck into 3 decks
-        #
-        # To achieve this, we'll also have to encode this enformation in the metadata
-        # deck (currently 4 bits of information, there's room for one more bit for this)
-        # to be able to know untangle() from which *scheme* to use during decoding.
-        # 
-        # Actually, we can't. Because, we need to untangle the deck first to get the
-        # metadata that we need to know which untangle to use. So it seems like we need
-        # to decide a single scheme to use apriori.
-        #
-        # This approach has two benefits
-        #   1. schemes to protect against shuffles could be used with *any* BDC
-        #   2. (NO) a scheme could be *dynamically* selected at runtime, per message
-        #   3. decouples the implementation of *BDC* and such against-shuffle safety
-        #      *scheme* [1]
-        #
-        # [1]: currently, they are coupled. For example, ChunkConverter has the
-        #      trash_card_start_idx hardcoded to be able to figure out what cards
-        #      to use and not use, so that it's consistent with the tangle and untangle
-        #      methods in the Agent class.
+        # step 3 (self._encode): bits -> partial deck
+        partial_match = False
+        free_cards = self.free_cards
+        partial_deck = self._encode_bits_to_deck(bits, domain, partial_match, free_cards)
 
-        # TODO: to_partial_deck (bdc) needs to communicate with _tangle_cards
-        # on the cards it used. Maybe move _tangle and _untangle into bdc?
-        # or modify the interface to also return cards used.
-        free_cards = [card for card in range(self.trash_card_start_idx)]
-        partial_deck = to_partial_deck(domain, bits, free_cards)
+        if partial_deck is None:
+            info(f"[ {msg} ]", "trying partial match by truncating the bit patterns...")
+
+        i = 0
+        # try for partial match by truncating the bits of the original message
+        # TODO: should we truncate bit patterns or truncate the original message?
+        partial_match = True
+        while partial_deck is None and i < len(msg):
+            bit_len = self.partial_match_len[i]
+            bits = Bits(bin=bits.bin[:bit_len])
+
+            partial_deck = self._encode_bits_to_deck(bits, domain, partial_match, free_cards)
+            i += 1
+
         if partial_deck is None:
             info(f"[ {msg} ]", "msg too long, can't encode to deck")
             return list(range(51,-1,-1))
 
+        # step 4: bits -> partial deck success => produce final deck
         bdc, metadata_cards, message_metadata_cards, message_cards = partial_deck
         info(f"[ {msg} ]", f"cards available for encoding message: {free_cards}")
         info(f"[ {msg} ] bits <-> deck converter: {bdc.__str__()}:",
+            f"partial match: {partial_match}, ",
             f"metadata cards: {metadata_cards},",
             f"message metadata cards: {message_metadata_cards},",
             f"message cards: {message_cards},")
@@ -1187,28 +1311,40 @@ class Agent:
         # 3. use bdc to convert message deck -> message bits
         # 4. use domain to convert message bits -> original message string
         info(f"\ndecode, deck: {deck}")
-        
-        metadata, message_metadata, message = self._untangle_cards(deck)
-        info(f"untangled deck: ",
-            f"metadata cards: {metadata},",
-            f"message metadata cards: {message_metadata},",
-            f"message cards: {message}")
-        if len(message) == 0:
-            return "NULL"
 
-        domain, bdc = MetaCodec().decode(metadata)
-        info(f"decoded metadata: domain: {domain.name}, bits <-> deck converter: {bdc.__str__()}")
+        # if an error occurs during decoding, it means the message is corrupted
+        # or the deck doesn't contain a message, we catch the error and return
+        # the NULL_MESSAGE.
+        try:
+            metadata, message_metadata, message = self._untangle_cards(deck)
+            info(f"untangled deck: ",
+                f"metadata cards: {metadata},",
+                f"message metadata cards: {message_metadata},",
+                f"message cards: {message}")
 
-        # deck -> message bits
-        free_msg_cards = [card for card in range(32) if card not in metadata]
-        message_bits = bdc(free_msg_cards).to_bits(message, message_metadata)
-        info(f"deck -> bits using {bdc.__str__()}: {message_metadata} -> {message_bits.bin}")
+            partial_match, domain, bdc = MetaCodec().decode(metadata)
+            info(f"decoded metadata: partial match: {partial_match},",
+                f"domain: {domain.name}, bits <-> deck converter: {bdc.__str__()}")
 
-        orig_msg = self.domain2transformer[domain].uncompress(message_bits)
-        info(f"using transformer: {self.domain2transformer[domain]},",
-            f"uncompressed message: \"{orig_msg}\"")
+            # deck -> message bits
+            free_msg_cards = [card for card in self.free_cards if card not in metadata]
+            message_bits = bdc(free_msg_cards).to_bits(message, message_metadata)
+            info(f"deck -> bits using {bdc.__str__()}: {message_metadata} -> {message_bits.bin}")
 
-        return orig_msg
+            # TODO: domain specific agent_assert's
+            orig_msg = self.domain2transformer[domain].uncompress(message_bits)
+            if partial_match:
+                orig_msg += "*"
+            info(f"using transformer: {self.domain2transformer[domain]},",
+                f"uncompressed message: \"{orig_msg}\"")
+        except NullDeckException as e:
+            error("(NullDeckException)", e)
+            orig_msg = NULL_MESSAGE
+        except Exception as e:
+            error(f"({type(e).__name__})", f"decoding failed with uncaught exeception: {e}")
+            orig_msg = NULL_MESSAGE
+        finally:
+            return orig_msg
 
 
 # -----------------------------------------------------------------------------
@@ -1225,8 +1361,7 @@ def test_huffman_codec():
         encoded = huffman.encode(orig)
         decoded = huffman.decode(encoded)
 
-        assert type(
-            encoded) == Bits, 'error: encoded message is not of type Bits!'
+        assert type(encoded) == Bits, 'error: encoded message is not of type Bits!'
         assert orig == decoded, 'error: decoded message is not the same as the original'
 
     print('PASSED: Huffman codec using pre-traind shakespeare text')
@@ -1238,8 +1373,7 @@ def test_huffman_codec():
         encoded = huffman.encode(orig)
         decoded = huffman.decode(encoded)
 
-        assert type(
-            encoded) == Bits, 'error: encoded message is not of type Bits!'
+        assert type(encoded) == Bits, 'error: encoded message is not of type Bits!'
         assert orig == decoded, 'error: decoded message is not the same as the original'
 
     print('PASSED: Huffman codec using dictionary')
