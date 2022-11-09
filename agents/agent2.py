@@ -44,7 +44,7 @@ def generate(numMessages, seedNum, w=False):
 
 
 
-vocab_paths = ['', '', 'messages/agent2/g3_vocab.txt', '', '', 'messages/agent2/g6_vocab.txt', 'messages/agent2/g7_vocab.txt', 'messages/agent2/g8_vocab.txt']
+vocab_paths = ['', 'messages/agent2/g2_vocab.txt', 'messages/agent2/g3_vocab.txt', '', '', 'messages/agent2/g6_vocab.txt', 'messages/agent2/g7_vocab.txt', 'messages/agent2/g8_vocab.txt']
 
 def english_codec_w_digit(letter_p=0.92, digit_p=0.03, space_p=0.05):
     # https://en.wikipedia.org/wiki/Letter_frequency
@@ -61,6 +61,16 @@ def get_codec(group):
     if group == 4:
         freq_table = {'N':1, 'S':1, 'W':1, 'E':1, ' ':3, ',':2, '.':4,
                 '1':5, '2':5, '3':5, '4':5, '5':5, '6':5, '7':5, '8':5, '9':5, '0':5}
+    elif group == 2:
+        letter_freq = np.ones(26)
+        letter_freq = letter_freq / letter_freq.sum() * (6/17)
+        digit_freq = np.array([10,8,9,7,6,6,1,1,1,1])
+        digit_freq = digit_freq / digit_freq.sum() * (9/17)
+        space_freq = np.ones(1) * (2/17)
+        freq = np.concatenate([letter_freq/100*95, digit_freq, space_freq]).tolist()
+        ch = list(map(chr, range(97, 123)))
+        chars = [word.upper() for word in ch] + list(map(str, range(10))) + [' ']
+        freq_table = {c:f for c, f in zip(chars, freq)}
     else:
         return english_codec_w_digit()
     return HuffmanCodec.from_frequencies(freq_table) # 37 characters
@@ -128,7 +138,7 @@ class Agent:
         truncated = False
         recognizable_chars = self.codec.get_code_table().keys()
         new_s = ''
-        if group != 4:
+        if group != 4 and group !=2:
             s = re.sub('\s\s+', ' ', s.lower())
         else:
             s = re.sub('\s\s+', ' ', s)
@@ -150,15 +160,22 @@ class Agent:
 
         return cards
 
-    def truncate_and_encode(self, s):
+    def truncate_and_encode(self, s, group):
         # truncate
         truncated = False
         max_perm = math.factorial(self.N_MAX)
         perm = float('inf')
         while perm > max_perm:
-            encoded = self.codec.encode(s)
-            encoded = self.add_checksum(encoded)
-            perm = int.from_bytes(encoded, byteorder='big')
+            if group == 2:
+                encoded = self.codec.encode(s[:-4])
+                encoded = self.add_checksum(encoded)
+                perm = int.from_bytes(encoded, byteorder='big')
+                #print(encoded)
+                perm = self.add_year(perm, s[-4:])
+            else:
+                encoded = self.codec.encode(s)
+                encoded = self.add_checksum(encoded)
+                perm = int.from_bytes(encoded, byteorder='big')
             perm = self.add_partial_flag(perm)
             perm = self.add_encoder_choice(perm) # IMPORTANT: add placeholder bits for length calculation
             if perm > max_perm:
@@ -175,6 +192,17 @@ class Agent:
         perm, _ = self.remove_partial_flag(perm)
         
         return perm, truncated
+
+    def add_year(self,perm,year):
+        '''Use 2 bits to encode year'''
+        #2023 -> 1
+        #print(year[-1])
+        return (perm << 2) + (int(year[-1]) - 2)
+    
+    def remove_year(self, perm):
+        '''Remove last 2 bits'''
+        year = perm - (perm >> 2 << 2)
+        return perm >> 2, year + 2
 
     def add_partial_flag(self, perm, partial=False):
         '''Add one bit to the end of byte'''
@@ -205,15 +233,11 @@ class Agent:
         return new_message
 
     def encode_default(self, message, group):
-        if group != 4:
-            self.codec = english_codec_w_digit() 
-            message, truncated = self.clean_text(message, group)
-        else:
-            self.codec = get_codec(group)
-            message, truncated = self.clean_text(message, group)
+        self.codec = get_codec(group)
+        message, truncated = self.clean_text(message, group)
         partial = False
         partial |= truncated
-        perm, truncated = self.truncate_and_encode(message)
+        perm, truncated = self.truncate_and_encode(message, group)
         partial |= truncated
         return perm, partial
 
@@ -270,7 +294,7 @@ class Agent:
                     partial = True
 
         #print(short_message)
-        perm, truncated = self.truncate_and_encode(short_message)
+        perm, truncated = self.truncate_and_encode(short_message, group)
         partial |= truncated
 
         return perm, partial
@@ -320,7 +344,7 @@ class Agent:
         #print(split_message)
         if message[0] == "@":
             group = 3
-        elif len(split_message[0]) == 3:
+        elif len(split_message[0]) == 3 and split_message[0] == split_message[0].upper():
             group = 2
         else:
             if len(split_message) > 1:
@@ -335,14 +359,14 @@ class Agent:
                         group = 1
                 if group == 1:
                     group = 7
-                    with open(vocab_paths[group-1], 'r') as f: #group 6
+                    with open(vocab_paths[group-1], 'r') as f:
                         vocab = f.read().replace('\t', '').split('\n')
                     for word in split_message:
                         if word not in vocab:
                             group = 1
                 if group == 1:
                     group = 8
-                    with open(vocab_paths[group-1], 'r') as f: #group 6
+                    with open(vocab_paths[group-1], 'r') as f:
                         vocab = f.read().replace('\t', '').split('\n')
                     for word in split_message:
                         if word not in vocab:
@@ -350,25 +374,25 @@ class Agent:
                 
             
         #print("encode group: " + str(group))
-        #group = 7
         if group == 3 or group >= 6:
             perm, partial = self.encode_w_vocab(message, group=group)
         else:
             perm, partial = self.encode_default(message, group=group)
-        
+        #print(perm)
         choice = group
 
         # use 1 bit to encode partial
         perm = self.add_partial_flag(perm, partial)
 
         # use 3 bits to encode encoder choice
-        perm = self.add_encoder_choice(perm, choice)
+        perm = self.add_encoder_choice(perm, choice-1)
         #print(perm)
         ordered_deck = perm_decode(perm, self.N)
         #print(self.N, ordered_deck)
         self.start = 52 - self.N 
         #print(self.N)
         deck = list(range(self.start)) + [card+self.start for card in ordered_deck]
+        #print(choice)
         return deck
 
     def decode(self, deck):
@@ -389,7 +413,11 @@ class Agent:
 
             if perm > 0:
                 perm, choice = self.remove_encoder_choice(perm)
+                choice += 1
                 perm, partial = self.remove_partial_flag(perm)
+                #print(perm)
+                if choice == 2:
+                    perm, year = self.remove_year(perm)
                 byte_length = (max(perm.bit_length(), 1) + 7) // 8
                 b = (perm).to_bytes(byte_length, byteorder='big')
                 cs = int.from_bytes(b[-2:], byteorder='big')
@@ -416,13 +444,16 @@ class Agent:
         else:
             # TODO: select decoder
             group = choice
-            #group =7 
+            #group = 8
             if group == 3 or group >= 6:
                 msg = self.decode_w_vocab(b[:-2], group=group)
             else:
                 msg = self.decode_default(b[:-2], group=group)
             if partial:
                 msg  = 'PARTIAL: ' + msg
+            else:
+                if group == 2:
+                    msg = msg + "202" + str(year)
         #print(msg)
         return msg
 
