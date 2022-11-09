@@ -328,15 +328,14 @@ class PasswordsTransformer(MessageTransformer):
             self.word2abrev[word] if word.isalpha() and word in self.word2abrev else word
             for word in splitMsg
         ])
-        print(splitMsg, msg)
         #TODO: join on space or not?
         bits = self.huffman.encode(combinedMsg, padding_len=0)
+
         return combinedMsg, bits
 
     def uncompress(self, bits: Bits) -> str:
         msg = self.huffman.decode(bits, padding_len=0)
         splitMsg = self._get_all_words(msg, self.abrev2word.keys())
-        print(splitMsg, msg)
         combinedMsg = '@' + ''.join([
             self.abrev2word[word] if word.isalpha() and word in self.abrev2word else word 
             for word in splitMsg
@@ -942,7 +941,9 @@ class Huffman:
             self.codec = HuffmanCodec.from_frequencies(dictionary)
         else:
             self.codec = load_shakespeare()
-
+        toTruncate = all([bin(val)[2:].rjust(bits, '0')[0]=="0" for symbol, (bits, val) in self.codec.get_code_table().items() if val !=  1])
+        self.modified_codec = {symbol: (bin(val)[2:].rjust(bits-1, '0') if toTruncate else bin(val)[2:].rjust(bits, '0')) for symbol, (bits, val) in self.codec.get_code_table().items()}
+ 
     def _add_padding(self, msg: Bits, padding_len: int) -> Bits:
 
         padding_bits = '{0:b}'.format(0).zfill(
@@ -966,19 +967,40 @@ class Huffman:
         return original_encoding
 
     def encode(self, msg: str, padding_len: int = 5) -> Bits:
-        bytes = self.codec.encode(msg)
-        bits = Bits(bytes=bytes)
-        debug('[ Huffman.encode ]', f'msg: {msg} -> bits: {bits.bin}')
-        padded_bits = self._add_padding(bits, padding_len)
+        encoded_message = []
+        for char in msg:
+            if not char in self.modified_codec:
+                raise ValueError()
+            encoded_message.append(self.modified_codec[char])
+        bits = Bits(bin=''.join(encoded_message))
 
+        # What we use to encode to
+        # old_bits = Bits(bytes=self.codec.encode(msg))
+        # debug(f'old_bits: {len(old_bits.bin)}, new_bits: {len(bits.bin)}')
+        debug('[ Huffman.encode ]', f'msg: {msg} -> bits: {bits.bin}')
+
+        padded_bits = self._add_padding(bits, padding_len)
         return padded_bits
 
     def decode(self, bits: Bits, padding_len: int = 5) -> str:
+        decoded_message = ""
         bits = self._remove_padding(bits, padding_len)
-        decoded = self.codec.decode(bits.tobytes())
-        debug('[ Huffman.decode ]', f'bits: {bits.bin} -> msg: {decoded}')
+        encoded_message = bits.bin
 
-        return decoded
+        while encoded_message:
+            for symbol, code in self.modified_codec.items():
+                if encoded_message.startswith(code):
+                    decoded_message += symbol
+                    encoded_message = encoded_message[len(code):]
+                    break
+            else:
+                raise ValueError()
+        # What we used to decode to (doesn't work bc new encoding)
+        # old_decoded = self.codec.decode(bits.tobytes())
+
+        debug('[ Huffman.decode ]', f'bits: {bits.bin} -> msg: {decoded_message}')
+
+        return decoded_message
 
 
 # -----------------------------------------------------------------------------
@@ -1060,7 +1082,6 @@ class Agent:
         # 4. tangles the decks, trash cards, unused cards, stop cards into a
         #    final deck returned to the simulator
         info(f"\n[ {msg} ] encode")
-
         domain = self.domain_detector.detect(msg)
         info(f"[ {msg} ]", f"domain: {domain.name}")
 
