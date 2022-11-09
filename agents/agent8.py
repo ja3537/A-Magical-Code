@@ -2,6 +2,8 @@ import hashlib
 import heapq
 import os.path as path
 import pdb
+import re
+from decimal import Decimal
 from enum import Enum
 from math import ceil, factorial, log2
 from operator import indexOf
@@ -331,7 +333,6 @@ class FreqTree:
         return self.freq == other.freq
 
 
-# def make_huffman_encoding(frequencies: Dict[str, float]) -> Dict[str, str]:
 def make_huffman_encoding(frequencies: FrequencyDistribution) -> Dict[str, str]:
     """
     frequencies is a dictionary mapping from a character in the English alphabet to its frequency.
@@ -431,6 +432,56 @@ def dict_coders() -> tuple[Callable[[str], str], Callable[[str], str]]:
                 raise ValueError()
             decoded.append(words[word_index])
         return " ".join(decoded)
+
+    return encode, decode
+
+
+def coordinate_coders() -> tuple[Callable[[str], str], Callable[[str], str]]:
+    PATTERN = re.compile(
+        r"(?P<lat_deg>\d+\.\d+) (?P<lat_dir>[NS]), (?P<long_deg>\d+\.\d+) (?P<long_dir>[EW])"
+    )
+
+    def encode(message: str) -> str:
+        match = PATTERN.search(message)
+        if match is None:
+            raise ValueError()
+        lat_deg = int(Decimal(match.group("lat_deg")) * 10_000)
+        long_deg = int(Decimal(match.group("long_deg")) * 10_000)
+
+        lat_deg_bits = pad(to_bit_string(lat_deg), 21)
+        long_deg_bits = pad(to_bit_string(long_deg), 21)
+
+        lat_dir_bit = "1" if match.group("lat_dir") == "S" else "0"
+        long_dir_bit = "1" if match.group("long_dir") == "W" else "0"
+
+        encoded = lat_deg_bits + lat_dir_bit + long_deg_bits + long_dir_bit
+
+        return encoded
+
+    def decode(message: str) -> str:
+        (
+            long_dir_bit,
+            long_deg_bits,
+            lat_dir_bit,
+            lat_deg_bits,
+            _,
+        ) = extract_bit_fields(pad(message, 44, allow_over=True), [1, 21, 1, 21])
+
+        lat_deg = (
+            str(Decimal(from_bit_string(lat_deg_bits)) / 10_000).rstrip("0").rstrip(".")
+        )
+        long_deg = (
+            str(Decimal(from_bit_string(long_deg_bits)) / 10_000)
+            .rstrip("0")
+            .rstrip(".")
+        )
+
+        lat_dir = "S" if lat_dir_bit == "1" else "N"
+        long_dir = "W" if long_dir_bit == "1" else "E"
+
+        decoded = f"{lat_deg} {lat_dir}, {long_deg} {long_dir}"
+
+        return decoded
 
     return encode, decode
 
@@ -641,6 +692,7 @@ CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
     huffman_coders(ASCII_HUFFMAN),
     huffman_coders(NUMBER_HUFFMAN),
     dict_coders(),
+    coordinate_coders(),
 ]
 
 CHECKSUM_BITS = 10
@@ -688,7 +740,7 @@ class Agent:
             encoded, encoding_id = select_character_encoding(message)
         except ValueError as e:
             # TODO: Lossy encoding when no encodings cover the message domain
-            print(e)
+            print("No domain for message:", e)
             return list(range(52))
 
         message_length = length_byte(encoded)
@@ -703,7 +755,7 @@ class Agent:
             card_encoded = bottom_cards_encode(from_bit_string(with_checksum), c)
         except ValueError as e:
             # TODO: Lossy encoding when message length > available bits in card deck
-            print(e)
+            print("Message too long to encode:", e)
             return list(range(52))
 
         # Debugging
