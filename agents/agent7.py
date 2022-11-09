@@ -29,7 +29,7 @@ class Domain_Info():
     
     def add_g1_domain(self):
         '''Add a new domain to the domain info object'''
-        # So far, g1 didnt provide any domain just yet
+        # So far, g1 didnt provide any domain just yet, assume ascii
         self.domains[Domain.G1] = None
     
     def add_g2_domain(self):
@@ -83,14 +83,14 @@ class Domain_Info():
         '''Add a new domain to the domain info object'''
         # Address: Address, City, State, Zip
         # Char: words, digit, space, ",", ".", "/"
-        words = set()
+        self.domains[Domain.ADDRESS] = set()
         with open("./messages/agent5/addresses.txt", "r") as f:
             line = f.readline()
             while line:
                 line = line.strip()
                 for i in line.split():
                     if not i.isdigit():
-                        words.add(i)
+                        self.domains[Domain.ADDRESS].add(i)
                 line = f.readline()
         with open("./messages/agent5/addresses_short.txt", "r") as f:
             line = f.readline()
@@ -98,10 +98,8 @@ class Domain_Info():
                 line = line.strip()
                 for i in line.split():
                     if not i.isdigit():
-                        words.add(i)
+                        self.domains[Domain.ADDRESS].add(i)
                 line = f.readline()
-        self.domains[Domain.ADDRESS] = words
-                
 
     def add_g6_domain(self):
         '''Add a new domain to the domain info object'''
@@ -382,15 +380,23 @@ def test_classifier():
     # - NGRAM
     # - DICIONARY
     # - NAME_PLACES
-    msg = "@apple123orangekillmenow192"
-    msg = "1.1714 S, 36.8356 E"
-    msg = "ABL	AMBLER  ALASKA  USA                	132"
-    msg = "the of a apple orange kill"
-    msg = "6081 Andrews Road Mentor-On-The-Lake Lake OH 44060"
-    msg = "New York"
-    msg = "sea grain corridor with russia claiming that the corridor is suspended and"
     classifier = Domain_Classifier()
-    print(classifier.predict(msg))
+    msg = "@apple123orangekillmenow192"
+    print(f"{msg:>100} -> {classifier.predict(msg)}")
+    msg = "1.1714 S, 36.8356 E"
+    print(f"{msg:>100} -> {classifier.predict(msg)}")
+    msg = "ABL	AMBLER  ALASKA  USA                	132"
+    print(f"{msg:>100} -> {classifier.predict(msg)}")
+    msg = "the of a apple orange kills"
+    print(f"{msg:>100} -> {classifier.predict(msg)}")
+    msg = "6081 Andrews Road Mentor-On-The-Lake Lake OH 44060"
+    print(f"{msg:>100} -> {classifier.predict(msg)}")
+    msg = "sea grain corridor with russia claiming that the corridor is suspended and"
+    print(f"{msg:>100} -> {classifier.predict(msg)}")
+    msg = "as98213:}{>asdasd"
+    print(f"{msg:>100} -> {classifier.predict(msg)}")
+    msg = "Adwoa"
+    print(f"{msg:>100} -> {classifier.predict(msg)}")
     return
 
 test_classifier()
