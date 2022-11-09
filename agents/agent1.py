@@ -77,10 +77,13 @@ class Perm:
             logger.warning(f"Input text too long to encode into {self.encoding_len} cards.")
             return []
 
+        n_copy = n
+
         for start in reversed(range(len(self.factorials))):
             items = list(self.perm_zero[:])
             failure = False
             perm = []
+            n = n_copy
             for idx in range(start, len(self.factorials)):
                 f = self.factorials[idx]
                 lehmer = n // f
@@ -99,9 +102,20 @@ class Perm:
                     failure = True
                     continue
                 
+                if len(perm) == 22:
+                    print('----------------------------------------')
+                    print(perm)
+                    print(n_copy)
+                    print(self.perm_to_num(perm))
+                if self.perm_to_num(perm) != n_copy:
+                    failure = True
+                    continue
+                
                 print('----------------------------------------')
                 print("perm")
                 print(perm)
+                print(n_copy)
+                print(self.perm_to_num(perm))
                 for idx in range(start):
                     perm.insert(0, 51 - idx)
                 
@@ -164,7 +178,7 @@ class Perm:
             for j in range(i + 1, n):
                 if permutation[j] < permutation[i]:
                     k += 1
-            number += k * self.factorials[i]
+            number += k * self.factorials[21 - n + i]
         return number
 
     def num_to_str(self, num):
@@ -389,6 +403,8 @@ class Agent:
 
     def verify_msg(self, deck):
         num = self.perm.perm_to_num(deck)
+        if deck == [32, 30, 45, 31, 34, 43, 42, 37, 38, 41, 36, 35, 40, 44, 39, 33]:
+            print(num)
         bit_total = bin(num)[2:]
         if bit_total[1] == "1":
             partial = True
@@ -422,6 +438,9 @@ class Agent:
         return ds_decks
 
     def decode(self, deck):
+        print("--------------------------------------------------")
+        print("decode")
+        print(deck)
         for i in range(1, len(self.valid_cards_p)):
             valid_cards = self.valid_cards_p[:i]
                 
@@ -436,6 +455,8 @@ class Agent:
                 while max_trials > 0 and len(dque) > 0:
 
                     ddeck = dque.popleft()
+                    if ddeck == [32, 30, 45, 31, 34, 43, 42, 37, 38, 41, 36, 35, 40, 44, 39, 33]:
+                        print(ddeck)
                     msg = self.verify_msg(ddeck)
                     if msg is not None:
                         decoded_str = msg
