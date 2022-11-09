@@ -56,8 +56,9 @@ if __name__ == "__main__":
     else:
         rng = np.random.default_rng()
 
-    if (args.ngram):
+    random.seed(rng)
 
+    if (args.ngram):
         if args.ngram > 9:
             ng = 9
         else:
@@ -70,7 +71,6 @@ if __name__ == "__main__":
             for i, line in enumerate(fp):
                 if i in indexes:
                     returnable.append(line[:len(line)-1])
-    
 
     else:
         indexes = random.sample(range(0, 2564), args.num)
