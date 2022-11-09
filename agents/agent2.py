@@ -12,6 +12,31 @@ import datetime
 import secrets
 import string
 
+############# GENERATOR ###############
+def generate(numMessages, seedNum):
+        seed(seedNum)
+        messages = []
+        for m in range(numMessages):
+            file = open('messages/agent2/airportcodes.txt', 'r')
+            content = file.readlines()
+            month = randint(1,12)
+            day = randint(1,28)
+            airport = randint(1,2019)
+            airportCode = content[airport]
+            airportCode = airportCode[:-1]
+            if month < 10:
+                month = '0' + str(month)
+            if day < 10:
+                day = '0' + str(day)
+            N = 4
+            res = ''.join(choice(string.ascii_uppercase + string.digits)
+                        for i in range(N))
+            message = airportCode + ' ' + res + ' ' + str(month) + str(day) + '2023' 
+            messages.append(message)
+        return messages
+
+
+
 vocab_paths = ['', '', 'messages/agent2/g3_vocab.txt', '', '', 'messages/agent2/g6_vocab.txt', 'messages/agent2/g7_vocab.txt', 'messages/agent2/g8_vocab.txt']
 
 def english_codec_w_digit(letter_p=0.92, digit_p=0.03, space_p=0.05):
@@ -301,7 +326,6 @@ class Agent:
         return s
 
     def encode(self, message):
-        print(self.generator(10,2))
         # TODO: select encoder with the smallest perm
         group = 1
         # attempting to encode based on structure
@@ -416,3 +440,7 @@ class Agent:
                 msg  = 'PARTIAL: ' + msg
         #print(msg)
         return msg
+
+
+if __name__ == '__main__':
+    print(generate(10, seedNum=2))
