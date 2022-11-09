@@ -94,15 +94,19 @@ class Perm:
 
             if not failure:
                 # check that perm is contiguous
-                if sorted(perm) != list(range(30, 51 - start)):
+                if sorted(perm) != list(range(30, 30 + len(perm))):
+                    #print('SEQ FAILURE')
                     failure = True
                     continue
-
+                
+                print('----------------------------------------')
+                print("perm")
+                print(perm)
                 for idx in range(start):
                     perm.insert(0, 51 - idx)
                 
                 break
-
+        
         return perm
 
     def str_to_num(self, message):
@@ -384,12 +388,8 @@ class Agent:
         return seq_total
 
     def verify_msg(self, deck):
-        print(deck)
-        print("HIHIHIH")
         num = self.perm.perm_to_num(deck)
-        print(num)
         bit_total = bin(num)[2:]
-        print(bit_total)
         if bit_total[1] == "1":
             partial = True
         else:
@@ -422,25 +422,36 @@ class Agent:
         return ds_decks
 
     def decode(self, deck):
-        seq_encode = [c for c in deck if c in self.valid_cards_p]
+        for i in range(1, len(self.valid_cards_p)):
+            valid_cards = self.valid_cards_p[:i]
+                
+            try:
+                seq_encode = [c for c in deck if c in valid_cards]
 
-        # Try to recover message (unscramble if necessary)
-        max_trials = len(self.char_set) ^ 3 + 1  # Greater than depth 3 is ineffective (from our tests)
-        dque = deque([])
-        dque.append(seq_encode)
-        decoded_str = "NULL"
-        while max_trials > 0 and len(dque) > 0:
-            ddeck = dque.popleft()
-            msg = self.verify_msg(ddeck)
-            if msg is not None:
-                decoded_str = msg
-                break
-            else:
-                dque.extend(self.deshuffle1(ddeck))
-                max_trials -= 1
+                # Try to recover message (unscramble if necessary)
+                max_trials = len(self.char_set) ^ 3 + 1  # Greater than depth 3 is ineffective (from our tests)
+                dque = deque([])
+                dque.append(seq_encode)
+                decoded_str = "NULL"
+                while max_trials > 0 and len(dque) > 0:
 
-        # TODO: Add case for partial strings
-        return decoded_str
+                    ddeck = dque.popleft()
+                    msg = self.verify_msg(ddeck)
+                    if msg is not None:
+                        decoded_str = msg
+                        break
+                    else:
+                        dque.extend(self.deshuffle1(ddeck))
+                        max_trials -= 1
+
+                # TODO: Add case for partial strings
+                if decoded_str != "NULL":
+                    return decoded_str
+            
+            except:
+                continue
+        
+        return "NULL"
 
 
 if __name__ == "__main__":
