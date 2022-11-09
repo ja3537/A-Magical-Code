@@ -1334,7 +1334,7 @@ class Agent:
             # TODO: domain specific agent_assert's
             orig_msg = self.domain2transformer[domain].uncompress(message_bits)
             if partial_match:
-                orig_msg += "*"
+                orig_msg = "PARTIAL: " + orig_msg
             info(f"using transformer: {self.domain2transformer[domain]},",
                 f"uncompressed message: \"{orig_msg}\"")
         except NullDeckException as e:
