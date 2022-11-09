@@ -334,6 +334,7 @@ class Agent:
     def encode(self, message_):
         message = deepcopy(message_)
         partial = "0"
+
         while True:
             bit_msg, clipped = self.huff.encode(message)
             if len(bit_msg) <= self.max_msg_bits:
