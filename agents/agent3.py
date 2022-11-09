@@ -2,6 +2,7 @@ from abc import abstractmethod, ABC
 from enum import Enum
 from itertools import groupby
 import logging
+import math
 from math import factorial as fac
 from os.path import isfile
 import re
@@ -252,6 +253,41 @@ class GenericTransformer(MessageTransformer):
     @classmethod
     def __str__(cls) -> str:
         return "GenericTransformer"
+
+class DictIdxTransformer(MessageTransformer):
+    def __init__(self, wordlist_path: str, delimiter=" "):
+        self.delimiter = delimiter
+        with open(wordlist_path) as f:
+            self.wordlist = [word.strip() for word in f.read().splitlines()]
+        self.wordlist.append("*")
+        self.word2idx = {word: idx for idx, word in enumerate(self.wordlist)}
+        self.idx2word = {idx: word for idx, word in enumerate(self.wordlist)}
+        self.word_bit_size = int(math.ceil(math.log2(len(self.wordlist))))
+
+    def compress(self, msg: str) -> tuple[str, Bits]:
+        words = msg.split(self.delimiter)
+        encoded = []
+        for word in words:
+            if word not in self.word2idx:
+                word = "*"
+            idx = self.word2idx[word]
+            encoded.append("{0:b}".format(idx).zfill(self.word_bit_size))
+        bits = Bits(bin="".join(encoded))
+        
+        debug(f'DictIdxTransformer: "{msg}" -> {bits.bin}')
+
+        return msg, bits
+
+    def uncompress(self, bits: Bits) -> str:
+        words = []
+        for i in range(0, len(bits.bin), self.word_bit_size):
+            idx = int(bits.bin[i:i+self.word_bit_size], 2)
+            words.append(self.idx2word[idx])
+        msg = self.delimiter.join(words)
+        
+        debug(f'DictIdxTransformer: "{bits.bin}" -> {msg}')
+
+        return msg
 
 class WordTransformer(MessageTransformer):
     def __init__(self, delimiter=" ", wordlist=None, huffman_encoding=None):
@@ -521,12 +557,10 @@ class PlacesAndNamesTransformer(MessageTransformer):
     def __str__(cls) -> str:
         return "PlacesAndNamesTransformer"
 
-class SixWordsTransformer(MessageTransformer):#TODO: change this to idxs??
+class SixWordsTransformer(MessageTransformer):
     def __init__(self):
-        self.freq = {' ': 60000, 'e': 12351, 'a': 10065, 's': 9847, 'r': 8604, 'i': 8586, 't': 7560, 'n': 7484, 'o': 7095, 'c': 5985, 'l': 5970, 'd': 5057, 'p': 4221, 'm': 4148, 'u': 3405, 'g': 3281, 'h': 3040, 'b': 2787, 'f': 2164, 'y': 1891, 'v': 1602, 'w': 1579, 'k': 1390, 'x': 532, 'j': 486, 'z': 371, 'q': 284}
-        self.huffman = Huffman(self.freq)
-        self.word_file = "./messages/agent3/dicts/shortened_dicts/six_words_mini.txt"
-        self.transformer = WordTransformer(wordlist=self.word_file, huffman_encoding=self.huffman)
+        self.word_file = "./messages/agent3/dicts/six_words_list.txt"
+        self.transformer = DictIdxTransformer(wordlist_path=self.word_file)
 
     def compress(self, msg: str) -> tuple[str, Bits]:
         return self.transformer.compress(msg)
