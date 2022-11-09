@@ -865,7 +865,7 @@ class PermutationConverter(BDC):
 
     def to_deck(self, bits: Bits) -> Optional[tuple[Deck, Deck]]:
         # optimization: truncate trailing zeros in bits
-        _bits = Bits(bin=bits.bin.rstrip('0'))
+        _bits = Bits(bin=bits.bin.rstrip('0') or '0')
         bit_len = len(_bits.bin)
         if bit_len < len(bits.bin):
             info(f"{self.__str__()} optimiation: truncating",
