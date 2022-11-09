@@ -77,12 +77,32 @@ class Perm:
             logger.warning(f"Input text too long to encode into {self.encoding_len} cards.")
             return []
 
-        perm = []
-        items = list(self.perm_zero[:])
-        for idx, f in enumerate(self.factorials):
-            lehmer = n // f
-            perm.append(items.pop(lehmer))
-            n %= f
+        for start in reversed(range(len(self.factorials))):
+            items = list(self.perm_zero[:])
+            failure = False
+            perm = []
+            for idx in range(start, len(self.factorials)):
+                f = self.factorials[idx]
+                lehmer = n // f
+                
+                if lehmer >= len(items):
+                    failure = True
+                    break
+                
+                perm.append(items.pop(lehmer))
+                n %= f
+
+            if not failure:
+                # check that perm is contiguous
+                if sorted(perm) != list(range(30, 51 - start)):
+                    failure = True
+                    continue
+
+                for idx in range(start):
+                    perm.insert(0, 51 - idx)
+                
+                break
+
         return perm
 
     def str_to_num(self, message):
@@ -364,8 +384,12 @@ class Agent:
         return seq_total
 
     def verify_msg(self, deck):
+        print(deck)
+        print("HIHIHIH")
         num = self.perm.perm_to_num(deck)
+        print(num)
         bit_total = bin(num)[2:]
+        print(bit_total)
         if bit_total[1] == "1":
             partial = True
         else:
