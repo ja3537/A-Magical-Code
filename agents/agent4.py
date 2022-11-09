@@ -7,6 +7,7 @@ from pearhash import PearsonHasher
 from enum import Enum
 from dahuffman import HuffmanCodec
 from collections import namedtuple
+import requests
 
 
 class Domain(Enum):
@@ -41,6 +42,15 @@ EncodedBinary = namedtuple(
 class Agent:
     def __init__(self):
         self.rng = np.random.default_rng(seed=42)
+        r = requests.get(
+            'https://raw.githubusercontent.com/mwcheng21/minified-text/main/minified.txt')
+        minified_text = r.text
+        self.abrev2word = {}
+        self.word2abrev = {}
+        for line in minified_text.splitlines():
+            [shortened, full] = line.split(' ')
+            self.abrev2word[shortened] = full
+            self.word2abrev[full] = shortened
 
     def string_to_binary(self, message: str, domain: Domain) -> str:
         bytes_repr = HuffmanCodec.from_frequencies(
@@ -144,6 +154,8 @@ class Agent:
 
     def encode(self, message: str) -> List[int]:
         deck = generate_deck(self.rng)
+        message = ' '.join(
+            [self.word2abrev[word] if word in self.word2abrev else word for word in message.split(" ")])
 
         domain_type = self.get_domain_type(message)
 
@@ -188,7 +200,11 @@ class Agent:
         if meet_checksum_count < 2:
             return 'NULL'
 
-        return self.check_decoded_message(message, domain_type)
+        message = self.check_decoded_message(message, domain_type)
+        message = ' '.join(
+            [self.abrev2word[word] if word in self.abrev2word else word for word in message.split(" ")])
+
+        return message
 
 
 if __name__ == "__main__":
