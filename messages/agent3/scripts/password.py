@@ -2,12 +2,14 @@ import argparse
 import os
 import random
 import sys
-
+import numpy as np
 
 DICT = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 DIGITS = [str(i) for i in range(10)]
-K = 5 # number of words and digit randomly selected each
-
+K_MAX = 5 # max number of words and digit randomly selected each
+K_MIN = 2
+WORD_PROBS = [0.4, 0.3, 0.2, 0.1]
+NUM_PROBS = [0.25, 0.25, 0.25, 0.25]
 
 def load_dictionary(filepath=None):
 	"""Loads a dictionary into the global @DICT.
@@ -26,6 +28,9 @@ def load_dictionary(filepath=None):
 			print(f"Load dictionary failed: could not open/read file: {filepath}")
 			sys.exit()
 
+def get_random_num_from_distribution(min, max, probs):
+	return np.random.choice(np.arange(min, max+1), p=probs)
+
 def gen_msgs(n=1, seed=1):
 	"""Generates a formatted message containing username and password.
 
@@ -38,8 +43,10 @@ def gen_msgs(n=1, seed=1):
 	msgs = []
 
 	for _ in range(n):
-		selected_digits = [rng.choice(DIGITS) for _ in range(K)]
-		selected_words = rng.choices(DICT, k=K)
+		k_digits = get_random_num_from_distribution(K_MIN, K_MAX, NUM_PROBS)
+		k_words = get_random_num_from_distribution(K_MIN, K_MAX, WORD_PROBS)
+		selected_digits = [rng.choice(DIGITS) for _ in range(k_digits)]
+		selected_words = rng.choices(DICT, k=k_words)
 		merged_selection = selected_digits + selected_words
 
 		rng.shuffle(merged_selection)
