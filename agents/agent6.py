@@ -301,7 +301,7 @@ class ArtihmaticCodingAgent:
         for num in deck:
             if num >= 51-threshhold_value:
                 encoded_cards.append(num)
-
+ 
         #find the decimal value from it
         val = int(cards_to_number(encoded_cards))
         #print(val)
@@ -317,8 +317,8 @@ class ArtihmaticCodingAgent:
             #take the int as a Decimal
             val_as_Decimal = Decimal("0."+str(val)[1:])
             #print(val_as_Decimal)
-            
             #print(self.set_arithmatic_boundaries((self.get_boundaries_based_on_lead_number(number_in_front))))
+
             return self.get_word(val_as_Decimal,self.set_arithmatic_boundaries((self.get_boundaries_based_on_lead_number(number_in_front))))
 
 
@@ -332,7 +332,7 @@ class ArtihmaticCodingAgent:
         #try all encoding lengths
         for i in range(3, 52):
             #print(i)
-            word = self.decode_helper(i, deck)
+            word = self.decode_helper(i, deck)  
             #print(word)
 
             #word needs to have STOP signal
@@ -343,7 +343,7 @@ class ArtihmaticCodingAgent:
                 if word_count[word] > max_word_count:
                     max_word_count = word_count[word]
                     max_word = word
-        print(word_count)
+        #print(word_count)
         
         if max_word in word_count and word_count[max_word] > 1:
             return max_word[:-1]
