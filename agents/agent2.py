@@ -13,7 +13,9 @@ import secrets
 import string
 
 ############# GENERATOR ###############
-def generate(numMessages, seedNum):
+def generate(numMessages, seedNum, w=False):
+        if w:
+            f = open('airportExMessages.txt', 'w')
         seed(seedNum)
         messages = []
         for m in range(numMessages):
@@ -21,7 +23,8 @@ def generate(numMessages, seedNum):
             content = file.readlines()
             month = randint(1,12)
             day = randint(1,28)
-            airport = randint(1,2019)
+            year = randint(2023,2025)
+            airport = randint(0,2018)
             airportCode = content[airport]
             airportCode = airportCode[:-1]
             if month < 10:
@@ -31,8 +34,12 @@ def generate(numMessages, seedNum):
             N = 4
             res = ''.join(choice(string.ascii_uppercase + string.digits)
                         for i in range(N))
-            message = airportCode + ' ' + res + ' ' + str(month) + str(day) + '2023' 
+            message = airportCode + ' ' + res + ' ' + str(month) + str(day) + str(year) 
+            if w:
+                f.write(message+'\n')
             messages.append(message)
+        if w:
+            f.close()
         return messages
 
 
@@ -116,28 +123,6 @@ class Agent:
         self.N_MAX = 30
         self.checksum = 2**16 -1 #sum(range(53))
         self.n2 = -1
-
-    def generator(self, numMessages, seedNum):
-        seed(seedNum)
-        messages = []
-        for m in range(numMessages):
-            file = open('messages/agent2/airportcodes.txt', 'r')
-            content = file.readlines()
-            month = randint(1,12)
-            day = randint(1,28)
-            airport = randint(1,2019)
-            airportCode = content[airport]
-            airportCode = airportCode[:-1]
-            if month < 10:
-                month = '0' + str(month)
-            if day < 10:
-                day = '0' + str(day)
-            N = 4
-            res = ''.join(choice(string.ascii_uppercase + string.digits)
-                        for i in range(N))
-            message = airportCode + ' ' + res + ' ' + str(month) + str(day) + '2023' 
-            messages.append(message)
-        return messages
 
     def clean_text(self, s,group):
         truncated = False
