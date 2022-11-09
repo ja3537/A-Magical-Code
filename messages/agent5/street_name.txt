@@ -79,7 +79,7 @@ W Jericho
 Hicksville
 Wantagh
 Sunrise
-Straight Path Road, Assoc.
+Straight Path Road
 Medford
 Sunrise
 Main
@@ -249,7 +249,7 @@ North
 Route
 Main
 Merrick
-Chase Manhattan Plaza, 33rd
+Chase Manhattan Plaza
 Hempstead
 Central Park
 Northern
@@ -301,7 +301,7 @@ Main
 State
 Post
 Washington
-Quality Street, Town Hall
+Quality Street
 Newton
 Boston Post
 Black Rock
@@ -356,16 +356,16 @@ North Fullerton
 Midland Avenue
 Valley
 Madison
-Chase Manhattan Plaza, 33rd
+Chase Manhattan Plaza
 West 34th
-Food Center Drive, Hunts
+Food Center Drive
 Columbus
 Main
-West 31st Street, Greenly
+West 31st Street
 University
-Padanarama Road, North Street
+Padanarama Road
 John
-Avenue Of The Americas, 39th
+Avenue Of The Americas
 Main
 South Wellwood
 Purchase
@@ -377,7 +377,7 @@ Meadow
 Genesse
 Ny Route
 Mason Street, Elm
-East Main Street, Cortlandt Town
+East Main Street
 Main
 Milam
 Interstate 45 North
@@ -590,11 +590,11 @@ Brittain
 E Robinson
 South Arlington
 East Market
-South Cleveland-Massillon
+South Massillon
 Bailey
 Canton
 Darrow
-North Cleveland-Massillon
+North Massillon
 Manchester
 High
 Center Road
@@ -602,7 +602,7 @@ West Market
 West Main
 West Garfield
 Main Street-P.o. Box
-Waterloo Road-P.o. Box
+Water Road-P.o. Box
 South Water
 Kent
 South Main
@@ -627,7 +627,7 @@ Lexington
 Ashland
 North Main
 Claremont
-Federal Plaza West, 1st
+Federal Plaza West
 North Main
 Mahoning
 Market
@@ -707,7 +707,7 @@ West Market
 Broad
 West Main
 South Main
-North Main St, Kettering
+North Main St
 East Third
 N Ludlow
 N Keowee
@@ -720,16 +720,16 @@ Far Hills
 North State
 Chambersburg
 East Central
-D Street, Suite 12, Bldg 16, Area
+D Street, Suite 12
 West National
 North Dixie
 Far Hills
-Sycamore Street, Bldg.
+Sycamore Street
 South Main
 Taywood
 Springwood
 Seajay
-East Dayton-Yellow Springs
+East Dayton-Yellow
 West Second
 W. Main
 North Barron
@@ -754,7 +754,7 @@ West Ridgewood
 Fifth
 Route 60,
 Main St.
-Neville Street, Suite
+Neville Street
 Robert C Byrd
 Airport
 Main
@@ -846,7 +846,7 @@ Lemont
 West
 Thatcher
 Phelps
-Crystal Point Drive + Rt
+Crystal Point Drive
 North Milwaukee
 W Northwest
 East Chicago
@@ -897,7 +897,7 @@ West Cook
 North
 Elk Grove Town
 W 95th St, Unit
-W Stearns Crossing, Ste
+W Stearns Crossing
 Grove
 Central
 North Mclean
@@ -1044,10 +1044,10 @@ Monterrey
 Bluebonnet
 Perkins
 College
-Hennessy Boulevard, Suite
+Hennessy Boulevard
 George O'neal
 Macarthur
-North Market Center Boulevard,
+North Market Boulevard,
 Lbj Freeway, Suite
 Weldon Howell
 North Belt Line
@@ -1099,7 +1099,7 @@ Kemp
 Lemmon
 South Buckner
 Preston
-South Polk Street At Highway
+South Polk Street 
 Camp Bowie
 Arapaho
 Research Boulevard Hwy
@@ -1165,7 +1165,7 @@ Research
 I-40
 West University
 West Jefferson
-North Polk Street, Suite
+North Polk Street
 Town East
 Rebecca
 Eastex
@@ -1190,7 +1190,7 @@ West Mcdermott
 16th
 Bluebonnet
 Venice Avenue
-North Washington Boulevard, Suite
+North Washington
 Pga Boulevard Suite
 Tamiami Trail
 University
@@ -1428,7 +1428,7 @@ West Ford
 Rawsonville
 Dexter
 West Long Lake
-Renaissance Center - Suite
+Renaissance - Suite
 Allen
 Orchard Lake
 John R.
@@ -1490,7 +1490,7 @@ South Cherry
 Pierson
 North Genesee
 State
-South Saginaw Road, Suite
+South Saginaw Road
 South Ortonville
 Fortino
 West Main
@@ -1905,7 +1905,7 @@ Hunter Station
 Allison
 Spring
 East 10th
-Highlander Point Road, Ste
+Highlander Ste
 Grant Line Road, Ste
 Seventh Street
 Broadway
@@ -1975,7 +1975,7 @@ South Power
 Countryside
 Eldorado
 South
-LA Frontera Boulevard, Suite
+LA Frontera Boulevard
 Spencer Highway, Suite
 North Highway
 East
@@ -2013,7 +2013,7 @@ West
 Kuykendahl
 North Clark
 Duryea
-Castle Creek Parkway North
+Castle Creek Parkway
 Fm
 North 75th
 West 183rd
@@ -2088,7 +2088,7 @@ West 95th
 S Highway
 West Fm
 Texas
-West Elliot Road, Suite
+West Elliot Road
 East Broad
 South Barrington
 South Harlem
@@ -2098,7 +2098,7 @@ North High
 East Pecos
 Coit
 North Scottsdale
-North Ellsworth Road, Suite 102 and
+North Ellsworth Road
 West 83rd
 East Wesley
 South Commercial
@@ -2133,7 +2133,7 @@ West Broad
 Chestnut Ridge
 Orchard
 Kearny
-Southwest Freeway, Suite
+Southwest Freeway
 Town Center
 Worth
 West Euclid
@@ -2156,10 +2156,10 @@ N Lincoln
 S Archer
 Cherry
 W Division
-W Union Hills Drive, Suite
+W Union Hills Drive
 W Lower
 S Ellsworth
-W Union Hills Drive, Suite
+N Union Hills Drive
 E Sunrise Drive, Suite
 W Maple
 Broad
@@ -2224,7 +2224,7 @@ Wildey
 West Slaughter
 Washington
 Westheimer
-North Sam Houston Parkway
+North Sam Parkway
 8th
 Market Place
 Denow
@@ -2399,7 +2399,7 @@ Post
 Jericho
 Old Country
 Main
-Nesconset-Port Jefferson
+Nesconset-Port
 New York
 North Ocean
 North
@@ -2561,7 +2561,7 @@ West 104th
 East League City
 West 167th
 Katy Fort Bend
-North US Highway 183, Building
+North US Highway 183
 East Baseline
 South Parker
 Southwest
@@ -2579,7 +2579,7 @@ Roosevelt
 North Illinois Route
 Cross Bay
 West New Albany
-Livingston Street, Suite
+Livingston Street
 State Route
 Illinois Route
 Coit
@@ -2589,7 +2589,7 @@ Merritt
 Madison
 W Putnam
 Wycliff
-South Superstition Mountain
+South  Mountain
 North Dysart
 West Bell
 Siegen
@@ -2708,7 +2708,7 @@ Saint George
 West 211th
 Grissom
 Frederick Douglas
-Gattis School Road, Ste
+Gattis School Road
 Bulverde
 East Lincoln
 East Evans
@@ -2745,21 +2745,21 @@ Centennial
 East Skyline
 East U.S. Highway
 US Hwy
-Avenue Of The Stars, 26th
+Avenue Of The Stars
 Mission Street, Floor
 Royal Palm
-South Biscayne Boulevard, 22nd
+South Boulevard
 Fifth Avenue
 Crescent Court, Suite
-West Monroe Street, Suite
+West Monroe Street
 17th Street, Floor
-East Ohio Street, 17th
-Market Street, 47th & 52nd
+East Ohio Street
+Market Street
 Rowes Wharf, Floor
 Piedmont Road, Suite
 Connecticut
 Fifth Avenue, Suite
-N. Scottsdale Road, Suite
+N. Scottsdale Road
 E. Philadelphia
 E. Las Tunas
 North Hacienda
@@ -2929,9 +2929,9 @@ San Ramon Vly
 El Camino
 Sonoma
 Contra Costa
-Rohnert Park Expressway
+Rohnert Expressway
 Grand
-Fair Oaks Boulevard, Suite
+Fair Oaks Boulevard
 South Hope
 Hwy
 West Soledad Canyon
@@ -3253,7 +3253,7 @@ Hesperian
 Wilshire
 West Foothill
 Clement
-North Mckinley Street, Suite
+North Mckinley Street
 Admiralty
 West Century
 North Larchmont
@@ -3277,7 +3277,7 @@ Gage
 Spring
 North Indian Hill
 West Sierra Madre
-Camino De Los Mares Suite
+Camino De Los Mares
 Fifth
 Wightman
 Girard
@@ -3293,7 +3293,7 @@ South Mooney
 Katella
 Poway
 Limonite
-El Canino Real, Suite
+El Canino Real
 Sepulveda
 College
 A Highway 6
@@ -3347,7 +3347,7 @@ Valley
 First
 Reservation
 Berwick
-Carlos Street & 6th
+Carlos Street
 South Hill
 Van Nuys
 South Pacific
@@ -3375,12 +3375,12 @@ Hawthorne
 Ventura
 Portola
 Alpine Road, Suite
-South Compton Avenue, Suite
+South Compton Avenue
 Plummer
 Niblick
-South Flamingo Road, Suite
+South Flamingo Road
 South Federal
-West New Haven Avenue,
+West New Haven Avenue
 Caribbean
 Forest Hill
 Citrus Tower
@@ -3388,7 +3388,7 @@ Royal Palm Beach
 Greenview Shores
 Bellaire
 Pillsbury Rd, Ste
-Laguna Boulevard, Suite
+Laguna Boulevard
 Dickson Hill
 Riley
 North Cawston
@@ -3424,7 +3424,7 @@ W 12th
 Ferndale
 Campbell
 Kingwood
-N. Plano Rd., Suite
+N. Plano Rd.
 East 15th
 Cross Timbers
 Western Center
@@ -3437,7 +3437,7 @@ Aliso Creek
 Lone Tree
 Business Center
 Scripps Poway
-Harbison Avenue, Suite
+Harbison Avenue
 86th
 Avenue
 Walt Whitman
@@ -3474,7 +3474,7 @@ Atlantic
 Bushnell
 St. Georges
 Stelton
-Spotswood-Englishtown Road
+Spotswood Road
 Valley
 Broadway (Elmwood
 Brighton Beach
@@ -3488,7 +3488,7 @@ Canal
 Fifth
 Park
 East 161
-West Walk (Green Acres
+West Walk
 Rockaway
 Avenue Of The
 Union
@@ -3513,36 +3513,36 @@ William Floyd
 North Franklin
 Hillside
 North Wellwood
-Old Country Road, Route
+Old Country Road
 Veterans
 South Bristol
 West
-North Stephanie Street, Suite
+North Stephanie
 South Buffalo
 E Lake Mead
 S Maryland
 West 80th
 E Tropicana
-West Lake Mead Boulevard
+West Lake Boulevard
 Northwest 77th Court
 Sweetwater
 Southwest 88th
 Thornton
 Old Alabama
 Piedmont Road, Suite
-Peidmont Avenue Ne, Suite
+Peidmont Avenue Ne
 Mansell Road, Suite
-Lawrenceville Highway,
-W Indian School Rd., Suite
+Lawrenceville Highway
+W Indian School Rd
 N Dysart
 N 59th Ave., Suite
-West Deer Valley Road, Suite
+West Deer Valley Road
 Frank Lloyd Wright
 E Guadalupe
 Baseline
 W
 S Reno
-Sunset Boulevard, Suite
+Sunset Boulevard
 E Semoran
 State Rd. 524, Suite
 East Young
@@ -3555,25 +3555,25 @@ N Dixie
 E Silver Star
 N Orange Blossom
 N Alafaya Trail,
-Bayside Lakes Blvd, Suite
+Bayside Lakes Blvd
 NW 180th
 Barnes
 Cobb Pkwy
 West 58th
 S Monaco Pkwy, Ste
 Windward
-Riverstone Pkwy, Suite
+Riverstone Pkwy
 Hwy 20 Se. Suite
 Peachtree Pkwy, Ste
-S Hairston Road, Suite
+S Hairston Road
 N Decatur
 Flakes Mill Rd, Ste
 Hwy
-Jimmy Lee Smith Pkwy, Ste
+Jimmy Lee Smith Pkwy
 Collins Hill
 Jonesboro
 Tech Drive, Suite
-Holcomb Bridge Rd., Suite
+Holcomb Bridge Rd.
 New Macland Rd Suite
 Highway
 Woodstock
@@ -3586,8 +3586,8 @@ S Maryland Pkwy., Suite
 N Nellis Blvd., Suite
 W Cheyenne Blvd., Suite
 South Rampart
-W Charleston Blvd., Suite
-W Sahara Ave., Suite
+W Charleston Blvd.
+W Sahara Ave.
 S Rainbow
 W Craig Road, Ste
 Camino Al
@@ -3628,9 +3628,9 @@ S. Havana
 N. Clybourn
 Franklin
 E Bidwell Street Ste
-W. Tropicana Avenue, Ste
+W. Tropicana Avenue
 E. Magnolia St, Ste
-East Greenway Road, Suite
+East Greenway Road
 North Willow
 North Cottonwood
 Harbor
@@ -3638,10 +3638,10 @@ East Second
 North Grand
 Logan Avenue
 Pine St, Suite
-Marting Luther King Jr Way
+Luther King Jr Way
 University Way
 Lake Ballinger
-California Avenue,
+California Avenue
 22nd Avenue,
 S.W. 100th
 E Yakima
@@ -3670,8 +3670,8 @@ Martin Way
 Southeast Mill Plain
 9604 Newport
 South Burlington
-Issaquah Pine Lake Rd
-Bothell Everett Hwy Suite
+Issaquah Lake Rd
+Bothell Everett Suite
 Harbor Pointe Boulevard
 Pt Fosdick Dr
 Sleater-Kinney Road,
@@ -3697,17 +3697,17 @@ Southeast Mcgillivray
 Lakeway
 State Highway 303
 Auburn Way N, Suite
-First Avenue South Suite
+First Avenue South
 State Route 410
 Southeast 69th
 Valley Mall
 North Ash
 E Chelan
-S. Main Street, Suite
+S. Main Street
 S
 Lake City Way
 E College
-19th Avenue Se, Suite
+19th Avenue Se
 Ne 181st
 Ne 175th
 5th Ave
@@ -3733,7 +3733,7 @@ N Division
 21st Ave
 West Front
 Kearney
-W Washington Street Suite
+W Washington Suite
 Silverdale Way
 Midvale Avenue
 Strandler
@@ -3840,10 +3840,10 @@ Eighth
 North East
 East Pine
 North Fifth
-196th Avenue, S.W. Suite
+196th Avenue, S.W.
 Rainier Avenue Suite
 Renton Center Way
-Se Tualatin Valley Hwy, Ste A
+Se Tualatin Valley
 S.W. Teal
 N.W. Evergreen
 North 40th Avenue
@@ -3854,12 +3854,12 @@ S 25th
 East
 Crater Lk
 N Road 68, Suite
-Queen Anne Avenue North, Suite
-Southwest Tualatin-Sherwood
-South Columbia River Highway, Suite
+Queen Anne Avenue 
+Southwest Sherwood
+South Columbia River
 Meridian East, Suite
-72nd Avenue Northwest, Suite
-Southeast 272nd Street, Suite
+72nd Avenue Northwest
+Southeast Suite
 South State
 Blaine
 North Second Ave
@@ -3876,15 +3876,15 @@ Sw Farmington Rd, Suite
 Sw Barnes Road, Suite
 NW Bethany Blvd, Suite
 Blankenship
-Maple Valley Black Diamond Rd
+Maple Diamond Rd
 S 19th St, Suite
 Ne Tenney Rd, Suite
-Bothell-Everett Hwy, Suite
+Bothell-Everett Hwy
 132nd Ave Ne, Suite
 Stevenson Street
 Ne Hwy 99, Suite
 Hwy 99, Suite
-Southwest 9th Street, Suite
+Southwest 9th Street
 822 Francis
 Market
 S. Rivershore
@@ -3927,25 +3927,25 @@ US Highway 19
 West Manchester
 Sepulveda
 Mchenry
-E Butterfield Road, Suite
-South Chicago Road, Suite
+E Butterfield Road
+South Chicago Road
 S Roberts
 S Wolf Road, Suite
 Ogden
-W Monroe Street, Suite
+W Monroe Street
 N State
 W North
 N Broadway
 W Belmont
-E 87th Street, Suite
+E 87th Street
 W Howard
 N Lincoln
 S Halsted
 E 103rd
 W North
 N Clark
-N Kedzie Avenue, Suite
-W Golf Road, Suite
+N Kedzie Avenue
+W Golf Road
 W 144th
 Metropolitan
 E 204th
@@ -3985,7 +3985,7 @@ University
 State Rd
 Virginia
 NW St Lucie West
-E International Speedway
+E International
 E. 4th
 Sw 120th
 Sw 8th
@@ -4067,8 +4067,8 @@ Dublin
 Christy
 Union
 Jarvis
-Wilver Willie Stargell
-San Pablo Avenue, Suite
+Wilver Stargell
+San Pablo Avenue
 Main
 Balfour
 Ygnacio Valley
@@ -4076,14 +4076,14 @@ Mt. Diablo
 W Shaw
 E Main
 Wilshire
-Foothill Blvd., Suite
-Wilshire Blvd., Suite
+Foothill Blvd.
+Wilshire Blvd.
 W Gage
 Crenshaw
-Martin Luther King Jr
+Martin Luther Jr
 Rinaldi
 Saticoy
-N Western Avenue, Suite
+N Western Avenue
 Newhall Ranch
 Riverside
 Ventura
@@ -4093,10 +4093,10 @@ Los Coyotes
 The Old
 Constitution
 Valley View
-Newhope Street, Suite
+Newhope Street
 Quail Hill
 Irvine
-Crown Valley Parkway, Suite
+Crown Valley Parkway
 State Hwy
 Medical
 Huebner
@@ -4153,47 +4153,47 @@ Boulder
 Broadway, Suite
 Westchester
 North Blackstone
-Elk Grove Boulevard, Suite
+Elk Grove Boulevard
 Buhre
 Third
 North Milpitas
-West Alameda Avenue, Suite
+West Alameda Avenue
 Admiral Callaghan
-North Lamar Boulevard, Suite
+North Lamar Boulevard
 West Bay
-East Capitol Expressway, Suite
+East Capitol Expressway
 South Orlando
-Eastern Avenue, Suite
+Eastern Avenue
 73rd
-Hillcroft Street, Suite
-South Dobson Road, Suite
-North Stapley Drive, Suite
+Hillcroft Street
+South Dobson Road
+North Stapley Drive
 Linden
 Avalon
 Hempstead
 Eastern
 Coney Island
-Southwest Freeway (I-35w), Suite
+Southwest Freeway
 West 125th
 East Tremont
 White Plains
 14th
 Kirkland
-West El Camino Real,
+West El Camino Real
 6th Street,
 North Federal
 Milliken
 South Ashland
-South Main Street, Suite
+South Main Street
 Alondra
 Bellaire
-Cullen Boulevard, Suite
+Cullen Boulevard
 Bouquet Canyon
-West Ashlan Avenue, Suite
+West Ashlan Avenue
 S Grand Canyon
 Curry Ford
-Bobhope Drive, Suite
-Chamblee Tucker Road, Suite
+Bobhope Drive
+Chamblee Tucker
 Shaver
 Oceanside
 Antoine
@@ -4201,77 +4201,76 @@ West Vine
 Hylan
 Christie
 Stony Point
-Northwest 87th Avenue, Suite
+Northwest 
 West El Camino
 Northwest 41st
-Coleman Avenue, Suite
-Valley Centre Drive, Suite
+Coleman Avenue
+Valley Centre Drive
 Alton
-University Avenue, Suite
+University Avenue
 State Highway
 Manarch Bay
-Sunrise Highway, Unit
+Sunrise Highway
 West Stockton
 Northeast 163rd
 Manor
 South El Camino
 Summit
-South Sam Houston Parkway
-Broadway Avenue, Suite
-River Oaks Parkway, Suite
+South Sam Houston 
+Broadway Avenue
+River Oaks Parkway
 West 207th
 NW 27th
 Bay Meadows
 South
 Geer
 Sutphin
-West San Marcos Street, Suite
-Auburn Boulevard, Suite
-Harter Road, Suite
-East Kings Canyon Road, Suite
+West San Marcos 
+Auburn Boulevard
+Harter Road,
+East Kings Canyon 
 Forest
-East Imperial Highway, Suite
+East Imperial 
 Elk Grove Florin
 Tully Road, Suite
-Wilshire Boulevard, Suite
+Wilshire Boulevard
 Ross
 Deer Valley
 East 1st
 Merrick
 Huntington
-Sunset Avenue, Suite
+Sunset Avenue
 Bay
 Atlantic
 Alamo
 West Northern
-San Pablo Avenue, Suite
+San Pablo Avenue
 Main
 Mccart
-Almaden Expressway, Suite
+Almaden Expressway
 West Interstate
 East Foothill
-Monterey Highway, Suite
+Monterey Highway
 Wirt
-Del Paso Road, Suite
-Central
-Hidden Valley Parkway, Suite
-South Rainbow Boulevard, Suite
+Del Paso Roads
+Hidden Valley 
+South Rainbow 
 West Montauk
 North Sagewood
 North
-South Foothill Drive, Suite
+South Foothill
 S 700 East
 North Main
 Chinden
 Second Street
-West Overland Road,
+West Overland Road
 West Pullman
 S
 North
 East Fairview
-West Kathleen Avenue, Suite
-Blue Lakes Boulevard North, Suite
-Northgate Mile, Suite
+West Kathleen
+Blue Lakes Boulevard
+Northgate Mile
 North Milwaukee
 N Sr
 W Jackson
@@ -4320,7 +4319,7 @@ Golden Triangle
 De Zavala
 NW Loop
 N Twin City
-E Central Texas Expy, Unit
+E Central Texas Exp
 Skillman
 Booneville
 S Crowley
@@ -4337,7 +4336,7 @@ Lynnfield
 E Harmony
 Ken Pratt
 S Ellsworth Loop
-N Scottsdale Rd, Unit A
+N Scottsdale Rd
 N Oracle
 S Cotton
 N Oracle
@@ -4381,7 +4380,7 @@ Saratoga-Sunnyvale
 Balboa
 Washington
 Santa Monica
-Bollinger Canyon Rd, Ste
+Bollinger Canyon
 Story Rd, Ste
 Anthem Village
 NW Couch
@@ -4413,10 +4412,10 @@ S Pompano
 W Atlantic
 W Kennedy
 Weston
-Caroline St Ne, Bldg
+Caroline St Ne
 Old Norcross
 Glynn St
-Ralph David Abernathy Blvd
+Ralph David Abernathy
 Cheshire Bridge
 Barrett Pkwy NW, Ste
 Jonesboro Rd Ste
@@ -4424,7 +4423,7 @@ Mount Zion
 Se Hwy
 Headland Dr Sw, Ste
 Candler Rd, Ste
-Henderson Mill Rd Ne, Ste
+Henderson Mill Rd Ne
 Old Hwy 5, Ste
 Scenic Hwy
 W Hwy
@@ -4432,11 +4431,11 @@ Village Creek
 N Hairston Rd, Ste
 S Fort
 West Craig
-Village Center Cir, Ste
-W Lake Mead Blvd, Ste
-E Windmill Ln, Ste
-S Boulder Hwy, Ste
-S Las Vegas Blvd, Ste
+Village Center Cir
+W Lake Mead Blvd
+E Windmill Ln
+S Boulder Hwy
+S Las Vegas Blvd
 E Charleston
 E
 Montauk
@@ -4629,7 +4628,7 @@ Bellevue
 Delk Road
 West 12th
 4th
-East Santa Ana Canyon
+East Santa Ana
 Westwood
 Market
 Irvine
@@ -4644,7 +4643,7 @@ Cypress
 North
 South Green Valley
 South Norfolk
-Santa Monica Boulevard, Suite
+Santa Monica Boulevard
 S Decatur
 South Congress
 East Colorado
@@ -4696,7 +4695,7 @@ S Figueroa St, Ste
 Avocado
 Union
 S Sepulveda
-N LA Cienega Blvd, Ste
+N LA Cienega Blvd
 Montana Avenue, Suite
 Otay Lakes
 W Capitol
@@ -4708,7 +4707,7 @@ Roseville
 Pacific Coast
 W Jackson
 West Pacific Coast
-Woodcreek Oaks Blvd, Ste
+Woodcreek Oaks Blvd
 Foothill
 Yorba Linda
 N State College
@@ -4754,19 +4753,19 @@ Lloyd
 State Hwy 22
 Countryway
 Cape Coral Pkwy
-New Jersey Hwy 9 S, Ste
+New Jersey Hwy
 E 23rd
 Fitzgerald
 Haynes Bridge
 Hs Hwy
 Veterans Memorial
-Grand Avenue, Bldg 65, Room
+Grand Avenue
 East 4th
 Cypress
 West Colorado
 West Cleveland
 North Station
-Sw Boone Ferry Rd, Ste
+Sw Boone Ferry Rd
 Panama
 State Route 64
 Spout Springs
@@ -4795,8 +4794,8 @@ Peachland
 Marketplace
 North
 South Jog
-East Jackson Street, Suite
-Canyon Crest Drive, Bldg
+East Jackson Street
+Canyon Crest
 North Shepherd
 Essington
 Stirling
@@ -4891,7 +4890,7 @@ East Redlands
 College Point
 Pearl
 Howell Mill Road,
-East Carefree Highway, Suite
+East Carefree Highway
 East Highway
 Calle
 Colorado
@@ -4954,7 +4953,7 @@ Bandera
 South Higley
 South Pulaski
 South Pacific Coast
-East Palm Canyon Drive, Building
+East Palm Canyon Drive
 East Bay
 Boulder
 North Palm
@@ -4967,13 +4966,13 @@ South Colorado
 Butterfield
 Main
 Folsom
-East Colorado Boulevard, Suite
+East Colorado Boulevard
 East Bromley
 North Indian Trail
 East Los Angeles
 Magnolia
 Vine
-Southeast Tualatin Valley
+Southeast Valley
 South Main
 East Carson
 Otay Lakes
@@ -4986,7 +4985,7 @@ North Azusa
 Stratford
 Jefferson
 Northeast Hogan
-Hollywood Boulevard, Suite
+Hollywood Boulevard
 West 25th
 North Florida
 South Conway
@@ -4996,7 +4995,7 @@ North Ventu Park
 Dallas Highway
 Northwest 87th
 Shattuck
-Pioneer Boulevard, Suite
+Pioneer Boulevard
 Bell Tower
 West Van Buren
 Main
@@ -5034,11 +5033,11 @@ North Western
 Sw 37th
 Wilshire
 Broadway
-Ranch Road 620 N. Building
+Ranch Road
 Huntington
 West Sunset
 Jacklin
-East Church Street, Suite
+East Church Street
 Blackhawk Plaza
 Parr
 Rosecrans
@@ -5066,7 +5065,7 @@ West Desert Inn
 Big Basin
 South Fair Oaks
 Woodruff
-South Westlake Boulevard, Suite
+South Boulevard
 Riverside
 Almaden
 Ming Avenue, Suite
