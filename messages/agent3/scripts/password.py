@@ -8,8 +8,8 @@ DICT = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 DIGITS = [str(i) for i in range(10)]
 K_MAX = 5 # max number of words and digit randomly selected each
 K_MIN = 2
-WORD_PROBS = [0.4, 0.3, 0.2, 0.1]
-NUM_PROBS = [0.25, 0.25, 0.25, 0.25]
+WORD_PROBS = [0.4, 0.3, 0.3, 0]
+NUM_PROBS = [0.1, 0.3, 0.3, 0.3]
 
 def load_dictionary(filepath=None):
 	"""Loads a dictionary into the global @DICT.
