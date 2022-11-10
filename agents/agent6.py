@@ -23,6 +23,79 @@ ARITH_START = 0
 ############################# HELPER FUNCTIONS #############################
 ############################################################################
 
+# Check for groups in order how simplistic and sure it is to check
+def identify_domain(message):
+
+    # check for group 3
+    if message[0] == '@':
+        return 3
+
+    message_split = message.split(" ")
+    # check for group 2
+    if len(message_split) == 3:
+        if len(message_split[0]) == 3 and len(message_split[1]) == 4 and len(message_split[2]) == 8:
+            return 2
+
+    # check for group 4
+    if len(message_split) == 4 and '.' in message:
+        # Double check
+        if (len(message_split[0]) ==  7 or len(message_split[0]) ==  8) and (len(message_split[2]) ==  7 or len(message_split[2]) ==  8) and len(message_split[1]) == 2 and len(message_split[3]) == 1:
+            return 4
+
+    # check for group 5
+    if message_split[0].isdigit():
+        # Fairly small file
+        with open("../messages/agent5/street_suffix.txt") as file_in:
+            lines = []
+            for line in file_in:
+                lines.append(line.rstrip())
+            if message_split[len(message_split)-1] in lines:
+                return 5
+
+    # check for group 6 // Need to check how expensive this is should be better because we arent loading it all into memory at once
+    with open("../messages/agent6/unedited_corpus.txt") as file_in:
+        lines = []
+        for line in file_in:
+            lines.append(line.rstrip())
+
+        if message in lines:
+            return 6
+
+    # At this point the only corpus with numbers is group 1 
+    if any(char.isdigit() for char in message):
+        return 1
+
+    # check for group 8
+    # All agent 8 are greater than 1 in length and less than 6
+    if len(message_split) > 1 and len(message_split) < 6:
+        names = []
+        places = []
+        with open("../messages/agent8/names.txt") as file_in:
+            for line in file_in:
+                names.append(line.rstrip())
+
+        with open("../messages/agent8/places.txt") as file_in:
+            for line in file_in:
+                places.append(line.rstrip())
+
+        if all(word in places or word in names for word in message_split):
+            return 8
+
+    # Check group 7 possibly the largest file
+    lines = []
+    with open("../messages/agent7/30k.txt") as file_in:
+        for line in file_in:
+            lines.append(line.rstrip())
+
+        if all(word in lines for word in message_split):
+            return 7
+
+    # Check if message should be group 1
+    if len(message) >2 and len(message) < 13:
+        return 1
+
+    return 0
+
 #from Group 4
 def cards_to_number(cards):
     num_cards = len(cards)
@@ -577,9 +650,9 @@ class Agent:
 
 
 if __name__ == "__main__":
+    message = "smack tori quo augment riddles"
     agent = ArtihmaticCodingAgent()
     
-    message = "hello i am maximo oen. bye bye"
     deck = agent.encode(message)
     print(deck)
     print(agent.decode(deck))
