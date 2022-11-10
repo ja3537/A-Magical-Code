@@ -156,7 +156,7 @@ class ArtihmaticCodingAgent:
         self.freq_d = [self.alphabet_freq, self.symbol_freq, self.num_freq, self.base_freq, self.alpha_caps]
         self.weight_dict = {
             1: [0.4, 0.3, 0.199, 0.001, 0.1], #alphabetical + number + symbols + alphabeticalCaps + base
-            2: [0.499, 0.499, 0.002, 0], #
+            #2: [0.499, 0.499, 0.002, 0], #
             3: [0.999, 0, 0, 0.001, 0], #only alphabetical + base
             4: [0, 0, 0.001, 0.999], #only alphabeticalCaps
             5: [0, 0.999, 0.001, 0], #Numerical + Symbols + base
@@ -263,6 +263,7 @@ class ArtihmaticCodingAgent:
 
         word_set = set(message)
         min_val = float("inf")
+        message_length=len(message)
 
         #try multiple length encodings
         for i in self.weight_dict.keys():
@@ -282,13 +283,19 @@ class ArtihmaticCodingAgent:
         if min_val == float("inf"):
             return "NULL"
 
+        encode_scheme = str(min_val)[0]
+        encoded_message = str(min_val)[1:]
+        final_val = int(encode_scheme + str(message_length) + '00' + encoded_message)
+        #print("min_val:  ", min_val)
+        #print("final_val:", final_val)
+
         #encode to a card sequence
         deck = list(range(0,52))
         
         #padded_cards = list(range(0,PADDING_CARDS))
         #arith_cards = list(range(PADDING_CARDS, 52))
         #print(min_val)
-        encoded_deck = number_to_cards(min_val, deck)
+        encoded_deck = number_to_cards(final_val, deck)
 
         #add padded cards to the end
         #print(encoded_deck)
@@ -304,22 +311,32 @@ class ArtihmaticCodingAgent:
  
         #find the decimal value from it
         val = int(cards_to_number(encoded_cards))
-        #print(val)
+        #print("decode_val:",val)
 
         number_in_front = int(str(val)[0])
         
 
         if number_in_front not in self.weight_dict.keys():
-            return "NULL"
+            return 0, "NULL"
 
         else:
+            message_length=0
+            message="0"
+            if "00" in str(val)[1:]:
+
+                split_num=list(str(val)[1:].split("00"))
+                if len(split_num[0])>0:
+                    message_length = int(split_num[0])
+                message =''.join(split_num[1:])
+                #print("message len:",message_length)
+                #print("message:",message)
 
             #take the int as a Decimal
-            val_as_Decimal = Decimal("0."+str(val)[1:])
+            val_as_Decimal = Decimal("0."+message)
             #print(val_as_Decimal)
             #print(self.set_arithmatic_boundaries((self.get_boundaries_based_on_lead_number(number_in_front))))
 
-            return self.get_word(val_as_Decimal,self.set_arithmatic_boundaries((self.get_boundaries_based_on_lead_number(number_in_front))))
+            return message_length,self.get_word(val_as_Decimal,self.set_arithmatic_boundaries((self.get_boundaries_based_on_lead_number(number_in_front))))
 
 
     def decode(self, deck):
@@ -328,11 +345,12 @@ class ArtihmaticCodingAgent:
         word_count = {}
         max_word_count = 0
         max_word = None
+        message_length=0
 
         #try all encoding lengths
         for i in range(3, 52):
             #print(i)
-            word = self.decode_helper(i, deck)  
+            word_length,word = self.decode_helper(i, deck)
             #print(word)
 
             #word needs to have STOP signal
@@ -343,10 +361,14 @@ class ArtihmaticCodingAgent:
                 if word_count[word] > max_word_count:
                     max_word_count = word_count[word]
                     max_word = word
+                    message_length = word_length
         #print(word_count)
         
-        if max_word in word_count and word_count[max_word] > 1:
-            return max_word[:-1]
+        if max_word in word_count and word_count[max_word] > 1 and message_length>0:
+            if message_length == len(max_word[:-1]):
+                return max_word[:-1]
+            else:
+                return "PARTIAL:"+max_word[:-1]
         else:
             return "NULL"
         #return max_word[:-1] if max_word is not None else "NULL"
