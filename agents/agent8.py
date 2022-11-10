@@ -633,28 +633,26 @@ def extract_bit_fields(bits: str, format: list[int]) -> list[str]:
 
 def check_and_remove(bits: str) -> tuple[bool, int, str]:
     """Returns `(passed_checksum, encoding_id, message)`"""
-    message_checksum, length_byte, encoding_bits, message = extract_bit_fields(
-        pad(bits, CHECKSUM_BITS + LENGTH_BITS + ENCODING_BITS, allow_over=True),
-        [CHECKSUM_BITS, LENGTH_BITS, ENCODING_BITS],
+    message_checksum, encoding_bits, message = extract_bit_fields(
+        bits,
+        # pad(bits, CHECKSUM_BITS + ENCODING_BITS, allow_over=True),
+        [CHECKSUM_BITS, ENCODING_BITS],
     )
 
     # Debug
     # print("all bits:", bits)
     # print("message checksum:", message_checksum)
-    # print("length", length_byte)
     # print("encoding", encoding_bits)
     # print("message", message)
 
-    message_length = from_bit_string(length_byte)
     encoding_id = from_bit_string(encoding_bits)
 
-    if len(message) > message_length:
-        return False, -1, ""
-
-    # Pad message to target length with leading 0's
-    message = pad(message, message_length, allow_over=True)
-    checked_bits = message + encoding_bits + length_byte
+    checked_bits = message + encoding_bits
     checked_checksum = sha_checksum(checked_bits, CHECKSUM_BITS)
+
+    # Strip off leading 1
+    message = message[1:]
+
     return checked_checksum == message_checksum, encoding_id, message
 
 
@@ -696,7 +694,6 @@ CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
 ]
 
 CHECKSUM_BITS = 10
-LENGTH_BITS = 8
 ENCODING_BITS = max(int(ceil(log2(len(CHARACTER_ENCODINGS)))), 1)
 
 
@@ -743,9 +740,10 @@ class Agent:
             print("No domain for message:", e)
             return list(range(52))
 
-        message_length = length_byte(encoded)
+        # Prepend a 1 to retain leading 0's
+        encoded = "1" + encoded
         encoding_bits = pad(to_bit_string(encoding_id), ENCODING_BITS)
-        checked_bits = encoded + encoding_bits + message_length
+        checked_bits = encoded + encoding_bits
         # Checksum checks all other bits
         checksum = sha_checksum(checked_bits, CHECKSUM_BITS)
         with_checksum = checked_bits + checksum
@@ -761,16 +759,19 @@ class Agent:
         # Debugging
         # print("Message:", encoded)
         # print("Encoding:", encoding_bits)
-        # print("Length:", message_length)
         # print("Checksum:", checksum)
         # print("C:", c)
+        # print("all bits:", with_checksum)
 
-        return list(range(c, 52)) + card_encoded
+        deck = list(range(c, 52)) + card_encoded
+
+        return deck
 
     def decode(self, deck: list[int]):
         # Minimum 16 bit suffix for checksum + length
         # log2(9!) > 2 ^ 16
         for c in range(9, 52):
+            # print("C:", c)
             encoded = [card for card in deck if card < c]
             decoded = to_bit_string(bottom_cards_decode(encoded, c))
             passes_checksum, encoding_id, message = check_and_remove(decoded)
@@ -809,7 +810,7 @@ if __name__ == "__main__":
         deck = agent.encode(c)
         rted = agent.decode(deck)
         if rted != c:
-            print("Failed to encode:", c)
+            print("Failed to round trip:", c, rted)
 
     for n in range(1, 52):
         assert (
