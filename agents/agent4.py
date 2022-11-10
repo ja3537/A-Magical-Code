@@ -7,6 +7,7 @@ from pearhash import PearsonHasher
 from enum import Enum
 from dahuffman import HuffmanCodec
 from collections import namedtuple
+import requests
 
 
 class Domain(Enum):
@@ -17,15 +18,20 @@ class Domain(Enum):
     LETTERS_NUMBERS = 4
     LAT_LONG = 5
 
+
 MAC_DOMAIN_VALUE = max([d.value for d in Domain])
 
 DomainFrequencies = {
     # reference of English letter frequencies: https://pi.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
+    # password & address
     Domain.ALL: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, " ": 0.11, "\t": 0.10, ".": 6.97, ",": 5.93, "'": 1.53, "\"": 1.33, ":": 0.90, "-": 0.77, ";": 0.74, "?": 0.43, "!": 0.39, "0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
+    # location
     Domain.LAT_LONG: {"0": 186, "1": 342, "2": 223, "3": 334, "4": 208, "5": 215, "6": 233, "7": 211, "8": 173, "9": 168, "N": 169, "E": 164, "S": 31, "W": 36, ",": 200, ".": 400, " ": 600},
-    Domain.LOWER: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07},
-    Domain.LOWER_AND_UPPER: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, "A": 0.812, "B": 0.149, "C": 0.271, "D": 0.432, "E": 1.202, "F": 0.230, "G": 0.203, "H": 0.592, "I": 0.731, "J": 0.01, "K": 0.069, "L": 0.398, "M": 0.261, "N": 0.695, "O": 0.768, "P": 0.182, "Q": 0.011, "R": 0.602, "S": 0.628, "T": 0.91, "U": 0.288, "V": 0.111, "W": 0.209, "X": 0.017, "Y": 0.211, "Z": 0.007},
-    Domain.LETTERS_NUMBERS: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, "A": 0.812, "B": 0.149, "C": 0.271, "D": 0.432, "E": 1.202, "F": 0.230, "G": 0.203, "H": 0.592, "I": 0.731, "J": 0.01, "K": 0.069, "L": 0.398, "M": 0.261, "N": 0.695, "O": 0.768, "P": 0.182, "Q": 0.011, "R": 0.602, "S": 0.628, "T": 0.91, "U": 0.288, "V": 0.111, "W": 0.209, "X": 0.017, "Y": 0.211, "Z": 0.007, "0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
+    Domain.LOWER: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, " ": 5},
+    # name, places
+    Domain.LOWER_AND_UPPER: {"a": 24356, "b": 1881, "c": 3251, "d": 4489, "e": 20854, "f": 919, "g": 2001, "h": 5997, "i": 14284, "j": 271, "k": 2374, "l": 13159, "m": 3469, "n": 15726, "o": 10679, "p": 1148, "q": 400, "r": 12452, "s": 7567, "t": 7377, "u": 4057, "v": 2469, "w": 1482, "x": 266, "y": 4347, "z": 559, "A": 2020, "B": 1534, "C": 2409, "D": 1689, "E": 918, "F": 601, "G": 869, "H": 928, "I": 321, "J": 1621, "K": 1720, "L": 1894, "M": 2221, "N": 865, "O": 468, "P": 841, "Q": 121, "R": 1409, "S": 2600, "T": 1796, "U": 80, "V": 415, "W": 771, "X": 20, "Y": 230, "Z": 175},
+    # address(common cases)
+    Domain.LETTERS_NUMBERS: {"a": 1594, "b": 67, "c": 181, "d": 768, "e": 2611, "f": 66, "g": 198, "h": 555, "i": 748, "j": 4, "k": 177, "l": 674, "m": 141, "n": 1051, "o": 1265, "p": 79, "q": 6, "r": 1422, "s": 697, "t": 1864, "u": 669, "v": 518, "w": 192, "x": 15, "y": 246, "z": 19, "A": 322, "B": 273, "C": 154, "D": 96, "E": 187, "F": 95, "G": 70, "H": 125, "I": 24, "J": 38, "K": 25, "L": 87, "M": 214, "N": 195, "O": 31, "P": 152, "Q": 5, "R": 383, "S": 566, "T": 69, "U": 14, "V": 27, "W": 261, "X": 3, "Y": 8, "Z": 2, "0": 923, "1": 968, "2": 626, "3": 496, "4": 415, "5": 563, "6": 375, "7": 328, "8": 274, "9": 313, " ": 3577},
     Domain.NUM: {"0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
 }
 
@@ -36,6 +42,15 @@ EncodedBinary = namedtuple(
 class Agent:
     def __init__(self):
         self.rng = np.random.default_rng(seed=42)
+        r = requests.get(
+            'https://raw.githubusercontent.com/mwcheng21/minified-text/main/minified.txt')
+        minified_text = r.text
+        self.abrev2word = {}
+        self.word2abrev = {}
+        for line in minified_text.splitlines():
+            [shortened, full] = line.split(' ')
+            self.abrev2word[shortened] = full
+            self.word2abrev[full] = shortened
 
     def string_to_binary(self, message: str, domain: Domain) -> str:
         bytes_repr = HuffmanCodec.from_frequencies(
@@ -139,6 +154,8 @@ class Agent:
 
     def encode(self, message: str) -> List[int]:
         deck = generate_deck(self.rng)
+        message = ' '.join(
+            [self.word2abrev[word] if word in self.word2abrev else word for word in message.split(" ")])
 
         domain_type = self.get_domain_type(message)
 
@@ -183,7 +200,11 @@ class Agent:
         if meet_checksum_count < 2:
             return 'NULL'
 
-        return self.check_decoded_message(message, domain_type)
+        message = self.check_decoded_message(message, domain_type)
+        message = ' '.join(
+            [self.abrev2word[word] if word in self.abrev2word else word for word in message.split(" ")])
+
+        return message
 
 
 if __name__ == "__main__":
