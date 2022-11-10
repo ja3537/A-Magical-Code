@@ -2,6 +2,32 @@ import math
 import random
 from collections import Counter
 
+
+
+# class DictEncoding:
+#     def __init__(self, dict_path, max_len):
+#         self.max_len = max_len
+#         self.word_to_index = dict()
+#         self.index_to_word = dict()
+#         self.word_to_index['<PAD>'] = 0
+#         self.index_to_word[0] = '<PAD>'
+#         self.factorial_table = [math.factorial(i) for i in range(53)]
+
+#         with open(dict_path, 'r') as f:
+#             for i, line in enumerate(f, start=1):
+#                 word = line.strip()
+#                 self.word_to_index[word] = i
+#                 self.index_to_word[i] = word
+#         for i, x in enumerate(self.factorial_table):
+#             if x >= len(self.word_to_index) ** self.max_len:
+#                 self.num_cards_used = i
+#                 break
+        
+#     def encode(self, message):
+        
+        
+
+
 class Node:
     def __init__(self, left=None, right=None):
         self.left = left
@@ -601,6 +627,8 @@ def cards_to_bin(cards):
 class Agent:
 
     def __init__(self):
+       self.pearson8_table = list(range(0, 256))
+       random.shuffle(self.pearson8_table)
        self.scheme_id_to_encoding = { "001" : LOWERCASE_HUFFMAN,
                                       "010" : AIRPORT_HUFFMAN,
                                       "011" : PASSPORT_HUFFMAN,
@@ -621,6 +649,19 @@ class Agent:
                                       "PRINTTABLE_HUFFMAN" : "110"
                                     }
         #self.encoding = huffman_code(node)
+    
+    def compute_pearson8_checksum(self, data) -> str:
+        if len(data) % 8 != 0:
+            data = "0" * (8 - len(data) % 8) + data
+        byte_list = [int(data[i:i+8], 2) for i in range(0, len(data), 8)]
+        checksum = len(data) % 256
+        checksum &= 0xFF
+        for byte in byte_list:
+            index = (checksum ^ byte) & 0xFF
+            checksum = self.pearson8_table[index]
+            checksum &= 0xFF
+        return format(checksum, '08b')
+
         
     def compute_crc8_checksum(self, data) -> str:
         # data is a binary string
@@ -705,7 +746,7 @@ class Agent:
         
         # Calculate checksum before prepending the leading 1 bit
         # assert(len(self.compute_crc16_checksum(msg_huffman_binary)) == 16)
-        msg_huffman_binary += self.compute_crc16_checksum(msg_huffman_binary)
+        msg_huffman_binary += self.compute_pearson8_checksum(msg_huffman_binary)
 
         # Appending 3-bit identifier for encoding scheme
         msg_huffman_binary += scheme_id
@@ -732,10 +773,10 @@ class Agent:
                     msg_cards.append(c)
             bin_raw = cards_to_bin(msg_cards)
             bin_raw = bin_raw[1:] # remove leading 1
-            bin_message, tail = bin_raw[:-19], bin_raw[-19:]
+            bin_message, tail = bin_raw[:-11], bin_raw[-11:]
             checksum, scheme_id = tail[:-3], tail[-3:]
 
-            if scheme_id in self.scheme_id_to_encoding and checksum == self.compute_crc16_checksum(bin_message):
+            if scheme_id in self.scheme_id_to_encoding and checksum == self.compute_pearson8_checksum(bin_message):
                #print("scheme_id ", scheme_id)
                decoded_message = decode_bin_msg(bin_message, self.scheme_id_to_encoding[scheme_id])
                return decoded_message
