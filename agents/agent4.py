@@ -82,7 +82,7 @@ class Agent:
     # -----------------------------------------------------------------------------
     def get_message_domain(self, message: str) -> Domain:
         matching_domains = []
-        words = message.split(' ')
+        words = [w for w in message.split(' ') if w]
 
         # Domain.ALL
         if all([ch in list(string.ascii_lowercase + string.digits + '. ') for ch in message]):
@@ -108,11 +108,12 @@ class Agent:
 
         # Domain.STREET
         if (words[0].isnumeric() and
-            words[-1] in self.word_to_binary_dicts[Domain.STREET].keys()
-            and ' '.join(words[1::-1]) in self.word_to_binary_dicts[Domain.STREET].keys()
+            ((words[-1] in self.word_to_binary_dicts[Domain.STREET].keys()
+            and ' '.join(words[1:-1]) in self.word_to_binary_dicts[Domain.STREET].keys())
+            or ' '.join(words[1:]) in self.word_to_binary_dicts[Domain.STREET].keys())
         ):
             matching_domains.append(Domain.STREET)
-        
+
         # Domain.WARTIME_NEWS
         if all([word in self.word_to_binary_dicts[Domain.WARTIME_NEWS].keys() for word in words]):
             matching_domains.append(Domain.WARTIME_NEWS)
