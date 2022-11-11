@@ -273,7 +273,7 @@ class Agent:
         code2_str = self.huff_binary_to_string(code2_bin, Domain.AIRPORT)
         num_str = str(int(num_bin, 2)).zfill(8)
 
-        message = code1_str + " " + code2_str + ", " + num_str
+        message = code1_str + " " + code2_str + " " + num_str
         return message
     def password_to_binary(self, message: str) -> str:
         return self.huff_string_to_binary(message[1:], Domain.PASSWORD)
