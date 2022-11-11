@@ -361,6 +361,7 @@ class Agent:
 
     def encode(self, message_):
         message = deepcopy(message_)
+        message = message.lower()
         ## logic for agent 3's password domain
         if message[0] =="@":
             message = message[1:]
