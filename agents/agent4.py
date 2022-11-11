@@ -98,7 +98,7 @@ class Agent:
 
         # Domain.PASSWORD
         if (message[0] == '@' 
-            and all([w in self.word_to_binary_dicts[Domain.PASSWORD].keys() for w in message.split(re.findall(r'\d+', message))])
+            and all([w in self.word_to_binary_dicts[Domain.PASSWORD].keys() for w in self.get_password_words(message)])
         ):
             matching_domains.append(Domain.PASSWORD)
 
@@ -125,13 +125,24 @@ class Agent:
         if all([word in self.word_to_binary_dicts[Domain.NAME_PLACE].keys() for word in words]):
             matching_domains.append(Domain.NAME_PLACE)
 
-        return sorted(matching_domains, key=lambda domain: len(self.message_to_binary(message, domain.value)))[0]
+        return sorted(matching_domains, key=lambda domain: len(self.message_to_binary(message, domain)))[0]
 
     def domain_to_binary(self, domain_type: Domain) -> str:
         return bin(int(domain_type.value))[2:].zfill(3)
 
     def get_domain_frequencies(self, domain: Domain) -> Dict[Domain, Dict[str, float]]:
         return DomainFrequencies[domain] if domain in DomainFrequencies.keys() else DomainFrequencies[Domain.ALL]
+
+    def get_password_words(self, password: str) -> List[str]:
+        chunks = [w for w in re.split('|'.join(re.findall(r'\d+', password[1:])), password[1:]) if w]
+        words = []
+        for chunk in chunks:
+            j = 0
+            for i in range(len(chunk)+1):
+                if chunk[j:i] in self.word_to_binary_dicts[Domain.PASSWORD]:
+                    words.append(chunk[j:i])
+                    j = i
+        return words
 
     # -----------------------------------------------------------------------------
     #   Message -> Binary & Binary -> Message
@@ -143,7 +154,7 @@ class Agent:
         elif domain == Domain.AIRPORT:
             return self.airport_to_binary(message)
         elif domain == Domain.PASSWORD:
-            return self.huff_string_to_binary(message, domain)
+            return self.password_to_binary(message)
         elif domain == Domain.LAT_LONG:
             return self.lat_long_to_binary(message)
         elif domain == Domain.STREET:
@@ -163,7 +174,7 @@ class Agent:
         elif domain == Domain.AIRPORT:
             return self.binary_to_airport(binary)
         elif domain == Domain.PASSWORD:
-            return self.huff_binary_to_string(binary, domain)
+            return self.binary_to_password(binary)
         elif domain == Domain.LAT_LONG:
             return self.binary_to_lat_long(binary)
         elif domain == Domain.STREET:
@@ -264,6 +275,11 @@ class Agent:
 
         message = code1_str + " " + code2_str + ", " + num_str
         return message
+    def password_to_binary(self, message: str) -> str:
+        return self.huff_string_to_binary(message[1:], Domain.PASSWORD)
+
+    def binary_to_password(self, binary: str) -> str:
+        return '@' + self.huff_binary_to_string(binary, Domain.PASSWORD)
 
     def lat_long_to_binary(self, message: str) -> str:
         # message: 18.3419 N, 64.9332 W
