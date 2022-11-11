@@ -54,6 +54,57 @@ class Agent:
             self.abrev2word[shortened] = full
             self.word2abrev[full] = shortened
 
+    def latlong_to_binary(self, message):
+        # message: 18.3419 N, 64.9332 W
+        # get first number (remove the decimal point), max 7
+        # encode next letter with 0 or 1 to represent N or S
+        # repeat for next number + E/W
+        # pad numbers with zeros on left (once in binary)
+
+        message_list = message.replace(',', '').replace('.', '').split()
+        lat_bin = bin(int(message_list[0]))[2:].zfill(20)
+        long_bin = bin(int(message_list[2]))[2:].zfill(21)
+
+        lat_dir_bin = ''
+        long_dir_bin = ''
+        if message_list[1] == 'N':
+            lat_dir_bin = '0'
+        else:
+            lat_dir_bin = '1'
+
+        if message_list[1] == 'E':
+            long_dir_bin = '0'
+        else:
+            long_dir_bin = '1'
+
+        return lat_bin + lat_dir_bin + long_bin + long_dir_bin
+
+    def binary_to_latlong(self, binary):
+        # RETURN: string in format 18.3419 N, 64.9332 W
+        lat_bin = binary[:20]
+        lat_dir_bin = binary[20:21]
+        long_bin = binary[21:42]
+        long_dir_bin = binary[42:]
+
+        lat_num = str(int(lat_bin, 2))
+        long_num = str(int(long_bin, 2))
+        lat_str = lat_num[:-4] + "." + lat_num[-4:]
+        long_str = long_num[:-4] + "." + long_num[-4:]
+
+        lat_dir = ''
+        long_dir = ''
+        if lat_dir_bin == '0':
+            lat_dir = 'N'
+        else:
+            lat_dir = 'S'
+
+        if long_dir_bin == '0':
+            long_dir = 'E'
+        else:
+            long_dir = 'W'
+
+        return lat_str + " " + lat_dir + ", " + long_str + " " + long_dir
+
     def string_to_binary(self, message: str, domain: Domain) -> str:
         bytes_repr = HuffmanCodec.from_frequencies(
             self.get_domain_frequencies(domain)).encode(message)
