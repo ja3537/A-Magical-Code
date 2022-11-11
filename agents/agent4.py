@@ -293,7 +293,7 @@ class Agent:
         long_bin = bin(int(message_list[2]))[2:].zfill(21)
 
         lat_dir_bin = '0' if message_list[1] == 'N' else '1'
-        long_dir_bin = '0' if message_list[1] == 'E' else '1'
+        long_dir_bin = '0' if message_list[3] == 'E' else '1'
 
         return lat_bin + lat_dir_bin + long_bin + long_dir_bin
 
@@ -306,8 +306,8 @@ class Agent:
 
         lat_num = str(int(lat_bin, 2))
         long_num = str(int(long_bin, 2))
-        lat_str = lat_num[:-4] + "." + lat_num[-4:]
-        long_str = long_num[:-4] + "." + long_num[-4:]
+        lat_str = lat_num[:-4].zfill(1) + "." + lat_num[-4:].zfill(4)
+        long_str = long_num[:-4].zfill(1) + "." + long_num[-4:].zfill(4)
 
         lat_dir = 'N' if lat_dir_bin == '0' else 'S'
         long_dir = 'E' if long_dir_bin == '0' else 'W'
