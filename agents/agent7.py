@@ -14,10 +14,9 @@ DICT_SIZE = 27000
 SENTENCE_LEN = 6
 ENGLISH_DICTIONARY = enchant.Dict("en_US")
 
-# g1 + g4
+# g1 + g4 + g3
 # g7 + g6 (1gram)
 # g2
-# g3
 # g5
 # g8
 
@@ -35,7 +34,6 @@ class Domain_Info():
         self.add_g6_domain()
         self.add_g7_domain()
         self.add_g8_domain()
-        return
     
     def add_g1_domain(self):
         '''Add a new domain to the domain info object'''
@@ -51,13 +49,14 @@ class Domain_Info():
         '''Add a new domain to the domain info object'''
         # AIRPORT: abbreviation, location, number
         # Char: upper case, digit, space
-        self.domains[Domain.AIRPORT] = dict()
+        #self.domains[Domain.AIRPORT] = dict()
         month = [x for x in range(1, 13)]
         day = [x for x in range(1, 29)]
         year = [x for x in range(2023, 2026)]        
-        self.domains[Domain.AIRPORT]['airport_codes'] = []
-        self.domains[Domain.AIRPORT]['time'] = []
-        self.domains[Domain.AIRPORT]['flight_number'] = []
+        #self.domains[Domain.AIRPORT]['airport_codes'] = []
+        #self.domains[Domain.AIRPORT]['time'] = []
+        #self.domains[Domain.AIRPORT]['flight_number'] = []
+        self.domains[Domain.AIRPORT] = []
         for y in year:
             for m in month:
                 if m < 10:
@@ -66,17 +65,17 @@ class Domain_Info():
                     if d < 10:
                         d = '0' + str(d)
                     time =  str(m) + str(d) + str(y)
-                    self.domains[Domain.AIRPORT]['time'].append(time)
-        for i1 in (string.ascii_uppercase + string.digits):
-            for i2 in (string.ascii_uppercase + string.digits):
-                for i3 in (string.ascii_uppercase + string.digits):
-                    for i4 in (string.ascii_uppercase + string.digits):
-                        self.domains[Domain.AIRPORT]['flight_number'].append(i1+i2+i3+i4)
+                    self.domains[Domain.AIRPORT].append(time)
+        # for i1 in (string.ascii_uppercase + string.digits):
+        #     for i2 in (string.ascii_uppercase + string.digits):
+        #         for i3 in (string.ascii_uppercase + string.digits):
+        #             for i4 in (string.ascii_uppercase + string.digits):
+        #                 self.domains[Domain.AIRPORT].append(i1+i2+i3+i4)
         with open("./messages/agent2/airportcodes.txt", "r") as f:
             line = f.readline()
             while line:
                 line = line.strip()
-                self.domains[Domain.AIRPORT]['airport_codes'].append(line)
+                self.domains[Domain.AIRPORT].append(line)
                 line = f.readline()
 
     def add_g3_domain(self):
@@ -90,6 +89,8 @@ class Domain_Info():
                 line = line.strip()
                 self.domains[Domain.PASSWORD].append(line)
                 line = f.readline()
+            for i in range(1000):
+                self.domains[Domain.PASSWORD].append(str(i))
             # while line:
             #     line = line.strip()
             #     prev_i = 0
@@ -118,50 +119,60 @@ class Domain_Info():
         '''Add a new domain to the domain info object'''
         # Address: Number, Street suffix, streetname
         # Char: words, digit, space, ",", ".", "/"
-        self.domains[Domain.ADDRESS] = dict()
+        self.domains[Domain.ADDRESS] = []
         with open("./messages/agent5/street_name.txt", "r") as f:
             line = f.readline()
-            self.domains[Domain.ADDRESS]["street_name"] = []
+            #self.domains[Domain.ADDRESS]["street_name"] = []
             while line:
                 line = line.strip()
-                self.domains[Domain.ADDRESS]["street_name"].append(line)
+                self.domains[Domain.ADDRESS].append(line)
                 line = f.readline()
         with open("./messages/agent5/street_suffix.txt", "r") as f:
             line = f.readline()
-            self.domains[Domain.ADDRESS]["street_suffix"] = []
+            #self.domains[Domain.ADDRESS]["street_suffix"] = []
             while line:
                 line = line.strip()
-                self.domains[Domain.ADDRESS]["street_suffix"].append(line)
+                self.domains[Domain.ADDRESS].append(line)
                 line = f.readline()
-        self.domains[Domain.ADDRESS]["number"] = []
         for i in range(10000):
             i = str(i)
-            self.domains[Domain.ADDRESS]["number"].append(i)
+            #self.domains[Domain.ADDRESS]["number"].append(i)
+            self.domains[Domain.ADDRESS].append(i)
             while len(i) < 4:
                 i = '0' + i
-                self.domains[Domain.ADDRESS]["number"].append(i)
+                #self.domains[Domain.ADDRESS]["number"].append(i)
+                self.domains[Domain.ADDRESS].append(i)
                 
     def add_g6_domain(self):
         '''Add a new domain to the domain info object'''
         # N-gram: 1-gram, 2-gram, ..., 9-gram
         # Char: words, digit, space
-        self.domains[Domain.NGRAM] = dict()
-        for i in range(1, 10):
-            self.domains[Domain.NGRAM][i] = set()
-            with open("./messages/agent6/corpus-ngram-" + str(i) + ".txt", "r") as f:
-                line = f.readline()
-                while line:
-                    line = line.strip()
-                    self.domains[Domain.NGRAM][i].add(line)
-                    if i == 1:
-                        self.dictionary67.add(line)
-                    line = f.readline()
-        with open("./messages/agent6/unedited_corpus.txt", "r") as f:
+        # self.domains[Domain.NGRAM] = [dict()]
+        # for i in range(1, 10):
+        #     self.domains[Domain.NGRAM][i] = set()
+        #     with open("./messages/agent6/corpus-ngram-" + str(i) + ".txt", "r") as f:
+        #         line = f.readline()
+        #         while line:
+        #             line = line.strip()
+        #             self.domains[Domain.NGRAM][i].add(line)
+        #             if i == 1:
+        #                 self.dictionary67.add(line)
+        #             line = f.readline()
+        # with open("./messages/agent6/unedited_corpus.txt", "r") as f:
+        #     line = f.readline()
+        #     self.domains[Domain.NGRAM]["unedited"] = []
+        #     while line:
+        #         line = line.strip()
+        #         self.domains[Domain.NGRAM]["unedited"].append(line)
+        #         line = f.readline()
+        
+        self.domains[Domain.NGRAM] = []
+        with open("./messages/agent6/corpus-ngram-" + str(1) + ".txt", "r") as f:
             line = f.readline()
-            self.domains[Domain.NGRAM]["unedited"] = []
             while line:
                 line = line.strip()
-                self.domains[Domain.NGRAM]["unedited"].append(line)
+                self.domains[Domain.NGRAM].append(line)
+                self.dictionary67.add(line)
                 line = f.readline()
         
 
@@ -335,7 +346,11 @@ class Domain_Classifier():
         elif self.is_ngram(msg):
             return Domain.NGRAM
         return Domain.G1 # default ascii
-            
+    
+    def binary_predict(self, msg):
+        if self.is_dictionary(msg):
+            return Domain.DICTIONARY
+        return Domain.G1
 
 class EncoderDecoder:
     def __init__(self, n=26):
