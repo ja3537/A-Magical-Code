@@ -226,7 +226,7 @@ class Agent:
 
     def sentence_to_binary(self, message: str) -> str:
         dict = self.word_to_binary_dicts[Domain.SENTENCE]
-        return ''.join([dict[word] for word in message.split(' ')])
+        return ''.join([dict[word] for word in message.split(' ') if word])
 
     def binary_to_sentence(self, binary: str) -> str:
         dict = self.binary_to_word_dicts[Domain.SENTENCE]
@@ -237,7 +237,7 @@ class Agent:
 
     def name_place_to_binary(self, message: str) -> str:
         dict = self.word_to_binary_dicts[Domain.NAME_PLACE]
-        return ''.join([dict[word] for word in message.split(' ')])
+        return ''.join([dict[word] for word in message.split(' ') if word])
 
     def binary_to_name_place(self, binary: str) -> str:
         dict = self.binary_to_word_dicts[Domain.NAME_PLACE]
@@ -323,7 +323,7 @@ class Agent:
 
     def wartime_news_to_binary(self, message: str) -> str:
         dict = self.word_to_binary_dicts[Domain.WARTIME_NEWS]
-        return dict[message]
+        return dict[message.strip()]
 
     def binary_to_wartime_news(self, binary: str) -> str:
         dict = self.binary_to_word_dicts[Domain.WARTIME_NEWS]
