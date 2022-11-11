@@ -829,6 +829,85 @@ def name_place_coders():
     return encode, decode
 
 
+def password_coders():
+    num_length = 4
+
+    words_forward: dict[str, int] = {}
+    words_backward: dict[int, str] = {}
+    word_length = 0
+    with open(
+        path.join(
+            path.dirname(__file__),
+            f"../messages/agent3/dicts/large_cleaned_long_words.txt",
+        )
+    ) as words_dict:
+        words_forward = {word.strip(): i for i, word in enumerate(words_dict)}
+        word_length = int(ceil(log2(len(words_forward))))
+        words_backward = {i: ngram for ngram, i in words_forward.items()}
+
+    def encode(message: str) -> str:
+        if message[0] != "@":
+            raise ValueError()
+        offset = 1
+        encoded = ""
+        while offset < len(message):
+            if message[offset] in digits:
+                encoded += "0" + pad(to_bit_string(int(message[offset])), num_length)
+                offset += 1
+            else:
+                # # scan forward until digit/end
+                # end = offset + 1
+                # while end < len(message):
+                #     if message[end] not in digits:
+                #         end += 1
+                # # offset to end is now continuous letters
+                # frontier = []
+                # for i in range(offset + 1, end + 1):
+                #     candidate_word = message[offset : i]
+                #     if candidate_word in words_forward:
+                #         frontier.append([candidate_word])
+
+                # while len(frontier) > 0:
+                #     prefix_words = frontier.pop()
+
+                end = len(message)
+                dead = True
+                while end > offset:
+                    candidate_word = message[offset:end]
+                    if candidate_word in words_forward:
+                        dead = False
+                        encoded += "1" + pad(
+                            to_bit_string(words_forward[candidate_word]), word_length
+                        )
+                        offset = end
+                        break
+                    else:
+                        end -= 1
+                if dead:
+                    print(f"Died on {message[offset:]} in {message}")
+                    raise ValueError()
+        return encoded
+
+    def decode(message: str) -> str:
+        offset = 0
+        out = "@"
+        while offset < len(message):
+            if message[offset] == "0":
+                num_bits = message[offset + 1 : offset + 1 + num_length]
+                out += str(from_bit_string(num_bits))
+                offset += 1 + num_length
+            else:
+                word_bits = message[offset + 1 : offset + 1 + word_length]
+                word_index = from_bit_string(word_bits)
+                if word_index not in words_backward:
+                    raise ValueError()
+                out += words_backward[word_index]
+                offset += 1 + word_length
+        return out
+
+    return encode, decode
+
+
 # ==============
 # Bits <-> Cards
 # ==============
@@ -1038,6 +1117,7 @@ CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
     ngram_coders(),
     agent7_coders(),
     name_place_coders(),
+    password_coders(),
 ]
 
 CHECKSUM_BITS = 12
