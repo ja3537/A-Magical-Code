@@ -9,6 +9,7 @@ from dahuffman import HuffmanCodec
 from collections import namedtuple
 import requests
 import string
+import re
 
 
 class Domain(Enum):
@@ -17,8 +18,7 @@ class Domain(Enum):
     PASSWORD = 2            # Group 3: @ symbol + random words and numbers
     LAT_LONG = 3            # Group 4: number + N/S + ", " + number + E/W
     STREET = 4              # Group 5: numbers, names, and street suffixes
-    # Group 6: space delimited english words from wartime correspondences
-    WARTIME_NEWS = 5
+    WARTIME_NEWS = 5        # Group 6: space delimited english words from wartime correspondences
     SENTENCE = 6            # Group 7: space delimited english words from limited dictionary
     NAME_PLACE = 7          # Group 8: two propper nouns separated by a space
 
@@ -96,15 +96,37 @@ class Agent:
             ):
             matching_domains.append(Domain.AIRPORT)
 
+        # Domain.PASSWORD
+        if (message[0] == '@' 
+            and all([w in self.word_to_binary_dicts[Domain.PASSWORD].keys() for w in message.split(re.findall(r'\d+', message))])
+        ):
+            matching_domains.append(Domain.PASSWORD)
+
         # Domain.LAT_LONG
         if all([ch in list('NSEW,. ' + string.digits) for ch in message]):
             matching_domains.append(Domain.LAT_LONG)
+
+        # Domain.STREET
+        if (words[0].isnumeric() and
+            words[-1] in self.word_to_binary_dicts[Domain.STREET].keys()
+            and ' '.join(words[1::-1]) in self.word_to_binary_dicts[Domain.STREET].keys()
+        ):
+            matching_domains.append(Domain.STREET)
+        
+        # TODO (NOAH): this does not work as is
+        # Domain.WARTIME_NEWS
+        if all([word in self.word_to_binary_dicts[Domain.WARTIME_NEWS].keys() for word in words]):
+            matching_domains.append(Domain.WARTIME_NEWS)
+
+        # Domain.SENTENCE
+        if all([word in self.word_to_binary_dicts[Domain.SENTENCE].keys() for word in words]):
+            matching_domains.append(Domain.SENTENCE)
 
         # Domain.NAME_PLACE
         if all([word in self.word_to_binary_dicts[Domain.NAME_PLACE].keys() for word in words]):
             matching_domains.append(Domain.NAME_PLACE)
 
-        return sorted(matching_domains, key=lambda domain: len(self.message_to_binary(message, domain)))[0]
+        return sorted(matching_domains, key=lambda domain: len(self.message_to_binary(message, domain.value)))[0]
 
     def domain_to_binary(self, domain_type: Domain) -> str:
         return bin(int(domain_type.value))[2:].zfill(3)
