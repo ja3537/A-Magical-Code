@@ -27,14 +27,23 @@ DomainFrequencies = {
     # reference of English letter frequencies: https://pi.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
     # password & address
     Domain.ALL: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, " ": 0.11, "\t": 0.10, ".": 6.97, ",": 5.93, "'": 1.53, "\"": 1.33, ":": 0.90, "-": 0.77, ";": 0.74, "?": 0.43, "!": 0.39, "0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
-    # location
-    Domain.LAT_LONG: {"0": 186, "1": 342, "2": 223, "3": 334, "4": 208, "5": 215, "6": 233, "7": 211, "8": 173, "9": 168, "N": 169, "E": 164, "S": 31, "W": 36, ",": 200, ".": 400, " ": 600},
-    Domain.LOWER: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, " ": 5},
-    # name, places
-    Domain.LOWER_AND_UPPER: {"a": 24356, "b": 1881, "c": 3251, "d": 4489, "e": 20854, "f": 919, "g": 2001, "h": 5997, "i": 14284, "j": 271, "k": 2374, "l": 13159, "m": 3469, "n": 15726, "o": 10679, "p": 1148, "q": 400, "r": 12452, "s": 7567, "t": 7377, "u": 4057, "v": 2469, "w": 1482, "x": 266, "y": 4347, "z": 559, "A": 2020, "B": 1534, "C": 2409, "D": 1689, "E": 918, "F": 601, "G": 869, "H": 928, "I": 321, "J": 1621, "K": 1720, "L": 1894, "M": 2221, "N": 865, "O": 468, "P": 841, "Q": 121, "R": 1409, "S": 2600, "T": 1796, "U": 80, "V": 415, "W": 771, "X": 20, "Y": 230, "Z": 175},
-    # address(common cases)
-    Domain.LETTERS_NUMBERS: {"a": 1594, "b": 67, "c": 181, "d": 768, "e": 2611, "f": 66, "g": 198, "h": 555, "i": 748, "j": 4, "k": 177, "l": 674, "m": 141, "n": 1051, "o": 1265, "p": 79, "q": 6, "r": 1422, "s": 697, "t": 1864, "u": 669, "v": 518, "w": 192, "x": 15, "y": 246, "z": 19, "A": 322, "B": 273, "C": 154, "D": 96, "E": 187, "F": 95, "G": 70, "H": 125, "I": 24, "J": 38, "K": 25, "L": 87, "M": 214, "N": 195, "O": 31, "P": 152, "Q": 5, "R": 383, "S": 566, "T": 69, "U": 14, "V": 27, "W": 261, "X": 3, "Y": 8, "Z": 2, "0": 923, "1": 968, "2": 626, "3": 496, "4": 415, "5": 563, "6": 375, "7": 328, "8": 274, "9": 313, " ": 3577},
-    Domain.NUM: {"0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
+    # # location
+    # Domain.LAT_LONG: {"0": 186, "1": 342, "2": 223, "3": 334, "4": 208, "5": 215, "6": 233, "7": 211, "8": 173, "9": 168, "N": 169, "E": 164, "S": 31, "W": 36, ",": 200, ".": 400, " ": 600},
+    # Domain.LOWER: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, " ": 5},
+    # # name, places
+    # Domain.LOWER_AND_UPPER: {"a": 24356, "b": 1881, "c": 3251, "d": 4489, "e": 20854, "f": 919, "g": 2001, "h": 5997, "i": 14284, "j": 271, "k": 2374, "l": 13159, "m": 3469, "n": 15726, "o": 10679, "p": 1148, "q": 400, "r": 12452, "s": 7567, "t": 7377, "u": 4057, "v": 2469, "w": 1482, "x": 266, "y": 4347, "z": 559, "A": 2020, "B": 1534, "C": 2409, "D": 1689, "E": 918, "F": 601, "G": 869, "H": 928, "I": 321, "J": 1621, "K": 1720, "L": 1894, "M": 2221, "N": 865, "O": 468, "P": 841, "Q": 121, "R": 1409, "S": 2600, "T": 1796, "U": 80, "V": 415, "W": 771, "X": 20, "Y": 230, "Z": 175},
+    # # address(common cases)
+    # Domain.LETTERS_NUMBERS: {"a": 1594, "b": 67, "c": 181, "d": 768, "e": 2611, "f": 66, "g": 198, "h": 555, "i": 748, "j": 4, "k": 177, "l": 674, "m": 141, "n": 1051, "o": 1265, "p": 79, "q": 6, "r": 1422, "s": 697, "t": 1864, "u": 669, "v": 518, "w": 192, "x": 15, "y": 246, "z": 19, "A": 322, "B": 273, "C": 154, "D": 96, "E": 187, "F": 95, "G": 70, "H": 125, "I": 24, "J": 38, "K": 25, "L": 87, "M": 214, "N": 195, "O": 31, "P": 152, "Q": 5, "R": 383, "S": 566, "T": 69, "U": 14, "V": 27, "W": 261, "X": 3, "Y": 8, "Z": 2, "0": 923, "1": 968, "2": 626, "3": 496, "4": 415, "5": 563, "6": 375, "7": 328, "8": 274, "9": 313, " ": 3577},
+    # Domain.NUM: {"0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
+}
+
+DictionaryPaths = {
+    Domain.AIRPORT: ['messages/agent2/airportcodes.txt'],
+    Domain.PASSWORD: ['messages/agent3/dicts/large_cleaned_long_words.txt'],
+    Domain.STREET: ['messages/agent5/street_name.txt', 'messages/agent5/street_suffix.txt'],
+    Domain.WARTIME_NEWS: ['messages/agent6/unedited_corpus.txt'],
+    Domain.SENTENCE: ['messages/agent3/dicts/30k_cleaned.txt'],
+    Domain.NAME_PLACE: ['messages/agent3/dicts/places_and_names.txt']
 }
 
 EncodedBinary = namedtuple(
@@ -66,6 +75,38 @@ class Agent:
         message = HuffmanCodec.from_frequencies(
             self.get_domain_frequencies(domain)).decode(message_byte)
         return message
+
+    def get_binary_to_word_dict(self, domain: Domain) -> Dict[str, str]:
+        words = []
+        for dict_path in DictionaryPaths[domain]:
+            with open(dict_path, 'r') as file:
+                line = file.readline()
+                while line:
+                    words.append(line.strip())
+                    line = file.readline()
+        bits_needed = math.ceil(math.log2(len(words)))
+        return {bin(idx)[2:].zfill(bits_needed): word for idx, word in enumerate(words)}
+
+    def get_word_to_binary_dict(self, domain: Domain) -> Dict[str, str]:
+        words = []
+        for dict_path in DictionaryPaths[domain]:
+            with open(dict_path, 'r') as file:
+                line = file.readline()
+                while line:
+                    words.append(line.strip())
+                    line = file.readline()
+        bits_needed = math.ceil(math.log2(len(words)))
+        return {word: bin(idx)[2:].zfill(bits_needed) for idx, word in enumerate(words)}
+
+    def name_place_to_binary(self, message: str) -> str:
+        dict = self.get_word_to_binary_dict(Domain.NAME_PLACE)
+        return ''.join([dict[word] for word in message.split(' ')])
+    
+    def binary_to_name_place(self, binary: str) -> str:
+        dict = self.get_binary_to_word_dict(Domain.NAME_PLACE)
+        bits_per_word = len(list(dict.keys())[0])
+        words_bits = [binary[i:i+bits_per_word] for i in range(0, len(binary), bits_per_word)]
+        return ' '.join([dict[bits] for bits in words_bits])
 
     def deck_encoded(self, message_cards: List[int]) -> List[int]:
         result = []
