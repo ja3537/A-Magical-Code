@@ -597,6 +597,92 @@ def flight_coders():
     return encode, decode
 
 
+def address_coders():
+    PATTERN = re.compile(r"(?P<number>\d{1,4}) (?P<street>.+) (?P<suffix>\w+)")
+
+    number_characters_length = 4
+    number_length = 14
+
+    streets = []
+    street_length: int = 0
+
+    suffixes = []
+    suffix_length: int = 0
+
+    with open(
+        path.join(path.dirname(__file__), "../messages/agent5/street_name.txt")
+    ) as street_dict:
+        streets = [word.strip() for word in street_dict]
+        street_length = int(ceil(log2(len(streets))))
+
+    with open(
+        path.join(path.dirname(__file__), "../messages/agent5/street_suffix.txt")
+    ) as suffix_dict:
+        suffixes = [word.strip() for word in suffix_dict]
+        suffix_length = int(ceil(log2(len(suffixes))))
+
+    def encode(message) -> str:
+        match = PATTERN.match(message)
+        if match is None:
+            raise ValueError()
+
+        number_character_bits = pad(
+            to_bit_string(len(match.group("number"))), number_characters_length
+        )
+        number_bits = pad(to_bit_string(int(match.group("number"))), number_length)
+        street_bits = pad(
+            to_bit_string(streets.index(match.group("street"))), street_length
+        )
+        suffix_bits = pad(
+            to_bit_string(suffixes.index(match.group("suffix"))), suffix_length
+        )
+
+        trailing_space_bit = "1" if message[-1] == " " else "0"
+
+        encoded = (
+            number_character_bits
+            + number_bits
+            + street_bits
+            + suffix_bits
+            + trailing_space_bit
+        )
+
+        return encoded
+
+    def decode(message) -> str:
+        fields = [
+            1,
+            suffix_length,
+            street_length,
+            number_length,
+            number_characters_length,
+        ]
+        if len(message) != sum(fields):
+            raise ValueError()
+        (
+            trailing_space_bit,
+            suffix_bits,
+            street_bits,
+            number_bits,
+            number_length_bits,
+            _,
+        ) = extract_bit_fields(message, fields)
+
+        try:
+            number_characters = from_bit_string(number_length_bits)
+            number = str(from_bit_string(number_bits))
+            number_leading_zeros = number_characters - len(number)
+            number = "0" * number_leading_zeros + number
+            street = streets[from_bit_string(street_bits)]
+            suffix = suffixes[from_bit_string(suffix_bits)]
+            trailing_space = " " if trailing_space_bit == "1" else ""
+            return f"{number} {street} {suffix}{trailing_space}"
+        except IndexError:
+            raise ValueError()
+
+    return encode, decode
+
+
 # ==============
 # Bits <-> Cards
 # ==============
@@ -803,6 +889,7 @@ CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
     coordinate_coders(),
     agent1_coders(),
     flight_coders(),
+    address_coders(),
 ]
 
 CHECKSUM_BITS = 12
