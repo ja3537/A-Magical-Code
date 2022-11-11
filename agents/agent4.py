@@ -63,13 +63,53 @@ class Agent:
             self.abrev2word[shortened] = full
             self.word2abrev[full] = shortened
 
-    def string_to_binary(self, message: str, domain: Domain) -> str:
+    def message_to_binary(self, message: str, domain: Domain) -> str:
+        if domain == Domain.ALL:
+            return self.huff_string_to_binary(message, domain)
+        elif domain == Domain.AIRPORT:
+            pass
+        elif domain == Domain.PASSWORD:
+            pass
+        elif domain == Domain.LAT_LONG:
+            pass
+        elif domain == Domain.STREET:
+            pass
+        elif domain == Domain.WARTIME_NEWS:
+            pass
+        elif domain == Domain.SENTENCE:
+            pass
+        elif domain == Domain.NAME_PLACE:
+            return self.name_place_to_binary(message)
+        else:
+            return self.huff_string_to_binary(message, Domain.ALL)
+
+    def binary_to_message(self, binary: str, domain: Domain) -> str:
+        if domain == Domain.ALL:
+            return self.huff_binary_to_string(binary, domain)
+        elif domain == Domain.AIRPORT:
+            pass
+        elif domain == Domain.PASSWORD:
+            pass
+        elif domain == Domain.LAT_LONG:
+            pass
+        elif domain == Domain.STREET:
+            pass
+        elif domain == Domain.WARTIME_NEWS:
+            pass
+        elif domain == Domain.SENTENCE:
+            pass
+        elif domain == Domain.NAME_PLACE:
+            return self.binary_to_name_place(binary)
+        else:
+            return self.huff_string_to_binary(binary, Domain.ALL)
+
+    def huff_string_to_binary(self, message: str, domain: Domain) -> str:
         bytes_repr = HuffmanCodec.from_frequencies(
             self.get_domain_frequencies(domain)).encode(message)
         binary_repr = bin(int(bytes_repr.hex(), 16))[2:]
         return binary_repr
 
-    def binary_to_string(self, binary: str, domain: Domain) -> str:
+    def huff_binary_to_string(self, binary: str, domain: Domain) -> str:
         message_byte = int(binary, 2).to_bytes(
             (int(binary, 2).bit_length() + 7) // 8, 'big')
         message = HuffmanCodec.from_frequencies(
@@ -159,17 +199,9 @@ class Agent:
     def domain_to_binary(self, domain_type: Domain) -> str:
         return bin(int(domain_type.value))[2:].zfill(3)
 
-    def get_domain_type(self, message: str) -> Domain:
+    def get_message_domain(self, message: str) -> Domain:
         clean_message = "".join(message.split())
-        if clean_message.isnumeric():
-            return Domain.NUM
-        elif clean_message.isalpha() and clean_message.islower():
-            return Domain.LOWER
-        elif clean_message.isalpha():
-            return Domain.LOWER_AND_UPPER
-        elif clean_message.isalnum():
-            return Domain.LETTERS_NUMBERS
-        elif self.is_lat_long(clean_message):
+        if self.is_lat_long(clean_message):
             return Domain.LAT_LONG
         else:
             return Domain.ALL
@@ -180,11 +212,11 @@ class Agent:
     def is_lat_long(self, message: str) -> bool:
         return all([ch.isdigit() or ch in [",", ".", "N", "E", "S", "W"] for ch in message])
 
-    def check_decoded_message(self, message: str, domain_type) -> str:
+    def check_decoded_message(self, message: str) -> str:
         clean_message = "".join(message.split())
         if message == '':
             return 'NULL'
-        if self.get_domain_type(clean_message) == Domain.ALL:
+        if self.get_message_domain(clean_message) == Domain.ALL:
             if not all(ord(c) < 128 and ord(c) > 32 for c in message):
                 return 'NULL'
         return message
@@ -200,11 +232,9 @@ class Agent:
         message = ' '.join(
             [self.word2abrev[word] if word in self.word2abrev else word for word in message.split(" ")])
 
-        domain_type = self.get_domain_type(message)
-
-        binary_repr = self.string_to_binary(message, domain_type)
-        binary_repr = binary_repr + \
-            self.domain_to_binary(domain_type) + self.get_hash(binary_repr)
+        domain = self.get_message_domain(message)
+        binary_repr = self.message_to_binary(message, domain)
+        binary_repr = binary_repr + self.domain_to_binary(domain) + self.get_hash(binary_repr)
         integer_repr = int(binary_repr, 2)
 
         num_cards_to_encode = 1
@@ -213,14 +243,12 @@ class Agent:
                 num_cards_to_encode = n
                 break
         message_start_idx = len(deck) - num_cards_to_encode
-        message_cards = self.num_to_cards(
-            integer_repr, deck[message_start_idx:])
+        message_cards = self.num_to_cards(integer_repr, deck[message_start_idx:])
         return self.deck_encoded(message_cards)
 
     def decode(self, deck: List[int]) -> str:
         message = ''
         domain_type = None
-        meet_checksum_count = 0
         for n in reversed(range(1, 51)):
             encoded_cards = self.get_encoded_cards(deck, n)
             integer_repr = self.cards_to_num(encoded_cards)
@@ -231,11 +259,10 @@ class Agent:
 
             if len_metadata_bits == 11 and domain_int <= MAX_DOMAIN_VALUE and parts.message_bits and parts.checksum_bits == self.get_hash(parts.message_bits):
                 domain_type = Domain(domain_int)
-                message = self.binary_to_string(
-                    parts.message_bits, domain_type)
+                message = self.binary_to_message(parts.message_bits, domain_type)
                 break
 
-        message = self.check_decoded_message(message, domain_type)
+        message = self.check_decoded_message(message)
         message = ' '.join(
             [self.abrev2word[word] if word in self.abrev2word else word for word in message.split(" ")])
 
