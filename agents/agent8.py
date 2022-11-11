@@ -708,7 +708,6 @@ def ngram_coders():
         n = len(message.split())
         corpus = 10 if n > 9 else n
         while corpus < 11:
-            print("Corpus", corpus)
             forward, _ = dicts[corpus]
 
             if not message in forward:
@@ -732,6 +731,39 @@ def ngram_coders():
         if ngram not in backward:
             raise ValueError()
         return backward[ngram]
+
+    return encode, decode
+
+
+def agent7_coders():
+    dict = {
+        word.strip(): i
+        for i, word in enumerate(
+            open(path.join(path.dirname(__file__), f"../messages/agent7/30k.txt"))
+        )
+    }
+    backward_dict = {i: word for word, i in dict.items()}
+    word_length = int(ceil(log2(len(dict))))
+
+    def encode(message: str) -> str:
+        words = message.split()
+        word_bits = ""
+        for word in words:
+            if not word in dict:
+                raise ValueError()
+            word_bits += pad(to_bit_string(dict[word]), word_length)
+        print(word_bits)
+        return word_bits
+
+    def decode(message: str) -> str:
+        words = []
+        for offset in range(0, len(message), word_length):
+            word_bits = message[offset : offset + word_length]
+            word_index = from_bit_string(word_bits)
+            if word_index not in backward_dict:
+                raise ValueError()
+            words.append(backward_dict[word_index])
+        return " ".join(words)
 
     return encode, decode
 
@@ -943,6 +975,7 @@ CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
     flight_coders(),
     address_coders(),
     ngram_coders(),
+    agent7_coders(),
 ]
 
 CHECKSUM_BITS = 12
