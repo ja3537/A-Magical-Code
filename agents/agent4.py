@@ -79,8 +79,8 @@ class Agent:
             filename = 'messages/agent3/dicts/shortened_dicts/war_words_mini.txt'
 
         minified_text = ""
-        with open(filename, 'w') as f:
-            f.write(minified_text)
+        with open(filename, 'r') as f:
+            minified_text = f.read()
 
         abrev2word = {}
         word2abrev = {}
@@ -96,14 +96,15 @@ class Agent:
         if domain == Domain.PASSWORD:
             abrev2word, word2abrev = self.get_message_shorten_dict(
                 Domain.PASSWORD)
+
             message_list = self.get_password_words(message)
-            for word in message_list:
+            for idx, word in enumerate(message_list):
                 if word in word2abrev.keys():
-                    message_list = message_list.replace(word, word2abrev[word])
-            numbers = [int(s) for s in message.split() if s.isdigit()]
-            message_list = list(chain.from_iterable(
-                zip(message_list, numbers)))
-            message = "@" + ''.join(message_list)
+                    message_list[idx] = word2abrev[word]
+
+            message_list_ = self.get_password_words(message)
+            for i in range(len(message_list)):
+                message = message.replace(message_list_[i], message_list[i])
 
         elif domain == Domain.STREET:
             abrev2word, word2abrev = self.get_message_shorten_dict(
@@ -123,14 +124,13 @@ class Agent:
             abrev2word, word2abrev = self.get_message_shorten_dict(
                 Domain.PASSWORD)
             message_list = self.get_password_words(message)
-            for word in message_list:
+            for idx, word in enumerate(message_list):
                 if word in abrev2word.keys():
-                    message_list = message_list.replace(word, abrev2word[word])
+                    message_list[idx] = abrev2word[word]
 
-            numbers = [int(s) for s in message.split() if s.isdigit()]
-            message_list = list(chain.from_iterable(
-                zip(message_list, numbers)))
-            message = "@" + ''.join(message_list)
+            message_list_ = self.get_password_words(message)
+            for i in range(len(message_list)):
+                message = message.replace(message_list_[i], message_list[i])
 
         elif domain == Domain.STREET:
             print("Not supported yet.")
@@ -156,16 +156,16 @@ class Agent:
 
         # Domain.AIRPORT
         if (len(words) == 3
-            and words[0] in self.word_to_binary_dicts[Domain.AIRPORT].keys()
-            and all([ch in list(string.ascii_uppercase + string.digits) for ch in words[1]])
-            and all([ch in list(string.digits) for ch in words[2]])
-            ):
+                and words[0] in self.word_to_binary_dicts[Domain.AIRPORT].keys()
+                and all([ch in list(string.ascii_uppercase + string.digits) for ch in words[1]])
+                and all([ch in list(string.digits) for ch in words[2]])
+                ):
             matching_domains.append(Domain.AIRPORT)
 
         # Domain.PASSWORD
         if (message[0] == '@'
-                    and all([w in self.word_to_binary_dicts[Domain.PASSWORD].keys() for w in self.get_password_words(message)])
-                ):
+            and all([w in self.word_to_binary_dicts[Domain.PASSWORD].keys() for w in self.get_password_words(message)])
+            ):
             matching_domains.append(Domain.PASSWORD)
 
         # Domain.LAT_LONG
@@ -175,10 +175,10 @@ class Agent:
 
         # Domain.STREET
         if (words[0].isnumeric() and
-                    ((words[-1] in self.word_to_binary_dicts[Domain.STREET].keys()
+            ((words[-1] in self.word_to_binary_dicts[Domain.STREET].keys()
                       and ' '.join(words[1:-1]) in self.word_to_binary_dicts[Domain.STREET].keys())
                      or ' '.join(words[1:]) in self.word_to_binary_dicts[Domain.STREET].keys())
-                ):
+            ):
             matching_domains.append(Domain.STREET)
 
         # Domain.WARTIME_NEWS
@@ -505,7 +505,7 @@ class Agent:
         deck = generate_deck(self.rng)
 
         domain = self.get_message_domain(message)
-        # message = self.message_shorten(message, domain)
+        message = self.message_shorten(message, domain)
 
         message_binary = self.message_to_binary(message, domain)
         domain_binary = self.domain_to_binary(domain)
@@ -537,9 +537,9 @@ class Agent:
                              2) if parts.domain_bits else MAX_DOMAIN_VALUE + 1
 
             if (domain_int <= MAX_DOMAIN_VALUE
-                    and parts.message_bits
-                    and parts.checksum_bits == self.get_hash(parts.message_bits + parts.domain_bits + parts.length_bits)
-                ):
+                        and parts.message_bits
+                        and parts.checksum_bits == self.get_hash(parts.message_bits + parts.domain_bits + parts.length_bits)
+                    ):
                 try:
                     domain = Domain(domain_int)
                     message = self.binary_to_message(
@@ -551,5 +551,5 @@ class Agent:
                     continue
 
         message = self.check_decoded_message(message)
-        # message = self.message_unshorten(message, domain)
+        message = self.message_unshorten(message, domain)
         return message
