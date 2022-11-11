@@ -30,7 +30,7 @@ DomainFrequencies = {
     # Group 1: lowercase letters, period, space, and numbers
     # Domain.ALL: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, " ": 0.11, "\t": 0.10, ".": 6.97, ",": 5.93, "'": 1.53, "\"": 1.33, ":": 0.90, "-": 0.77, ";": 0.74, "?": 0.43, "!": 0.39, "0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
     Domain.ALL: {
-        "y": 223, "m": 219, "8": 218, "w": 209, "r": 208, "5": 205, "s": 204, "o": 202, "n": 199, "h": 199, "f": 199, "d": 195, "k": 195, "7": 194, "t": 194, "v": 193, "p": 193, "q": 192, "x": 191, "e": 191, "z": 190, "b": 190, "1": 189, "u": 189, "c": 187, "6": 186, "a": 186, "4": 184, "j": 183, "9": 180, "g": 180, "2": 177, "i": 174, "0": 172, "3": 167, " ": 164, "l": 163,
+        "y": 223, "m": 219, "8": 218, "w": 209, "r": 208, "5": 205, "s": 204, "o": 202, "n": 199, "h": 199, "f": 199, "d": 195, "k": 195, "7": 194, "t": 194, "v": 193, "p": 193, "q": 192, "x": 191, "e": 191, "z": 190, "b": 190, "1": 189, "u": 189, "c": 187, "6": 186, "a": 186, "4": 184, "j": 183, "9": 180, "g": 180, "2": 177, "i": 174, "0": 172, "3": 167, " ": 164, "l": 163, ".": 50,
     },
     # Group, 2: random letters/numbers
     Domain.AIRPORT: {
@@ -355,9 +355,10 @@ class Agent:
     def check_decoded_message(self, message: str) -> str:
         if message == '':
             return 'NULL'
-        if self.get_message_domain(message) == Domain.ALL:
-            if not all(ord(c) < 128 and ord(c) > 32 for c in message):
-                return 'NULL'
+        try:
+            self.get_message_domain(message)
+        except:
+            return 'NULL'
         return message
 
     def get_binary_parts(self, binary: str) -> EncodedBinary:
@@ -390,27 +391,32 @@ class Agent:
         message_start_idx = len(deck) - num_cards_to_encode
         message_cards = self.num_to_cards(
             integer_repr, deck[message_start_idx:])
+
         return self.get_encoded_deck(message_cards)
 
     def decode(self, deck: List[int]) -> str:
         message = ''
-        domain_type = None
-        for n in reversed(range(1, 51)):
+        domain = None
+        for n in range(1, 51):
             encoded_cards = self.get_encoded_cards(deck, n)
             integer_repr = self.cards_to_num(encoded_cards)
             binary_repr = bin(int(integer_repr))[3:]
             parts = self.get_binary_parts(binary_repr)
-            len_metadata_bits = len(parts.domain_bits) + \
-                len(parts.checksum_bits)
-            domain_int = int(parts.domain_bits,
-                             2) if parts.domain_bits else MAX_DOMAIN_VALUE + 1
+            domain_int = int(parts.domain_bits, 2) if parts.domain_bits else MAX_DOMAIN_VALUE + 1
 
-            if len_metadata_bits == 11 and domain_int <= MAX_DOMAIN_VALUE and parts.message_bits and parts.checksum_bits == self.get_hash(parts.message_bits):
-                domain_type = Domain(domain_int)
-                message = self.binary_to_message(
-                    parts.message_bits, domain_type)
-                break
-
+            if (len(parts.domain_bits) + len(parts.checksum_bits) == 11 
+                and domain_int <= MAX_DOMAIN_VALUE 
+                and parts.message_bits 
+                and parts.checksum_bits == self.get_hash(parts.message_bits)
+            ):
+                try:
+                    domain = Domain(domain_int)
+                    message = self.binary_to_message(parts.message_bits, domain)
+                    if domain == self.get_message_domain(message):
+                        break
+                except:
+                    continue
+        
         message = self.check_decoded_message(message)
         # message = ' '.join(
         #     [self.abrev2word[word] if word in self.abrev2word else word for word in message.split(" ")])
