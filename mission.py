@@ -3,12 +3,15 @@ import cards
 import constants
 from importlib import import_module
 from agents.default import Agent as default_agent
+import csv
 
 class Mission:
     def __init__(self, args):
         self.seed = args.seed
         self.verbose = args.verbose
         self.runs = args.runs
+        self.csv = args.csv
+        self.agent_number = args.agent[0]
         if(self.seed != 0):
             self.rng = np.random.default_rng(self.seed)
         else:
@@ -122,7 +125,22 @@ class Mission:
             deck = deck[:pos] + [top_card] + deck[pos:]
         return deck
 
-    def make_output_file(self):
+
+    def make_output_csv_file(self):
+        if self.output == 'output.txt':
+            self.output = 'output.csv'
+
+        with open(self.output, 'w+', newline='') as f:
+            header = ['agent', 'seed', 'message', 'decoded message', 'score']
+            writer = csv.writer(f)
+            writer.writerow(header)
+
+            for i in range(len(self.messages)):
+                row = [str(self.agent_number), str(self.seed), self.messages[i], self.decoded[i][0], self.scores[i][0]]
+                writer.writerow(row)
+
+
+    def make_output_text_file(self):
         with open(self.output, 'w+') as f:
             for i in range(len(self.messages)):
                 f.write(self.messages[i] + '\n')
@@ -140,7 +158,11 @@ class Mission:
             f.write('total score for agent: {:.3f}/{}'.format(self.total_score, len(self.messages)*self.runs))
 
 
-
+    def make_output_file(self):
+        if self.csv:
+            self.make_output_csv_file()
+        else:
+            self.make_output_text_file()
 
 
 
