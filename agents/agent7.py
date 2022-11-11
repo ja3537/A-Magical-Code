@@ -424,24 +424,32 @@ def test_classifier():
     # - DICIONARY
     # - NAME_PLACES
     classifier = Domain_Classifier()
-    msg = "@pneumatoscope9mesorrhinium5worklessness489"
-    print(f"{msg:>100} -> {classifier.predict(msg)}")
-    msg = "1.1714 S, 36.8356 E"
-    print(f"{msg:>100} -> {classifier.predict(msg)}")
-    msg = "SWF LX3M 12032025"
-    print(f"{msg:>100} -> {classifier.predict(msg)}")
-    msg = "the of a apple orange kills"
-    print(f"{msg:>100} -> {classifier.predict(msg)}")
-    msg = "5 East Main Meadow "
-    print(f"{msg:>100} -> {classifier.predict(msg)}")
-    msg = "escalation encourage least kyiv ukrainian environment defeat"
-    print(f"{msg:>100} -> {classifier.predict(msg)}")
-    msg = "As of Monday October 31 Putin had not signed the decree required to officially end mobilization"
-    print(f"{msg:>100} -> {classifier.predict(msg)}")
-    msg = "2uez4cw6tc4"
-    print(f"{msg:>100} -> {classifier.predict(msg)}")
-    msg = "Adwoa Abdullatif Zeona Zephyr"
-    print(f"{msg:>100} -> {classifier.predict(msg)}")
+    # msg = "@pneumatoscope9mesorrhinium5worklessness489"
+    # print(f"{msg:>100} -> {classifier.predict(msg)}")
+    # msg = "1.1714 S, 36.8356 E"
+    # print(f"{msg:>100} -> {classifier.predict(msg)}")
+    # msg = "SWF LX3M 12032025"
+    # print(f"{msg:>100} -> {classifier.predict(msg)}")
+    # msg = "the of a apple orange kills"
+    # print(f"{msg:>100} -> {classifier.predict(msg)}")
+    # msg = "5 East Main Meadow "
+    # print(f"{msg:>100} -> {classifier.predict(msg)}")
+    # msg = "escalation encourage least kyiv ukrainian environment defeat"
+    # print(f"{msg:>100} -> {classifier.predict(msg)}")
+    # msg = "As of Monday October 31 Putin had not signed the decree required to officially end mobilization"
+    # print(f"{msg:>100} -> {classifier.predict(msg)}")
+    # msg = "2uez4cw6tc4"
+    # print(f"{msg:>100} -> {classifier.predict(msg)}")
+    # msg = "Adwoa Abdullatif Zeona Zephyr"
+    # print(f"{msg:>100} -> {classifier.predict(msg)}")
+    
+    for i in range(1, 9):
+        with open(f"./test_classifier/g{i}_example.txt") as f:
+            msg = f.readline().strip()
+            while msg:
+                prediction = classifier.predict(msg)
+                print(prediction, i)
+                msg = f.readline().strip()
     return
 
 test_classifier()
