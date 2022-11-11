@@ -142,7 +142,7 @@ class Agent:
         elif domain == Domain.PASSWORD:
             pass
         elif domain == Domain.LAT_LONG:
-            pass
+            return self.lat_long_to_binary(message)
         elif domain == Domain.STREET:
             pass
         elif domain == Domain.WARTIME_NEWS:
@@ -162,7 +162,7 @@ class Agent:
         elif domain == Domain.PASSWORD:
             pass
         elif domain == Domain.LAT_LONG:
-            pass
+            return self.binary_to_lat_long(binary)
         elif domain == Domain.STREET:
             pass
         elif domain == Domain.WARTIME_NEWS:
@@ -228,7 +228,7 @@ class Agent:
         dict = self.binary_to_word_dicts[Domain.AIRPORT]
         return dict[binary]
 
-    def latlong_to_binary(self, message):
+    def lat_long_to_binary(self, message: str) -> str:
         # message: 18.3419 N, 64.9332 W
         # get first number (remove the decimal point), max 7
         # encode next letter with 0 or 1 to represent N or S
@@ -253,7 +253,7 @@ class Agent:
 
         return lat_bin + lat_dir_bin + long_bin + long_dir_bin
 
-    def binary_to_latlong(self, binary):
+    def binary_to_lat_long(self, binary: str) -> str:
         # RETURN: string in format 18.3419 N, 64.9332 W
         lat_bin = binary[:20]
         lat_dir_bin = binary[20:21]
