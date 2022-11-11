@@ -16,11 +16,14 @@ import requests
 from cards import valid_deck
 
 
+MAX_CHUNK_SIZE = 6
+NULL_MESSAGE = "NULL"
+
 # -----------------------------------------------------------------------------
 #   Logging
 # -----------------------------------------------------------------------------
 
-log_level = logging.INFO
+log_level = logging.CRITICAL
 log_file = 'log/agent3.log'
 
 logger = logging.getLogger('Agent 3')
@@ -37,8 +40,8 @@ def info(*args) -> None:
 def error(*args) -> None:
     logger.error("error: " + " ".join(map(str, args)))
 
-if isfile(log_file):
-    open(log_file, 'w').close()
+# if isfile(log_file):
+#     open(log_file, 'w').close()
 
 
 # -----------------------------------------------------------------------------
@@ -77,20 +80,11 @@ def pearson_checksum(bits: Bits, table=pearson_table) -> Bits:
 
     return Bits(uint=hash, length=8)
 
-# -----------------------------------------------------------------------------
-#   Agent Parameters
-# -----------------------------------------------------------------------------
-
-MAX_PERMUTATION_N = 32
-MAX_CHUNK_SIZE = 6
-NULL_MESSAGE = "NULL"
-
-
 class PermutationGenerator:
     # From https://codegolf.stackexchange.com/questions/114883/i-give-you-nth-permutation-you-give-me-n
 
     def __init__(self):
-        self.alphabet = '0123456789abcdefghijklmnopqrstuvwxyz'
+        self.alphabet = '0123456789abcdefghijklmnopqrstuvwxyzABCDE'
         self.fact = [0] * (MAX_PERMUTATION_N + 1)
         self.fact[0] = 1
         self.max_fact_n = MAX_PERMUTATION_N
@@ -213,12 +207,12 @@ class AddressRule:
     def verdict(self, msg: str) -> bool:
         return len(set(msg.split(' ')).intersection(ADDRESS_SUFFIXES)) > 0
 
+with open("./messages/agent7/30k.txt") as f:
+    ALL_SIX_WORDS = [word.strip() for word in f.read().splitlines()]
 class SixWordRule: #not tested much
     def verdict(self, msg: str) -> bool:
         pattern = re.compile("^([a-z]+ )*([a-z]+)$")
-        with open("./messages/agent7/30k.txt") as f:
-            all_words = [word.strip() for word in f.read().splitlines()]
-        return pattern.match(msg) and all([word in all_words for word in msg.split(" ")])
+        return pattern.match(msg) and all([word in ALL_SIX_WORDS for word in msg.split(" ")])
 
 class SixWordRule2: #not tested much
     def verdict(self, msg: str) -> bool:
@@ -229,25 +223,24 @@ class AirplaneFlightRule:
         pattern = re.compile("^([A-Z]{3} )([A-Z0-9]{4} )([0][0-9]|10|11|12)([0-3][0-9])(202[3-5])$")
         return pattern.match(msg)
 
+with open("./messages/agent8/names.txt") as f:
+    ALL_PLACES_AND_NAMES = [word.strip() for word in f.read().splitlines()]
+with open("./messages/agent8/places.txt") as f:
+    ALL_PLACES_AND_NAMES += [word.strip() for word in f.read().splitlines()]
 class PlaceNameRule: #not tested much
     def verdict(self, msg: str) -> bool:
         pattern = re.compile("^([A-Z][a-z]+ )*([A-Z][a-z]+)+$")
-        with open("./messages/agent8/names.txt") as f:
-            all_words = [word.strip() for word in f.read().splitlines()]
-        with open("./messages/agent8/places.txt") as f:
-            all_words += [word.strip() for word in f.read().splitlines()]
-        return pattern.match(msg) and all([word in all_words for word in msg.split(" ")])
+        return pattern.match(msg) and all([word in ALL_PLACES_AND_NAMES for word in msg.split(" ")])
 
 class PlaceNameRule2: #not tested much
     def verdict(self, msg: str) -> bool:
         return PlaceNameRule().verdict(msg)
 
-
+with open("./messages/agent3/dicts/war_words.txt") as f:
+    ALL_WAR_WORDS = [word.strip() for word in f.read().splitlines()]
 class WarWordsRule:
     def verdict(self, msg: str) -> bool:
-        with open("./messages/agent3/dicts/war_words.txt") as f:
-            all_words = [word.strip() for word in f.read().splitlines()]
-        return all([word in all_words for word in msg.split(" ")])
+        return all([word in ALL_WAR_WORDS for word in msg.split(" ") if word != ""])
 
 class WarWordsRule2:
     def verdict(self, msg: str) -> bool:
@@ -289,7 +282,7 @@ class DomainDetector:
                     encoded_sizes.append(len(encoded_msg))
                     domains.append(domain)
 
-        debug(f"domains: {domains}, {encoded_sizes}")
+        info(f"domains: {domains}, {encoded_sizes}")
 
         return Domain.GENERIC if len(domains) == 0 or min(encoded_sizes) == sys.maxsize else domains[encoded_sizes.index(min(encoded_sizes))]
 
@@ -317,15 +310,13 @@ class WordSearcher():
 
         splitMsg = []
         for word in words:
-            if word.isalpha():
-                extractedWords = list(reversed(self._get_word_helper(wordlist, [], word)))
+            extractedWords = list(reversed(self._get_word_helper(wordlist, [], word)))
 
-                if len(extractedWords) == 0:
-                    splitMsg.append(word)
-                else:
-                    splitMsg.extend(extractedWords)
-            else:
+            if len(extractedWords) == 0:
                 splitMsg.append(word)
+            else:
+                splitMsg.extend(extractedWords)
+
         return splitMsg
 
     def _get_word_helper(self, wordlist, words, current_string):
@@ -391,6 +382,7 @@ class DictIdxTransformer(MessageTransformer):
         self.word2idx = {word: idx for idx, word in enumerate(self.wordlist)}
         self.idx2word = {idx: word for idx, word in enumerate(self.wordlist)}
         self.word_bit_size = int(math.ceil(math.log2(len(self.wordlist))))
+        self.add_words([''])
 
     def add_words(self, words: list[str]):
         for word in words:
@@ -451,8 +443,8 @@ class WordTransformer(MessageTransformer):
                 self.word2abrev[full] = shortened
         else:
             with open(wordlist, 'r') as f:
-                self.abrev2word = {}
-                self.word2abrev = {}
+                self.abrev2word = {'': ''}
+                self.word2abrev = {'': ''}
                 for line in f.readlines():
                     line = line.strip()
                     [shortened, full] = line.split(' ')
@@ -1170,25 +1162,27 @@ class PermutationConverter:
         self._info(f"encoded deck ({len(msg)}):", msg)
         return msg_metadata, msg
 
-    def to_bits(self, msg: Deck, msg_metadata: Deck) -> Optional[tuple[Domain, bool, Bits]]:
+    def to_bits(self, msg: Deck, msg_metadata: Deck) -> Optional[list[tuple[Domain, bool, Bits]]]:
         agent_assert(len(msg_metadata) == 0, NullDeckException(
                 f"PermutationConverter expects no message metadata card, " +
                 f"but got a message metadata deck of size {len(msg_metadata)}."))
 
         self._info(f"received deck ({len(msg)}):", msg)
-
+        output = []
         # explanation of magic numbers
         #   4  <= we need at least 4 cards to encode 21 bits of metadata, # cards used for msg > 4 
         #   33 <= we plan to use a maximum of 32 (MAX_PERMUTATION_N) cards for encoding bits
-        for n in range(4, MAX_PERMUTATION_N + 1):
+        n_to_check = min(len(msg), MAX_PERMUTATION_N) + 1
+        for n in range(4, n_to_check):
             card_pool = self.cards[:n]
             cards = [ str(card) for card in msg if card in card_pool ]
             self._info(f"trying {n} cards: {list(map(int, cards))}")
 
             rank = self.permuter.decode(cards)
+
             bits = Bits(uint=rank, length=256)
 
-            debug("decoded rank:", rank)
+            info("decoded rank:", rank)
 
             checksum = bits.bin[-8:]
             msg_bit_len = bits.bin[-16:-8]
@@ -1199,15 +1193,13 @@ class PermutationConverter:
             # an extra guard
             if int(domain, 2) not in int2domain:
                 continue
-
             valid = pearson_checksum(Bits(bin=message_bits + partial_match + domain + msg_bit_len)).bin == checksum
             self._info("pearson checksum passed?", valid)
             if valid:
                 debug(f"recovered message deck: {msg} -> {partial_match} + {message_bits}")
-                return int2domain[int(domain, 2)], bool(int(partial_match, 2)), Bits(bin=message_bits)
-        else:
-            error("can't decode message deck using PermutationConverter")
-            return None
+                output.append((int2domain[int(domain, 2)], bool(int(partial_match, 2)), Bits(bin=message_bits)))
+
+        return output if len(output) > 0 else None
 
     @classmethod
     def __str__(cls) -> str:
@@ -1440,16 +1432,13 @@ class Huffman:
 #   Group 3 Agent
 # -----------------------------------------------------------------------------
 
-class Agent:
+# -----------------------------------------------------------------------------
+#   Agent Parameters
+# -----------------------------------------------------------------------------
 
-    def __init__(self) -> None:
-        self.stop_card = 51
+MAX_PERMUTATION_N = 36
 
-        # NOTE: this is coupled with MetadataCodec.encode
-        self.free_cards = list(range(0, 32))
-        self.trash_cards = list(range(32, 51))
-
-        self.domain2transformer = {
+DOMAIN2TRANSFORMER = {
                     Domain.GENERIC: WordTransformer(),
                     Domain.PASSWORD: PasswordsTransformer(),
                     Domain.PASSWORD_IDX: PasswordsIdxTransformer(),
@@ -1464,6 +1453,17 @@ class Agent:
                     Domain.SIX_WORDS_IDX: SixWordsIdxTransformer(),
                     Domain.ALPHA_NUMERIC: AlphaNumericTransformer()
                 }
+
+class Agent:
+
+    def __init__(self) -> None:
+        self.stop_card = 51
+
+        # NOTE: this is coupled with MetadataCodec.encode
+        self.free_cards = list(range(0, 32))
+        self.trash_cards = list(range(32, 51))
+
+        self.domain2transformer = DOMAIN2TRANSFORMER
 
         # IMPORTANT: ordering here matters since we check them linearlly
         # a subset of a less efficient one should be found sooner (ie alpha numeric last since WAR_WORDS is a more efficient subset)
@@ -1489,7 +1489,7 @@ class Agent:
         #   m = 42  => n = 148
         #   m = 33  => n = 101
         #   m = 32  => n = 96
-        self.bit_len_hi = 96
+        self.bit_len_hi = 117
         self.partial_match_len = [96, 148]
  
     # TODO: there might be many _tangle_cards and _untangle_cards methods
@@ -1640,7 +1640,7 @@ class Agent:
 
         final_deck = self._tangle_cards(metadata_cards, message_metadata_cards, message_cards)
         info(f"[ {msg} ]", f"valid deck: {valid_deck(final_deck)}, ", f"final deck: {final_deck}")
-
+        # print(self.decode(final_deck) == msg)
         return final_deck
 
     def decode(self, deck: Deck) -> str:
@@ -1654,20 +1654,72 @@ class Agent:
         # 4. use domain to convert message bits -> original message string
         info(f"\ndecode, deck: {deck}")
 
+        def _equal(
+            bit_arr1: Optional[list[tuple[Domain, bool, Bits]]],
+            bit_arr2: Optional[list[tuple[Domain, bool, Bits]]]
+        ) -> bool:
+            if bit_arr1 is None and bit_arr2 is None:
+                return True
+            
+            if bit_arr1 is None or bit_arr2 is None:
+                return False
+
+            # both bit_arrs are not None
+            if len(bit_arr1) != len(bit_arr2):
+                return False
+
+            for bits1, bits2 in zip(bit_arr1, bit_arr2):
+                d1, pm1, bits1 = bits1
+                d2, pm2, bits2 = bits2
+
+                if d1 != d2 or pm1 != pm2 or bits1.bin != bits2.bin:
+                    return False
+            else:
+                return True
+
+        permutaion_converter = PermutationConverter(list(range(MAX_PERMUTATION_N)))
         try:
-            bits = PermutationConverter(list(range(MAX_PERMUTATION_N))).to_bits(deck, [])
-            if bits is not None:
-                domain, partial_match, bits = bits
+            bit_arr = PermutationConverter(list(range(MAX_PERMUTATION_N))).to_bits(deck, [])
+            if bit_arr is not None:
+                for bits in bit_arr:
+                    domain, partial_match, bits = bits
+                    info(f"domain: {domain}, partial match: {partial_match}, bits: {bits.bin}")
 
-                orig_msg = self.domain2transformer[domain].uncompress(bits, partial_match)
-                if partial_match:
-                    orig_msg = "PARTIAL: " + orig_msg
-                info(f"using transformer: {self.domain2transformer[domain]},",
-                    f"uncompressed message: \"{orig_msg}\"")
+                    # checks
+                    try:
+                        decks = permutaion_converter.to_deck(domain, partial_match, bits)
+                    except NullDeckException as e:
+                        error(e)
+                        continue
 
-                return orig_msg
+                    if decks is None:
+                        continue
+                    
+                    # for the same message string
+                    # to_bits would output the same bit_arr
+
+                    # for two different message strings
+                    # to_bits would unlikely to be identical
+                    _, msg_deck = decks
+                    unused_cards = [card for card in POKER_DECK if card not in msg_deck]
+                
+                    ok = _equal(bit_arr, permutaion_converter.to_bits(unused_cards + msg_deck, []))
+                    info("bits -> deck -> bits returned the same result?", ok)
+                    
+                    if not ok:
+                        continue
+
+                    orig_msg = self.domain2transformer[domain].uncompress(bits, partial_match)
+                    if partial_match:
+                        orig_msg = "PARTIAL: " + orig_msg if "PARTIAL: " not in orig_msg else orig_msg
+                    info(f"using transformer: {self.domain2transformer[domain]},",
+                        f"uncompressed message: \"{orig_msg}\"")
+
+                    return orig_msg
+            else:
+                info("bit_arr is None, permutation converter failed.")
         except:
-            error("decoding using permutation converter failed")
+            error("error occured, decoding using permutation converter failed")
             pass
 
         # if an error occurs during decoding, it means the message is corrupted
