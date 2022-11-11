@@ -108,17 +108,6 @@ class Agent:
             for i in range(len(message_list)):
                 message = message.replace(message_list_[i], '-' + message_list[i])
 
-        elif domain == Domain.STREET:
-            abrev2word, word2abrev = self.get_message_shorten_dict(
-                Domain.STREET)
-            pass
-
-        elif domain == Domain.WARTIME_NEWS:
-            abrev2word, word2abrev = self.get_message_shorten_dict(
-                Domain.WARTIME_NEWS)
-            message = ' '.join(
-                [word2abrev[word] if word in word2abrev else word for word in message.split(" ")])
-
         return message
 
     def message_unshorten(self, message: str, domain: Domain) -> str:
@@ -133,15 +122,6 @@ class Agent:
             message_list_ = self.get_password_words(message, True)
             for i in range(len(message_list)):
                 message = message.replace('-' + message_list_[i], message_list[i])
-
-        elif domain == Domain.STREET:
-            pass
-
-        elif domain == Domain.WARTIME_NEWS:
-            abrev2word, word2abrev = self.get_message_shorten_dict(
-                Domain.WARTIME_NEWS)
-            message = ' '.join(
-                [abrev2word[word] if word in abrev2word else word for word in message.split(" ")])
 
         return message
     # -----------------------------------------------------------------------------
