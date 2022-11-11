@@ -683,6 +683,59 @@ def address_coders():
     return encode, decode
 
 
+def ngram_coders():
+    corpus_length = 4
+
+    dicts = {}
+    for n in range(1, 10):
+        with open(
+            path.join(
+                path.dirname(__file__), f"../messages/agent6/corpus-ngram-{n}.txt"
+            )
+        ) as corpus:
+            forward = {ngram.rstrip("\n"): i for i, ngram in enumerate(corpus)}
+            backward = {i: ngram for ngram, i in forward.items()}
+            dicts[n] = (forward, backward)
+
+    with open(
+        path.join(path.dirname(__file__), "../messages/agent6/unedited_corpus.txt")
+    ) as corpus:
+        forward = {ngram.rstrip("\n"): i for i, ngram in enumerate(corpus)}
+        backward = {i: ngram for ngram, i in forward.items()}
+        dicts[10] = (forward, backward)
+
+    def encode(message: str) -> str:
+        n = len(message.split())
+        corpus = 10 if n > 9 else n
+        while corpus < 11:
+            print("Corpus", corpus)
+            forward, _ = dicts[corpus]
+
+            if not message in forward:
+                # Sometimes an n-gram is in the n+1-gram corpus
+                corpus += 1
+                continue
+
+            corpus_bits = pad(to_bit_string(corpus), corpus_length)
+            ngram_bits = to_bit_string(forward[message])
+
+            return ngram_bits + corpus_bits
+        raise ValueError()
+
+    def decode(message: str) -> str:
+        corpus_bits, ngram_bits = extract_bit_fields(message, [corpus_length])
+        corpus = from_bit_string(corpus_bits)
+        if corpus not in dicts:
+            raise ValueError()
+        _, backward = dicts[corpus]
+        ngram = from_bit_string(ngram_bits)
+        if ngram not in backward:
+            raise ValueError()
+        return backward[ngram]
+
+    return encode, decode
+
+
 # ==============
 # Bits <-> Cards
 # ==============
@@ -880,16 +933,16 @@ NUMBER_HUFFMAN = make_huffman_encoding(FrequencyDistribution.numbers)
 # [(encode, decode)]
 # Encoding identifier denotes index in this list
 CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
-    huffman_coders(LOWERCASE_HUFFMAN),
-    huffman_coders(MIXED_HUFFMAN),
-    huffman_coders(ALPHANUM_HUFFMAN),
+    # huffman_coders(LOWERCASE_HUFFMAN),
+    # huffman_coders(MIXED_HUFFMAN),
+    # huffman_coders(ALPHANUM_HUFFMAN),
     huffman_coders(ASCII_HUFFMAN),
-    huffman_coders(NUMBER_HUFFMAN),
-    dict_coders(),
+    # huffman_coders(NUMBER_HUFFMAN),
     coordinate_coders(),
     agent1_coders(),
     flight_coders(),
     address_coders(),
+    ngram_coders(),
 ]
 
 CHECKSUM_BITS = 12
