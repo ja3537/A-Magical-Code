@@ -209,8 +209,14 @@ class Agent:
             j = 0
             for i in range(len(chunk)+1):
                 if chunk[j:i] in self.word_to_binary_dicts[Domain.PASSWORD]:
-                    words.append(chunk[j:i])
-                    j = i
+                    for k in reversed(range(len(chunk)+1-i)):
+                        if chunk[j:k] in self.word_to_binary_dicts[Domain.PASSWORD]:
+                            words.append(chunk[j:k])
+                            j = k
+                            break
+                    if not words[-1].startswith(chunk[j:i]):
+                        words.append(chunk[j:i])
+                        j = i
         return words
 
     # -----------------------------------------------------------------------------
