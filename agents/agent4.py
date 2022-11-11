@@ -42,7 +42,7 @@ DomainFrequencies = {
     },
     # Group 3: @ symbol + random words and numbers and -
     Domain.PASSWORD: {
-        "e": 2314, "i": 1759, "a": 1692, "s": 1529, "r": 1486, "n": 1445, "t": 1436, "o": 1288, "l": 1080, "@": 1000, "c": 869, "d": 795, "p": 629, "u": 595, "m": 567, "g": 560, "1": 426, "h": 425, "6": 416, "2": 407, "9": 386, "4": 381, "7": 375, "8": 374, "5": 373, "y": 368, "3": 359, "b": 346, "0": 338, "f": 279, "v": 267, "w": 187, "k": 168, "x": 71, "z": 61, "j": 45, "q": 33,
+        "e": 2314, "i": 1759, "a": 1692, "s": 1529, "r": 1486, "n": 1445, "t": 1436, "o": 1288, "l": 1080, "@": 1000, "c": 869, "d": 795, "p": 629, "u": 595, "m": 567, "g": 560, "1": 426, "h": 425, "6": 416, "2": 407, "9": 386, "4": 381, "7": 375, "8": 374, "5": 373, "y": 368, "3": 359, "b": 346, "0": 338, "f": 279, "v": 267, "w": 187, "k": 168, "x": 71, "z": 61, "j": 45, "q": 33, "-": 100,
     },
     # Group 5: lowercase letters, numbers, space
     Domain.STREET: {
@@ -106,7 +106,7 @@ class Agent:
 
             message_list_ = self.get_password_words(message)
             for i in range(len(message_list)):
-                message = message.replace(message_list_[i], message_list[i])
+                message = message.replace(message_list_[i], '-' + message_list[i])
 
         elif domain == Domain.STREET:
             abrev2word, word2abrev = self.get_message_shorten_dict(
@@ -125,14 +125,14 @@ class Agent:
         if domain == Domain.PASSWORD:
             abrev2word, word2abrev = self.get_message_shorten_dict(
                 Domain.PASSWORD)
-            message_list = self.get_password_words(message)
+            message_list = self.get_password_words(message, True)
             for idx, word in enumerate(message_list):
                 if word in abrev2word.keys():
                     message_list[idx] = abrev2word[word]
 
-            message_list_ = self.get_password_words(message)
+            message_list_ = self.get_password_words(message, True)
             for i in range(len(message_list)):
-                message = message.replace(message_list_[i], message_list[i])
+                message = message.replace('-' + message_list_[i], message_list[i])
 
         elif domain == Domain.STREET:
             print("Not supported yet.")
@@ -166,7 +166,7 @@ class Agent:
 
         # Domain.PASSWORD
         if (message[0] == '@'
-            and all([w in self.word_to_binary_dicts[Domain.PASSWORD].keys() for w in self.get_password_words(message)])
+            and all([w in self.word_to_binary_dicts[Domain.PASSWORD].keys() or w == '-' for w in self.get_password_words(message)])
             ):
             matching_domains.append(Domain.PASSWORD)
 
@@ -203,16 +203,21 @@ class Agent:
     def get_domain_frequencies(self, domain: Domain) -> Dict[Domain, Dict[str, float]]:
         return DomainFrequencies[domain] if domain in DomainFrequencies.keys() else DomainFrequencies[Domain.ALL]
 
-    def get_password_words(self, password: str) -> List[str]:
-        chunks = [w for w in re.split(
+    def get_password_words(self, password: str, shortened_words=False) -> List[str]:
+        dict = self.word_to_binary_dicts[Domain.PASSWORD] if not shortened_words else self.get_message_shorten_dict(Domain.PASSWORD)[0]
+        chunks = [w for w in re.split('-|' +
             '|'.join(re.findall(r'\d+', password[1:])), password[1:]) if w]
+
+        if shortened_words:
+            return chunks
+        
         words = []
         for chunk in chunks:
             j = 0
             for i in range(1, len(chunk)+1):
-                if chunk[j:i] in self.word_to_binary_dicts[Domain.PASSWORD] and len(chunk[j:i]):
+                if chunk[j:i] in dict and len(chunk[j:i]):
                     for k in reversed(range(i, len(chunk)+1)):
-                        if chunk[j:k] in self.word_to_binary_dicts[Domain.PASSWORD] and len(chunk[j:k]):
+                        if chunk[j:k] in dict and len(chunk[j:k]):
                             words.append(chunk[j:k])
                             j = k
                             break
@@ -280,7 +285,7 @@ class Agent:
         return message
 
     def get_binary_to_word_dict(self, domain: Domain) -> Dict[str, str]:
-        words = ['']
+        words = ['', '-']
         for dict_path in DictionaryPaths[domain]:
             with open(dict_path, 'r') as file:
                 line = file.readline()
@@ -291,7 +296,7 @@ class Agent:
         return {bin(idx)[2:].zfill(bits_needed): word for idx, word in enumerate(words)}
 
     def get_word_to_binary_dict(self, domain: Domain) -> Dict[str, str]:
-        words = ['']
+        words = ['', '-']
         for dict_path in DictionaryPaths[domain]:
             with open(dict_path, 'r') as file:
                 line = file.readline()
