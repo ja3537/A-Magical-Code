@@ -490,6 +490,28 @@ def coordinate_coders() -> tuple[Callable[[str], str], Callable[[str], str]]:
     return encode, decode
 
 
+def agent1_coders():
+    domain = " 0123456789abcdefghijklmnopqrstuvwxyz."
+    char_length = int(ceil(log2(len(domain))))
+
+    def encode(message: str) -> str:
+        out = ""
+        for char in message:
+            out += pad(to_bit_string(domain.index(char)), char_length)
+        return out
+
+    def decode(message: str) -> str:
+        out = ""
+        for offset in range(0, len(message), char_length):
+            char_code = from_bit_string(message[offset : offset + char_length])
+            if char_code >= len(domain):
+                raise ValueError()
+            out += domain[char_code]
+        return out
+
+    return encode, decode
+
+
 # ==============
 # Bits <-> Cards
 # ==============
@@ -639,7 +661,6 @@ def check_and_remove(bits: str) -> tuple[bool, int, str]:
     """Returns `(passed_checksum, encoding_id, message)`"""
     message_checksum, encoding_bits, message = extract_bit_fields(
         bits,
-        # pad(bits, CHECKSUM_BITS + ENCODING_BITS, allow_over=True),
         [CHECKSUM_BITS, ENCODING_BITS],
     )
 
@@ -695,6 +716,7 @@ CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
     huffman_coders(NUMBER_HUFFMAN),
     dict_coders(),
     coordinate_coders(),
+    agent1_coders(),
 ]
 
 CHECKSUM_BITS = 12
