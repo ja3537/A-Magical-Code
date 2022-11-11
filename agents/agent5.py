@@ -1,6 +1,5 @@
 import math
 import random
-from collections import Counter
 import enchant
 
 
@@ -49,8 +48,6 @@ class DictEncoding:
 
     def perm_number(self, permutation):
         n = len(permutation)
-        # if n != 28:
-        #     print(permutation)
         number = 0
         for i in range(n):
             k = 0
@@ -61,9 +58,6 @@ class DictEncoding:
         return number
 
     def encode(self, message, group_id):
-        """Return message_section, encoding_scheme, truncated"""
-        # if group_id != 6:
-        #     print(message)
         tokens = message.split()
         if len(tokens) > self.max_len:
             truncated = "1"
@@ -77,7 +71,7 @@ class DictEncoding:
                                      (len(word_to_index) ** i)
         num = format(num, 'b')
         encoding_scheme = format(group_id - 1, "03b")
-        # return num, encoding_scheme, truncated
+    
         full_message = num + encoding_scheme + truncated
         num = int(full_message, 2)
         deck = list(range(self.num_cards_used, 50)) + self.nth_perm(num) + [50, 51]
@@ -89,8 +83,7 @@ class DictEncoding:
         num = self.perm_number(cards)
         num = format(num, 'b')
         num, scheme_id, truncated = num[:-4], num[-4:-1], num[-1]
-        # if num == "" or scheme_id == "" or truncated == "":
-        #     return "NULL"
+       
         group_id = int(scheme_id, 2) + 1
  
         word_to_index = self.group_vocab[group_id].word_to_index
@@ -719,19 +712,6 @@ class Agent:
             return None
         else:
             return data, scheme_id, truncated, checksum
-    
-    def compose_dict_bin(self, data, scheme_id, truncated):
-        return "1" + data + scheme_id + truncated
-    
-    def decompose_dict_bin(self, msg):
-        msg = msg[1:]
-        data = msg[:-4]
-        scheme_id = msg[-4:-1]
-        truncated = msg[-1]
-        # if data == "" or scheme_id == "" or truncated == "":
-        #     return None
-        # else:
-        return data, scheme_id, truncated
 
     def encode(self, message, truncated="0"):
         """
@@ -769,16 +749,7 @@ class Agent:
             encoding = ADDRESS_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["ADDRESS_HUFFMAN"]
             msg_binary = encode_msg_bin(message, encoding)
-        # elif ms.issubset(ASCII_Frequencies.letter_freq_with_space.keys()):
-        #     encoding = LETTERS_HUFFMAN
-        #     scheme_id = self.encoding_to_scheme_id["LETTERS_HUFFMAN"]
-        # elif ms.issubset(ASCII_Frequencies.num_freq.keys()):
-        #     encoding = NUMBER_HUFFMAN
-        #     scheme_id = self.encoding_to_scheme_id["NUMBER_HUFFMAN"]
-        # else: # unlock for the time being
-        #     tokens = set(message.split())
-            
-        #print(message)
+
         # Calculate checksum before prepending the leading 1 bit
         # assert(len(self.compute_crc16_checksum(msg_huffman_binary)) == 16)
         checksum = self.compute_pearson8_checksum(msg_binary)
