@@ -282,16 +282,10 @@ class Agent:
     def binary_to_street(self, binary: str) -> str:
         return self.huff_binary_to_string(binary, Domain.STREET).title()
 
-    def deck_encoded(self, message_cards: List[int]) -> List[int]:
-        result = []
-        for i in range(52):
-            if i not in message_cards:
-                result.append(i)
-        result.extend(message_cards)
-        return result
-
-    def get_encoded_cards(self, deck: List[int], start_card_num: int) -> List[int]:
-        return [c for c in deck if c >= start_card_num]
+    
+    # -----------------------------------------------------------------------------
+    #   Binary -> Deck & Deck -> Binary
+    # -----------------------------------------------------------------------------
 
     def cards_to_num(self, cards: List[int]) -> int:
         num_cards = len(cards)
@@ -325,6 +319,27 @@ class Agent:
 
         return [first_card, *self.num_to_cards(num - sub_list_start, ordered_cards)]
 
+
+    # -----------------------------------------------------------------------------
+    #   Deck Helpers
+    # -----------------------------------------------------------------------------
+
+    def get_encoded_deck(self, message_cards: List[int]) -> List[int]:
+        result = []
+        for i in range(52):
+            if i not in message_cards:
+                result.append(i)
+        result.extend(message_cards)
+        return result
+
+    def get_encoded_cards(self, deck: List[int], start_card_num: int) -> List[int]:
+        return [c for c in deck if c >= start_card_num]
+
+
+    # -----------------------------------------------------------------------------
+    #   Message Helpers
+    # -----------------------------------------------------------------------------
+
     def get_hash(self, bit_string: str) -> str:
         hasher = PearsonHasher(1)
         hex_hash = hasher.hash(str(int(bit_string, 2)).encode()).hexdigest()
@@ -343,6 +358,11 @@ class Agent:
         domain_bits = binary[-11:-8]
         message_bits = binary[:-11]
         return EncodedBinary(message_bits, domain_bits, checksum_bits)
+
+
+    # -----------------------------------------------------------------------------
+    #   Encode & Decode
+    # -----------------------------------------------------------------------------
 
     def encode(self, message: str) -> List[int]:
         deck = generate_deck(self.rng)
@@ -363,7 +383,7 @@ class Agent:
         message_start_idx = len(deck) - num_cards_to_encode
         message_cards = self.num_to_cards(
             integer_repr, deck[message_start_idx:])
-        return self.deck_encoded(message_cards)
+        return self.get_encoded_deck(message_cards)
 
     def decode(self, deck: List[int]) -> str:
         message = ''
@@ -389,11 +409,3 @@ class Agent:
         #     [self.abrev2word[word] if word in self.abrev2word else word for word in message.split(" ")])
 
         return message
-
-
-if __name__ == "__main__":
-    agent = Agent()
-    message = "Hello"
-    deck = agent.encode(message)
-    print(deck)
-    print(agent.decode(deck))
