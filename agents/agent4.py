@@ -92,7 +92,7 @@ class Agent:
         if (len(words) == 3
             and words[0] in self.word_to_binary_dicts[Domain.AIRPORT].keys()
             and all([ch in list(string.ascii_uppercase + string.digits) for ch in words[1]])
-            and all([ch in list(string.digits) for ch in words[1]])
+            and all([ch in list(string.digits) for ch in words[2]])
             ):
             matching_domains.append(Domain.AIRPORT)
 
