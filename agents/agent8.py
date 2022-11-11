@@ -693,7 +693,7 @@ CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
     coordinate_coders(),
 ]
 
-CHECKSUM_BITS = 10
+CHECKSUM_BITS = 12
 ENCODING_BITS = max(int(ceil(log2(len(CHARACTER_ENCODINGS)))), 1)
 
 
@@ -786,6 +786,29 @@ class Agent:
                 except ValueError:
                     self.failed_decodes += 1
                     print("Failed to decode:", deck)
+            else:
+                for i in range(len(encoded)):
+                    current_card = encoded[i]
+                    unshuffled_deck = encoded[:]
+                    unshuffled_deck.remove(current_card)
+                    unshuffled_deck.append(current_card)
+                    new_decoded = to_bit_string(bottom_cards_decode(unshuffled_deck, c))
+                    passes_checksum, encoding_id, message = check_and_remove(new_decoded)
+                    if passes_checksum:
+                        self.total_decodes += 1
+                        if encoding_id >= len(CHARACTER_ENCODINGS):
+                            continue
+                        try:
+                            _, decode = CHARACTER_ENCODINGS[encoding_id]
+                            out_message = decode(message)
+                            print("Shuffled deck ", encoded)
+                            print("Unshuffled deck:", unshuffled_deck)
+                            print("Actual message", out_message)
+                            return out_message
+                        except ValueError:
+                            self.failed_decodes += 1
+                            print("Failed to decode:", deck)
+
         return "NULL"
 
 
