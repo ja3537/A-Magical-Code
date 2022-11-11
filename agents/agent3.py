@@ -488,7 +488,9 @@ class WordTransformer(MessageTransformer):
             words = self.wordSearcher._get_all_words(decoded_message, self.abrev2word.keys())
         else:
             words = decoded_message.split(self.delim)
+
         words = words[:-1] if partial_match else words
+
         original_message = self.delim.join([
             self.abrev2word[word] if word in self.abrev2word else word
             for word in words
@@ -1608,6 +1610,7 @@ class Agent:
         i = 0
         # try for partial match by truncating the bits of the original message
         # TODO: should we truncate bit patterns or truncate the original message?
+
         partial_match = True
         while partial_deck is None and i < len(msg) and i < len(self.partial_match_len):
             bit_len = self.partial_match_len[i]
@@ -1656,7 +1659,7 @@ class Agent:
             if bits is not None:
                 domain, partial_match, bits = bits
 
-                orig_msg = self.domain2transformer[domain].uncompress(bits)
+                orig_msg = self.domain2transformer[domain].uncompress(bits, partial_match)
                 if partial_match:
                     orig_msg = "PARTIAL: " + orig_msg
                 info(f"using transformer: {self.domain2transformer[domain]},",
