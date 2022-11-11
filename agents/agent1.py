@@ -77,12 +77,40 @@ class Perm:
             logger.warning(f"Input text too long to encode into {self.encoding_len} cards.")
             return []
 
-        perm = []
-        items = list(self.perm_zero[:])
-        for idx, f in enumerate(self.factorials):
-            lehmer = n // f
-            perm.append(items.pop(lehmer))
-            n %= f
+        n_copy = n
+
+        for start in reversed(range(len(self.factorials))):
+            items = list(self.perm_zero[:])
+            failure = False
+            perm = []
+            n = n_copy
+            for idx in range(start, len(self.factorials)):
+                f = self.factorials[idx]
+                lehmer = n // f
+                
+                if lehmer >= len(items):
+                    failure = True
+                    break
+                
+                perm.append(items.pop(lehmer))
+                n %= f
+
+            if not failure:
+                # check that perm is contiguous
+                if sorted(perm) != list(range(30, 30 + len(perm))):
+                    #print('SEQ FAILURE')
+                    failure = True
+                    continue
+                
+                if self.perm_to_num(perm) != n_copy:
+                    failure = True
+                    continue
+                
+                for idx in range(start):
+                    perm.insert(0, 51 - idx)
+                
+                break
+        
         return perm
 
     def str_to_num(self, message):
@@ -140,7 +168,7 @@ class Perm:
             for j in range(i + 1, n):
                 if permutation[j] < permutation[i]:
                     k += 1
-            number += k * self.factorials[i]
+            number += k * self.factorials[22 - n + i]
         return number
 
     def num_to_str(self, num):
@@ -211,14 +239,23 @@ class Huffman:
         # characters for huffman tree
         self.chars = ['e', 'm', 'a', 'h', 'r', 'g', 'i', 'b', 'o', 'f', 't', 'y', 'n', 'w', 's',
                       'k', 'l', 'v', 'c', 'x', 'u', 'z', 'd', 'j', 'p', 'q',
-                      '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.', ]
+                      '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.',
+                      'E', 'M', 'A', 'H', 'R', 'G', 'I', 'B', 'O', 'F', 'T', 'Y', 'N', 'W', 'S',
+                      'K', 'L', 'V', 'C', 'X', 'U', 'Z', 'D', 'J', 'P', 'Q', 
+                      '@', '!', '#', '$', '%', '^', '&', '*', '-', ' ', 
+                      '~', '`', '_', '(', ')', '[', ']', '{', '}', ',', ':', ';', '+', '=', '/', '?', '<', '>', '|', ]
 
         # frequency of characters
         # Ref: https://www3.nd.edu/~busiforc/handouts/cryptography/letterfrequencies.html
         self.freq = [11.1607, 3.0129, 8.4966, 3.0034, 7.5809, 2.4705, 7.5448, 2.072, 7.1635,
                      1.8121, 6.9509, 1.7779, 6.6544, 1.2899, 5.7351, 1.1016, 5.4893, 1.0074,
-                     4.5388, 0.2902, 3.6308, 0.2722, 3.3844, 0.1965, 3.1671, 0.1962,
-                     0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.11, ]
+                     4.5388, 0.2902, 3.6308, 0.2722, 3.3844, 0.1965, 3.1671, 0.1962,                    # end of lower case alphabet
+                     0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.11,                            # numbers and period
+                     1.11607, 0.30129, 0.84966, 0.30034, 0.75809, 0.24705, 0.75448, 0.2072, 0.71635,
+                     0.18121, 0.69509, 0.17779, 0.66544, 0.12899, 0.57351, 0.11016, 0.54893, 0.10074,
+                     0.45388, 0.02902, 0.36308, 0.02722, 0.33844, 0.01965, 0.31671, 0.01962,            # end of upper case alphabet
+                     0.1, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 1,                          # special chars start
+                     0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, ]
 
         # list containing unused nodes
         nodes = []
@@ -333,6 +370,10 @@ class Agent:
 
     def encode(self, message_):
         message = deepcopy(message_)
+        # message = message.lower()
+        ## logic for agent 3's password domain
+        # if message[0] =="@":
+        #     message = message[1:]
         partial = "0"
 
         while True:
@@ -366,7 +407,12 @@ class Agent:
 
     def verify_msg(self, deck):
         num = self.perm.perm_to_num(deck)
-        bit_total = bin(num)[2:]
+        bit_total = bin(num)
+        bit_total = bit_total[2:]
+        
+        if len(bit_total) <= self.checksum_bits + 2:
+            return None
+        
         if bit_total[1] == "1":
             partial = True
         else:
@@ -399,14 +445,18 @@ class Agent:
         return ds_decks
 
     def decode(self, deck):
-        seq_encode = [c for c in deck if c in self.valid_cards_p]
+        dque = deque([])
+        for i in range(1, len(self.valid_cards_p) + 1):
+            valid_cards = self.valid_cards_p[:i]
+            
+            seq_encode = [c for c in deck if c in valid_cards]
+            dque.append(seq_encode)
 
         # Try to recover message (unscramble if necessary)
         max_trials = len(self.char_set) ^ 3 + 1  # Greater than depth 3 is ineffective (from our tests)
-        dque = deque([])
-        dque.append(seq_encode)
         decoded_str = "NULL"
         while max_trials > 0 and len(dque) > 0:
+
             ddeck = dque.popleft()
             msg = self.verify_msg(ddeck)
             if msg is not None:
@@ -415,8 +465,7 @@ class Agent:
             else:
                 dque.extend(self.deshuffle1(ddeck))
                 max_trials -= 1
-
-        # TODO: Add case for partial strings
+                
         return decoded_str
 
 
