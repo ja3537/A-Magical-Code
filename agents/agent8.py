@@ -768,6 +768,67 @@ def agent7_coders():
     return encode, decode
 
 
+def name_place_coders():
+    names_forward: dict[str, int] = {}
+    names_backward: dict[int, str] = {}
+    name_length: int = 0
+    places_forward: dict[str, int] = {}
+    places_backward: dict[int, str] = {}
+    place_length: int = 0
+
+    with open(
+        path.join(path.dirname(__file__), f"../messages/agent8/names.txt")
+    ) as name_dict:
+        names_forward = {name.strip(): i for i, name in enumerate(name_dict)}
+        name_length = int(ceil(log2(len(names_forward))))
+        names_backward = {i: ngram for ngram, i in names_forward.items()}
+
+    with open(
+        path.join(path.dirname(__file__), f"../messages/agent8/places.txt")
+    ) as place_dict:
+        places_forward = {place.strip(): i for i, place in enumerate(place_dict)}
+        place_length = int(ceil(log2(len(places_forward))))
+        places_backward = {i: ngram for ngram, i in places_forward.items()}
+
+    def encode(message: str) -> str:
+        tokens = message.split()
+        encoded_bits = ""
+        for token in tokens:
+            if token in names_forward:
+                encoded_bits += "0" + pad(
+                    to_bit_string(names_forward[token]), name_length
+                )
+            elif token in places_forward:
+                encoded_bits += "1" + pad(
+                    to_bit_string(places_forward[token]), place_length
+                )
+            else:
+                raise ValueError()
+        return encoded_bits
+
+    def decode(message: str) -> str:
+        offset = 0
+        tokens = []
+        while offset < len(message):
+            if message[offset] == "0":
+                name_bits = message[offset + 1 : offset + 1 + name_length]
+                name_index = from_bit_string(name_bits)
+                if name_index not in names_backward:
+                    raise ValueError()
+                tokens.append(names_backward[name_index])
+                offset += 1 + name_length
+            else:
+                place_bits = message[offset + 1 : offset + 1 + place_length]
+                place_index = from_bit_string(place_bits)
+                if place_index not in places_backward:
+                    raise ValueError()
+                tokens.append(places_backward[place_index])
+                offset += 1 + place_length
+        return " ".join(tokens)
+
+    return encode, decode
+
+
 # ==============
 # Bits <-> Cards
 # ==============
@@ -968,14 +1029,15 @@ CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
     # huffman_coders(LOWERCASE_HUFFMAN),
     # huffman_coders(MIXED_HUFFMAN),
     # huffman_coders(ALPHANUM_HUFFMAN),
-    huffman_coders(ASCII_HUFFMAN),
     # huffman_coders(NUMBER_HUFFMAN),
+    huffman_coders(ASCII_HUFFMAN),
     coordinate_coders(),
     agent1_coders(),
     flight_coders(),
     address_coders(),
     ngram_coders(),
     agent7_coders(),
+    name_place_coders(),
 ]
 
 CHECKSUM_BITS = 12
