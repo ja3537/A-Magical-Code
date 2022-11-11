@@ -131,12 +131,12 @@ class Mission:
             self.output = 'output.csv'
 
         with open(self.output, 'w+', newline='') as f:
-            header = ['agent', 'seed', 'message', 'decoded message', 'score']
+            header = ['agent', 'seed', 'n', 'message', 'decoded message', 'score']
             writer = csv.writer(f)
             writer.writerow(header)
 
             for i in range(len(self.messages)):
-                row = [str(self.agent_number), str(self.seed), self.messages[i], self.decoded[i][0], self.scores[i][0]]
+                row = [str(self.agent_number), str(self.seed), str(self.n), self.messages[i], self.decoded[i][0], self.scores[i][0]]
                 writer.writerow(row)
 
 
