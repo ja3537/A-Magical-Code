@@ -9,8 +9,10 @@ from math import ceil, factorial, log2
 from operator import indexOf
 from pprint import pprint
 from random import Random
-from string import ascii_letters, digits, punctuation, ascii_uppercase
+from string import ascii_letters, digits, punctuation, ascii_uppercase, whitespace
 from typing import Callable, Dict, Optional
+
+DEBUG = False
 
 # ================
 # Frequency Distributions
@@ -746,13 +748,15 @@ def agent7_coders():
     word_length = int(ceil(log2(len(dict))))
 
     def encode(message: str) -> str:
+        # G6 ngram trailing whitespace fix
+        if message[-1] in whitespace:
+            raise ValueError()
         words = message.split()
         word_bits = ""
         for word in words:
             if not word in dict:
                 raise ValueError()
             word_bits += pad(to_bit_string(dict[word]), word_length)
-        print(word_bits)
         return word_bits
 
     def decode(message: str) -> str:
@@ -1061,10 +1065,11 @@ def check_and_remove(bits: str) -> tuple[bool, int, str]:
     )
 
     # Debug
-    # print("all bits:", bits)
-    # print("message checksum:", message_checksum)
-    # print("encoding", encoding_bits)
-    # print("message", message)
+    if DEBUG:
+        print("all bits:", bits)
+        print("message checksum:", message_checksum)
+        print("encoding", encoding_bits)
+        print("message", message)
 
     encoding_id = from_bit_string(encoding_bits)
 
@@ -1120,7 +1125,7 @@ CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
     password_coders(),
 ]
 
-CHECKSUM_BITS = 12
+CHECKSUM_BITS = 10
 ENCODING_BITS = max(int(ceil(log2(len(CHARACTER_ENCODINGS)))), 1)
 
 
@@ -1184,11 +1189,12 @@ class Agent:
             return list(range(52))
 
         # Debugging
-        # print("Message:", encoded)
-        # print("Encoding:", encoding_bits)
-        # print("Checksum:", checksum)
-        # print("C:", c)
-        # print("all bits:", with_checksum)
+        if DEBUG:
+            print("Message:", encoded)
+            print("Encoding:", encoding_bits)
+            print("Checksum:", checksum)
+            print("C:", c)
+            print("all bits:", with_checksum)
 
         deck = list(range(c, 52)) + card_encoded
 
@@ -1198,7 +1204,8 @@ class Agent:
         # Minimum 16 bit suffix for checksum + length
         # log2(9!) > 2 ^ 16
         for c in range(9, 52):
-            # print("C:", c)
+            if DEBUG:
+                print("C:", c)
             encoded = [card for card in deck if card < c]
             decoded = to_bit_string(bottom_cards_decode(encoded, c))
             passes_checksum, encoding_id, message = check_and_remove(decoded)
