@@ -50,7 +50,7 @@ DictionaryPaths = {
     Domain.AIRPORT: ['messages/agent2/airportcodes.txt'],
     Domain.PASSWORD: ['messages/agent3/dicts/large_cleaned_long_words.txt'],
     Domain.STREET: ['messages/agent5/street_name.txt', 'messages/agent5/street_suffix.txt'],
-    Domain.WARTIME_NEWS: ['messages/agent6/unedited_corpus.txt'],
+    Domain.WARTIME_NEWS: ['messages/agent6/unedited_corpus.txt', 'messages/agent6/corpus-ngram-1.txt', 'messages/agent6/corpus-ngram-2.txt', 'messages/agent6/corpus-ngram-3.txt', 'messages/agent6/corpus-ngram-4.txt', 'messages/agent6/corpus-ngram-5.txt', 'messages/agent6/corpus-ngram-6.txt', 'messages/agent6/corpus-ngram-7.txt', 'messages/agent6/corpus-ngram-8.txt', 'messages/agent6/corpus-ngram-9.txt'],
     Domain.SENTENCE: ['messages/agent3/dicts/30k_cleaned.txt'],
     Domain.NAME_PLACE: ['messages/agent3/dicts/places_and_names.txt']
 }
@@ -113,7 +113,6 @@ class Agent:
         ):
             matching_domains.append(Domain.STREET)
         
-        # TODO (NOAH): this does not work as is
         # Domain.WARTIME_NEWS
         if all([word in self.word_to_binary_dicts[Domain.WARTIME_NEWS].keys() for word in words]):
             matching_domains.append(Domain.WARTIME_NEWS)
@@ -150,7 +149,7 @@ class Agent:
         elif domain == Domain.STREET:
             return self.street_to_binary(message)
         elif domain == Domain.WARTIME_NEWS:
-            pass
+            return self.wartime_news_to_binary(message)
         elif domain == Domain.SENTENCE:
             return self.sentence_to_binary(message)
         elif domain == Domain.NAME_PLACE:
@@ -170,7 +169,7 @@ class Agent:
         elif domain == Domain.STREET:
             return self.binary_to_street(binary)
         elif domain == Domain.WARTIME_NEWS:
-            pass
+            return self.binary_to_wartime_news(binary)
         elif domain == Domain.SENTENCE:
             return self.binary_to_sentence(binary)
         elif domain == Domain.NAME_PLACE:
@@ -281,6 +280,14 @@ class Agent:
 
     def binary_to_street(self, binary: str) -> str:
         return self.huff_binary_to_string(binary, Domain.STREET).title()
+
+    def wartime_news_to_binary(self, message: str) -> str:
+        dict = self.word_to_binary_dicts[Domain.WARTIME_NEWS]
+        return dict[message]
+
+    def binary_to_wartime_news(self, binary: str) -> str:
+        dict = self.binary_to_word_dicts[Domain.WARTIME_NEWS]
+        return dict[binary]
 
     
     # -----------------------------------------------------------------------------
