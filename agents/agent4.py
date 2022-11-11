@@ -571,7 +571,7 @@ class Agent:
         message = self.check_decoded_message(message)
         message = self.message_unshorten(message, domain)
 
-        if parts.partial_bit:
+        if parts.partial_bit == '1':
             message = 'PARTIAL: ' + message
 
         return message
