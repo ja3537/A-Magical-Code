@@ -148,7 +148,7 @@ class Agent:
         elif domain == Domain.WARTIME_NEWS:
             pass
         elif domain == Domain.SENTENCE:
-            pass
+            return self.sentence_to_binary(message)
         elif domain == Domain.NAME_PLACE:
             return self.name_place_to_binary(message)
         else:
@@ -168,7 +168,7 @@ class Agent:
         elif domain == Domain.WARTIME_NEWS:
             pass
         elif domain == Domain.SENTENCE:
-            pass
+            return self.binary_to_sentence(message)
         elif domain == Domain.NAME_PLACE:
             return self.binary_to_name_place(binary)
         else:
@@ -208,6 +208,17 @@ class Agent:
                     line = file.readline()
         bits_needed = math.ceil(math.log2(len(words)))
         return {word: bin(idx)[2:].zfill(bits_needed) for idx, word in enumerate(words)}
+
+    def sentence_to_binary(self, message: str) -> str:
+        dict = self.word_to_binary_dicts[Domain.SENTENCE]
+        return ''.join([dict[word] for word in message.split(' ')])
+
+    def binary_to_sentence(self, binary: str) -> str:
+        dict = self.binary_to_word_dicts[Domain.SENTENCE]
+        bits_per_word = len(list(dict.keys())[0])
+        words_bits = [binary[i:i+bits_per_word]
+                      for i in range(0, len(binary), bits_per_word)]
+        return ' '.join([dict[bits] for bits in words_bits])
 
     def name_place_to_binary(self, message: str) -> str:
         dict = self.word_to_binary_dicts[Domain.NAME_PLACE]
