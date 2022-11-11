@@ -7,6 +7,7 @@ from collections import defaultdict
 import os
 import wordninja
 import enchant
+import hashlib
 
 UNTOK = '*'
 EMPTY = ''
@@ -319,45 +320,49 @@ class Domain_Classifier():
                 return False
         return True
     
-    def predict(self, msg):
-        """
-        Classifies the message into one of the following domains:
-        - G1 (generic/default) *
-        - AIRPORT *
-        - PASSWORD *
-        - LOCATION *
-        - ADDRESS *
-        - NGRAM 
-        - DICIONARY *
-        - NAME_PLACES *
-        """
-        if self.is_password(msg):
-            return Domain.PASSWORD
-        elif self.is_location(msg):
-            return Domain.LOCATION
-        elif self.is_airport(msg):
-            return Domain.AIRPORT 
-        elif self.is_dictionary(msg):
-            return Domain.DICTIONARY
-        elif self.is_address(msg):
-            return Domain.ADDRESS
-        elif self.is_name_places(msg):
-            return Domain.NAME_PLACES
-        elif self.is_ngram(msg):
-            return Domain.NGRAM
-        return Domain.G1 # default ascii
+    # def predict(self, msg):
+    #     """
+    #     Classifies the message into one of the following domains:
+    #     - G1 (generic/default) *
+    #     - AIRPORT *
+    #     - PASSWORD *
+    #     - LOCATION *
+    #     - ADDRESS *
+    #     - NGRAM 
+    #     - DICIONARY *
+    #     - NAME_PLACES *
+    #     """
+    #     if self.is_password(msg):
+    #         return Domain.PASSWORD
+    #     elif self.is_location(msg):
+    #         return Domain.LOCATION
+    #     elif self.is_airport(msg):
+    #         return Domain.AIRPORT 
+    #     elif self.is_dictionary(msg):
+    #         return Domain.DICTIONARY
+    #     elif self.is_address(msg):
+    #         return Domain.ADDRESS
+    #     elif self.is_name_places(msg):
+    #         return Domain.NAME_PLACES
+    #     elif self.is_ngram(msg):
+    #         return Domain.NGRAM
+    #     return Domain.G1 # default ascii
     
     def binary_predict(self, msg):
         if self.is_dictionary(msg):
             return Domain.DICTIONARY
         return Domain.G1
 
+CHECKSUM_CARDS = 6
+
 class EncoderDecoder:
-    def __init__(self, n=26):
+    def __init__(self, n):
         self.encoding_len = n
-        # characters = " 1234567890abcdefghijklmnopqrstuvwxyz"
-        # self.char_dict, self.bin_dict = self.binary_encoding_dicts(characters)
-        self.perm_zero = list(range(50-n, 50))
+        if n < 7: #If less than 7 bits its for checksum
+            self.perm_zero = [46,47,48,49,50,51]
+        else:
+            self.perm_zero = list(range(46-n, 46)) #[20,21,...45]
+        self.max_messge_length = 12 #TODO TEST AND CHANGE THIS VALUE
         factorials = [0] * n
         for i in range(n):
             factorials[i] = math.factorial(n-i-1)
@@ -379,7 +384,6 @@ class EncoderDecoder:
         n = len(permutation)
         # s = sorted(permutation)
         number = 0
-
         for i in range(n):
             k = 0
             for j in range(i + 1, n):
@@ -391,9 +395,11 @@ class EncoderDecoder:
     def nth_perm(self, n):
         perm = []
         items = self.perm_zero[:]
+
         for f in self.factorials:
             lehmer = n // f
-            perm.append(items.pop(lehmer))
+            x = items.pop(lehmer)
+            perm.append(x)
             n %= f
         return perm
 
@@ -408,6 +414,17 @@ class EncoderDecoder:
             num += self.words_dict.get(tokens[i], DICT_SIZE-1) * DICT_SIZE**i
         return self.nth_perm(num)
 
+    def str_to_num(self, message):
+        tokens = message.split()
+        init = [EMPTY for i in range(SENTENCE_LEN)]
+        for i in range(len(tokens)):
+            init[i] = tokens[i]
+        tokens = init[::-1]
+        num = 0
+        for i in range(SENTENCE_LEN):
+            num += self.words_dict.get(tokens[i], DICT_SIZE-1) * DICT_SIZE**i
+        return num
+
     def perm_to_str(self, perm):
         num = self.perm_number(perm)
         words = []
@@ -417,28 +434,55 @@ class EncoderDecoder:
             num = num // DICT_SIZE
         return ' '.join(words[::-1]).strip()
 
+    def set_checksum(self, num, base=10):
+        num_bin = bin(num)[2:]
+        chunk_len = 5
+        checksum = 0
+        mod_prime = 113
+        while len(num_bin) > 0:
+            bin_chunk = num_bin[:chunk_len]
+            num_bin = num_bin[chunk_len:]
+
+            num_chunk = int(bin_chunk, 2)
+            checksum = ((checksum + num_chunk) * base) % mod_prime
+        return checksum
+
+
 class Agent:
     def __init__(self, encoding_len=26):
         self.encoding_len = encoding_len
+
         self.ed = EncoderDecoder(self.encoding_len)
+        self.perm_ck = EncoderDecoder(6)
 
     def encode(self, message):
-        return list(range(50 - self.encoding_len)) + self.ed.str_to_perm(message)[::-1] + [50, 51]
+        print('Encoding "', message, '"')
+        message = ' '.join(message.split()[:6])
+        x  = self.ed.str_to_num(message)
+        checksum = self.ed.set_checksum(x)
+        checksum_cards = self.perm_ck.nth_perm(checksum)
+        a = list(range(46 - self.encoding_len))
+        b = self.ed.str_to_perm(message)
+        c =checksum_cards
+        encoded_deck = a+b+c
+        print('Encoded deck:\n', encoded_deck, '\n---------')
+        return encoded_deck
 
     def decode(self, deck):
-        perm = []
+        msg_perm = []
+        checksum = []
         for card in deck:
-            if 24 <= card <= 51:
-                perm.append(card)
-        perm = perm[:-2][::-1] + perm[-2:]
+            if 20 <= card <= 45:
+                msg_perm.append(card)
+            if card > 45:
+                checksum.append(card)
 
-        print(perm)
-        if perm[-2:] != [50, 51]:
-            return "NULL"
-        # if perm[:2] != [22, 23]:
-        #     return "PARTIAL:"
+        #print('\nMessage Cards:', msg_perm)
+        #print('Checksum Cards:', checksum)
+        msg_num = self.ed.perm_number(msg_perm)
 
-        return self.ed.perm_to_str(perm[:-2])
+        decoded_checksum = self.perm_ck.perm_number(checksum)
+        message_checksum = self.perm_ck.set_checksum(msg_num)        
 
 
 
@@ -479,8 +523,9 @@ def test_classifier():
         with open(f"./test_classifier/g{i}_example.txt") as f:
             msg = f.readline().strip()
             while msg:
-                prediction = classifier.predict(msg)
+                prediction = classifier.binary_predict(msg)
                 print(prediction, i)
                 msg = f.readline().strip()
     return
+
 test_classifier()
