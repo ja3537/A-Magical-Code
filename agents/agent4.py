@@ -11,12 +11,14 @@ import requests
 
 
 class Domain(Enum):
-    ALL = 0
-    NUM = 1
-    LOWER = 2
-    LOWER_AND_UPPER = 3
-    LETTERS_NUMBERS = 4
-    LAT_LONG = 5
+    ALL = 0                 # Group 1: lowercase letters, period, space, and numbers
+    AIRPORT = 1             # Group 2: airport code + random letters/numbers + number
+    PASSWORD = 2            # Group 3: @ symbol + random words and numbers
+    LAT_LONG = 3            # Group 4: number + N/S + ", " + number + E/W
+    STREET = 4              # Group 5: numbers, names, and street suffixes
+    WARTIME_NEWS = 5        # Group 6: space delimited english words from wartime correspondences
+    SENTENCE = 6            # Group 7: space delimited english words from limited dictionary
+    NAME_PLACE = 7          # Group 8: two propper nouns separated by a space
 
 
 MAX_DOMAIN_VALUE = max([d.value for d in Domain])
