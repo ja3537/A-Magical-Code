@@ -77,12 +77,40 @@ class Perm:
             logger.warning(f"Input text too long to encode into {self.encoding_len} cards.")
             return []
 
-        perm = []
-        items = list(self.perm_zero[:])
-        for idx, f in enumerate(self.factorials):
-            lehmer = n // f
-            perm.append(items.pop(lehmer))
-            n %= f
+        n_copy = n
+
+        for start in reversed(range(len(self.factorials))):
+            items = list(self.perm_zero[:])
+            failure = False
+            perm = []
+            n = n_copy
+            for idx in range(start, len(self.factorials)):
+                f = self.factorials[idx]
+                lehmer = n // f
+                
+                if lehmer >= len(items):
+                    failure = True
+                    break
+                
+                perm.append(items.pop(lehmer))
+                n %= f
+
+            if not failure:
+                # check that perm is contiguous
+                if sorted(perm) != list(range(30, 30 + len(perm))):
+                    #print('SEQ FAILURE')
+                    failure = True
+                    continue
+                
+                if self.perm_to_num(perm) != n_copy:
+                    failure = True
+                    continue
+                
+                for idx in range(start):
+                    perm.insert(0, 51 - idx)
+                
+                break
+        
         return perm
 
     def str_to_num(self, message):
@@ -140,7 +168,7 @@ class Perm:
             for j in range(i + 1, n):
                 if permutation[j] < permutation[i]:
                     k += 1
-            number += k * self.factorials[i]
+            number += k * self.factorials[22 - n + i]
         return number
 
     def num_to_str(self, num):
@@ -399,25 +427,36 @@ class Agent:
         return ds_decks
 
     def decode(self, deck):
-        seq_encode = [c for c in deck if c in self.valid_cards_p]
+        for i in range(1, len(self.valid_cards_p) + 1):
+            valid_cards = self.valid_cards_p[:i]
+                
+            try:
+                seq_encode = [c for c in deck if c in valid_cards]
 
-        # Try to recover message (unscramble if necessary)
-        max_trials = len(self.char_set) ^ 3 + 1  # Greater than depth 3 is ineffective (from our tests)
-        dque = deque([])
-        dque.append(seq_encode)
-        decoded_str = "NULL"
-        while max_trials > 0 and len(dque) > 0:
-            ddeck = dque.popleft()
-            msg = self.verify_msg(ddeck)
-            if msg is not None:
-                decoded_str = msg
-                break
-            else:
-                dque.extend(self.deshuffle1(ddeck))
-                max_trials -= 1
+                # Try to recover message (unscramble if necessary)
+                max_trials = len(self.char_set) ^ 3 + 1  # Greater than depth 3 is ineffective (from our tests)
+                dque = deque([])
+                dque.append(seq_encode)
+                decoded_str = "NULL"
+                while max_trials > 0 and len(dque) > 0:
 
-        # TODO: Add case for partial strings
-        return decoded_str
+                    ddeck = dque.popleft()
+                    msg = self.verify_msg(ddeck)
+                    if msg is not None:
+                        decoded_str = msg
+                        break
+                    else:
+                        dque.extend(self.deshuffle1(ddeck))
+                        max_trials -= 1
+
+                # TODO: Add case for partial strings
+                if decoded_str != "NULL":
+                    return decoded_str
+            
+            except:
+                continue
+        
+        return "NULL"
 
 
 if __name__ == "__main__":
