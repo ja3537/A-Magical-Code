@@ -1,31 +1,111 @@
 import math
 import random
 from collections import Counter
+import enchant
 
 
+class Vocab:
+    def __init__(self, vocab_list, pad_symbol):
+        self.pad_symbol = pad_symbol
+        self.word_to_index = dict()
+        self.index_to_word = dict()
+        self.word_to_index[self.pad_symbol] = 0
+        self.index_to_word[0] = self.pad_symbol
+        for i, word in enumerate(vocab_list, start=1):
+            self.word_to_index[word] = i
+            self.index_to_word[i] = word
 
-# class DictEncoding:
-#     def __init__(self, dict_path, max_len):
-#         self.max_len = max_len
-#         self.word_to_index = dict()
-#         self.index_to_word = dict()
-#         self.word_to_index['<PAD>'] = 0
-#         self.index_to_word[0] = '<PAD>'
-#         self.factorial_table = [math.factorial(i) for i in range(53)]
 
-#         with open(dict_path, 'r') as f:
-#             for i, line in enumerate(f, start=1):
-#                 word = line.strip()
-#                 self.word_to_index[word] = i
-#                 self.index_to_word[i] = word
-#         for i, x in enumerate(self.factorial_table):
-#             if x >= len(self.word_to_index) ** self.max_len:
-#                 self.num_cards_used = i
-#                 break
-        
-#     def encode(self, message):
-        
-        
+class DictEncoding:
+    # Dictionary Encoding for Group 6, 7, 8
+    def __init__(self, g6_vocab_list, g7_vocab_list, g8_vocab_list):
+        self.max_len = 6
+        self.pad_symbol = ''
+        # use cards from 0 to 27 (28 cards) to encode message + 3-bit encoding scheme
+        self.num_cards_used = 28
+        self.factorial_table = [math.factorial(
+            self.num_cards_used-i-1) for i in range(self.num_cards_used)]
+        self.group_vocab = dict()
+
+        # Group 6
+        self.group_vocab[6] = Vocab(g6_vocab_list, self.pad_symbol)
+
+        # Group 7
+        self.group_vocab[7] = Vocab(g7_vocab_list, self.pad_symbol)
+
+        # Group 8
+        self.group_vocab[8] = Vocab(g8_vocab_list, self.pad_symbol)
+
+    # Based on Group 7's implementation
+
+    def nth_perm(self, n):
+        perm = []
+        items = list(range(self.num_cards_used))
+        for f in self.factorial_table:
+            lehmer = n // f
+            perm.append(items.pop(lehmer))
+            n %= f
+        return perm
+
+    def perm_number(self, permutation):
+        n = len(permutation)
+        # if n != 28:
+        #     print(permutation)
+        number = 0
+        for i in range(n):
+            k = 0
+            for j in range(i + 1, n):
+                if permutation[j] < permutation[i]:
+                    k += 1
+            number += k * self.factorial_table[i]
+        return number
+
+    def encode(self, message, group_id):
+        """Return message_section, encoding_scheme, truncated"""
+        # if group_id != 6:
+        #     print(message)
+        tokens = message.split()
+        if len(tokens) > self.max_len:
+            truncated = "1"
+        else:
+            truncated = "0"
+        padded_tokens = tokens + [self.pad_symbol] * (self.max_len - len(tokens))
+        word_to_index = self.group_vocab[group_id].word_to_index
+        num = 0
+        for i in range(self.max_len):
+            num += word_to_index.get(padded_tokens[i], 0) * \
+                                     (len(word_to_index) ** i)
+        num = format(num, 'b')
+        encoding_scheme = format(group_id - 1, "03b")
+        # return num, encoding_scheme, truncated
+        full_message = num + encoding_scheme + truncated
+        num = int(full_message, 2)
+        deck = list(range(self.num_cards_used, 50)) + self.nth_perm(num) + [50, 51]
+        # print("Encoding group {} deck: {}".format(group_id, deck))
+        return deck
+        # return bin_to_cards(full_message)
+
+    def decode(self, cards):
+        # Pass in only cards from 0 to 27
+        num = self.perm_number(cards)
+        num = format(num, 'b')
+        num, scheme_id, truncated = num[:-4], num[-4:-1], num[-1]
+        # if num == "" or scheme_id == "" or truncated == "":
+        #     return "NULL"
+        group_id = int(scheme_id, 2) + 1
+ 
+        word_to_index = self.group_vocab[group_id].word_to_index
+        index_to_word = self.group_vocab[group_id].index_to_word
+        num = int(num, 2)
+        words = []
+        for i in range(self.max_len):
+            index = num % len(word_to_index)
+            words.append(index_to_word[index])
+            num = num // len(word_to_index)
+        result = ' '.join(words).rstrip()
+        if truncated == "1":
+            result = "PARTIAL: " + result
+        return result
 
 
 class Node:
@@ -35,29 +115,31 @@ class Node:
 
     def children(self):
         return self.left, self.right
-    
+
+
 def huffman_code(node, bin_str=''):
     if type(node) is str:
-        return {node : bin_str}
+        return {node: bin_str}
     l, r = node.children()
     _dict = dict()
     _dict.update(huffman_code(l, bin_str + '0'))
     _dict.update(huffman_code(r, bin_str + '1'))
     return _dict
 
+
 def make_tree(nodes):
     """
     make tree buils the huffman tree and returns the root of the tree
     """
     while len(nodes) > 1:
-        
+
         k1, v1 = nodes[-1]
         k2, v2 = nodes[-2]
-        nodes = nodes[:-2] # saves the whole
+        nodes = nodes[:-2]  # saves the whole
         combined_node = Node(k1, k2)
         nodes.append((combined_node, v1 + v2))
-        nodes = sorted(nodes, key=lambda x : x[1], reverse=True)
-    return nodes[0][0] # root
+        nodes = sorted(nodes, key=lambda x: x[1], reverse=True)
+    return nodes[0][0]  # root
 
 
 class ASCII_Frequencies:
@@ -68,230 +150,102 @@ class ASCII_Frequencies:
         * assumption for the above words, length of an average english word is 4.7
     - For all printable ascii values, we use https://github.com/piersy/ascii-char-frequency-english
     """
-    # lower_freq_with_space = {
-    #     'a':	0.0703717,
-    #     'b':	0.0115797,
-    #     'c':	0.0262088,
-    #     'd':	0.0316822,
-    #     'e':	0.1035011,
-    #     'f':	0.0173387,
-    #     'g':	0.0161331,
-    #     'h':	0.0395170,
-    #     'i':	0.0605261,
-    #     'j':	0.0008804,
-    #     'k':	0.0061603,
-    #     'l':	0.0341332,
-    #     'm':	0.0196174,
-    #     'n':	0.0606359,
-    #     'o':	0.0632258,
-    #     'p':	0.0167859,
-    #     'q':	0.0007249,
-    #     'r':	0.0553204,
-    #     's':	0.0559656,
-    #     't':	0.0736326,
-    #     'u':	0.0215686,
-    #     'v':	0.0087349,
-    #     'w':	0.0135784,
-    #     'x':	0.0016521,
-    #     'y':	0.0141985,
-    #     'z':	0.0008880,
-    #     ' ':    0.1754386
-    # }
-
-    # upper_freq_with_space = {
-    #     'A':	0.0656677,
-    #     'B':	0.0396137,
-    #     'C':	0.0536125,
-    #     'D':	0.0303009,
-    #     'E':	0.0323604,
-    #     'F':	0.0235501,
-    #     'G':	0.0217879,
-    #     'H':	0.0288984,
-    #     'I':	0.0521981,
-    #     'J':	0.0183971,
-    #     'K':	0.0108878,
-    #     'L':	0.0250070,
-    #     'M':	0.0606508,
-    #     'N':	0.0480134,
-    #     'O':	0.0247069,
-    #     'P':	0.0337152,
-    #     'Q':	0.0027252,
-    #     'R':	0.0342315,
-    #     'S':	0.0712855,
-    #     'T':	0.0760752,
-    #     'U':	0.0134375,
-    #     'V':	0.0072585,
-    #     'W':	0.0250563,
-    #     'X':	0.0017713,
-    #     'Y':	0.0220415,
-    #     'Z':	0.0013113,
-    #     ' ':    0.1754384
-    # }
-
-    # num_freq = {
-    #     '0' : 1/10,
-    #     '1' : 1/10,
-    #     '2' : 1/10,
-    #     '3' : 1/10,
-    #     '4' : 1/10,
-    #     '5' : 1/10,
-    #     '6' : 1/10,
-    #     '7' : 1/10,
-    #     '8' : 1/10,
-    #     '9' : 1/10
-    # }
-
-    # letter_freq_with_space = {
-    #     ' ': 0.18125664573648903,
-    #     'e': 0.09313797647646678,
-    #     't': 0.06846864611028546,
-    #     'a': 0.0662607652446656,
-    #     'n': 0.05953428063624102,
-    #     'i': 0.059284648793502086,
-    #     'o': 0.05861850680392465,
-    #     's': 0.05612630205699792,
-    #     'r': 0.05573529672902756,
-    #     'l': 0.034811609546727955,
-    #     'd': 0.03449526751915381,
-    #     'h': 0.028332631379469952,
-    #     'c': 0.027045735008085783,
-    #     'u': 0.020820570925370364,
-    #     'm': 0.01962246149063737,
-    #     'p': 0.018780802467988883,
-    #     'f': 0.017037356126596872,
-    #     'g': 0.013850967801605968,
-    #     'y': 0.011783843369148178,
-    #     'b': 0.01119188475057967,
-    #     'w': 0.01034748327428945,
-    #     'v': 0.008458069837816091,
-    #     'k': 0.0053498414416146365,
-    #     'S': 0.0033421596918414543,
-    #     'T': 0.003320974237459051,
-    #     'C': 0.0032315016873974453,
-    #     'A': 0.0026799256987034845,
-    #     'x': 0.0024948786392274126,
-    #     'I': 0.0022619072023620204,
-    #     'M': 0.001961677089933077,
-    #     'B': 0.001880774707501893,
-    #     'P': 0.0015025903503066305,
-    #     'E': 0.001399542654718436,
-    #     'N': 0.0013801397952031608,
-    #     'F': 0.0013200114991081197,
-    #     'R': 0.001193927192929351,
-    #     'D': 0.0011820660809288472,
-    #     'U': 0.0011278340601635368,
-    #     'q': 0.0010909480586822002,
-    #     'L': 0.0010865601328554242,
-    #     'G': 0.0010070975385861514,
-    #     'J': 0.0009534825698902312,
-    #     'H': 0.0009467635584679804,
-    #     'O': 0.0008881436118758939,
-    #     'W': 0.0008705919085687896,
-    #     'j': 0.0006680617071266566,
-    #     'z': 0.0006233597127663754,
-    #     'K': 0.00041191653698860356,
-    #     'V': 0.0002765078884279358,
-    #     'Y': 0.00027253133064742,
-    #     'Q': 0.00010818979616644747,
-    #     'Z': 9.324342381899147e-05,
-    #     'X': 7.1098110661981e-05
-    # }
 
     all_printable_ascii = {
-        ' ': 0.167564443682168, 
-        'e': 0.08610229517681191, 
-        't': 0.0632964962389326, 
-        'a': 0.0612553996079051, 
-        'n': 0.05503703643138501, 
-        'i': 0.05480626188138746, 
-        'o': 0.0541904405334676, 
-        's': 0.0518864979648296, 
-        'r': 0.051525029341199825, 
-        'l': 0.03218192615049607, 
-        'd': 0.03188948073064199, 
-        'h': 0.02619237267611581, 
-        'c': 0.02500268898936656, 
-        '\n': 0.019578060965172565, 
-        'u': 0.019247776378510318, 
-        'm': 0.018140172626462205, 
-        'p': 0.017362092874808832, 
-        'f': 0.015750347191785568, 
-        'g': 0.012804659959943725, 
-        '.': 0.011055184780313847, 
-        'y': 0.010893686962847832, 
-        'b': 0.01034644514338097, 
-        'w': 0.009565830104169261, 
-        ',': 0.008634492219614468, 
-        'v': 0.007819143740853554, 
-        '0': 0.005918945715880591, 
-        'k': 0.004945712204424292, 
-        '1': 0.004937789430804492, 
-        'S': 0.0030896915651553373, 
-        'T': 0.0030701064687671904, 
-        'C': 0.002987392712176473, 
-        '2': 0.002756237869045172, 
-        '8': 0.002552781042488694, 
+        ' ': 0.167564443682168,
+        'e': 0.08610229517681191,
+        't': 0.0632964962389326,
+        'a': 0.0612553996079051,
+        'n': 0.05503703643138501,
+        'i': 0.05480626188138746,
+        'o': 0.0541904405334676,
+        's': 0.0518864979648296,
+        'r': 0.051525029341199825,
+        'l': 0.03218192615049607,
+        'd': 0.03188948073064199,
+        'h': 0.02619237267611581,
+        'c': 0.02500268898936656,
+        '\n': 0.019578060965172565,
+        'u': 0.019247776378510318,
+        'm': 0.018140172626462205,
+        'p': 0.017362092874808832,
+        'f': 0.015750347191785568,
+        'g': 0.012804659959943725,
+        '.': 0.011055184780313847,
+        'y': 0.010893686962847832,
+        'b': 0.01034644514338097,
+        'w': 0.009565830104169261,
+        ',': 0.008634492219614468,
+        'v': 0.007819143740853554,
+        '0': 0.005918945715880591,
+        'k': 0.004945712204424292,
+        '1': 0.004937789430804492,
+        'S': 0.0030896915651553373,
+        'T': 0.0030701064687671904,
+        'C': 0.002987392712176473,
+        '2': 0.002756237869045172,
+        '8': 0.002552781042488694,
         '5': 0.0025269211093936652,
-        'A': 0.0024774830020061096, 
-        '9': 0.002442242504945237, 
-        'x': 0.0023064144740073764, 
-        '3': 0.0021865587546870337, 
-        'I': 0.0020910417959267183, 
-        '-': 0.002076717421222119, 
-        '6': 0.0019199098857390264, 
-        '4': 0.0018385271551164353, 
-        '7': 0.0018243295447897528, 
-        'M': 0.0018134911904778657, 
-        'B': 0.0017387002075069484, 
-        '"': 0.0015754276887500987, 
-        "'": 0.0015078622753204398, 
-        'P': 0.00138908405321239, 
-        'E': 0.0012938206232079082, 
-        'N': 0.0012758834637326799, 
-        'F': 0.001220297284016159, 
-        'R': 0.0011037374385216535, 
-        'D': 0.0010927723198318497, 
-        'U': 0.0010426370083657518, 
-        'q': 0.00100853739070613, 
-        'L': 0.0010044809306127922, 
-        'G': 0.0009310209736100016, 
-        'J': 0.0008814561018445294, 
-        'H': 0.0008752446473266058, 
-        'O': 0.0008210528757671701, 
-        'W': 0.0008048270353938186, 
-        'j': 0.000617596049210692, 
-        'z': 0.0005762708620098124, 
-        '/': 0.000519607185080999, 
-        '<': 0.00044107665296153596, 
-        '>': 0.0004404428310719519, 
-        'K': 0.0003808001912620934, 
-        ')': 0.0003314254660634964, 
-        '(': 0.0003307916441739124, 
-        'V': 0.0002556203680692448, 
-        'Y': 0.00025194420110965734, 
-        ':': 0.00012036277683200988, 
-        'Q': 0.00010001709417636208, 
-        'Z': 8.619977698342993e-05, 
-        'X': 6.572732994986532e-05, 
-        ';': 7.41571610813331e-06, 
-        '?': 4.626899793963519e-06, 
-        '\x7f': 3.1057272589618137e-06, 
-        '^': 2.2183766135441526e-06, 
-        '&': 2.0282300466689395e-06, 
-        '+': 1.5211725350017046e-06, 
-        '[': 6.97204078542448e-07, 
-        ']': 6.338218895840436e-07, 
-        '$': 5.070575116672349e-07, 
-        '!': 5.070575116672349e-07, 
-        '*': 4.436753227088305e-07, 
-        '=': 2.5352875583361743e-07, 
-        '~': 1.9014656687521307e-07, 
-        '_': 1.2676437791680872e-07, 
-        '\t': 1.2676437791680872e-07, 
-        '{': 6.338218895840436e-08, 
-        '@': 6.338218895840436e-08, 
-        '\x05': 6.338218895840436e-08, 
-        '\x1b': 6.338218895840436e-08, 
+        'A': 0.0024774830020061096,
+        '9': 0.002442242504945237,
+        'x': 0.0023064144740073764,
+        '3': 0.0021865587546870337,
+        'I': 0.0020910417959267183,
+        '-': 0.002076717421222119,
+        '6': 0.0019199098857390264,
+        '4': 0.0018385271551164353,
+        '7': 0.0018243295447897528,
+        'M': 0.0018134911904778657,
+        'B': 0.0017387002075069484,
+        '"': 0.0015754276887500987,
+        "'": 0.0015078622753204398,
+        'P': 0.00138908405321239,
+        'E': 0.0012938206232079082,
+        'N': 0.0012758834637326799,
+        'F': 0.001220297284016159,
+        'R': 0.0011037374385216535,
+        'D': 0.0010927723198318497,
+        'U': 0.0010426370083657518,
+        'q': 0.00100853739070613,
+        'L': 0.0010044809306127922,
+        'G': 0.0009310209736100016,
+        'J': 0.0008814561018445294,
+        'H': 0.0008752446473266058,
+        'O': 0.0008210528757671701,
+        'W': 0.0008048270353938186,
+        'j': 0.000617596049210692,
+        'z': 0.0005762708620098124,
+        '/': 0.000519607185080999,
+        '<': 0.00044107665296153596,
+        '>': 0.0004404428310719519,
+        'K': 0.0003808001912620934,
+        ')': 0.0003314254660634964,
+        '(': 0.0003307916441739124,
+        'V': 0.0002556203680692448,
+        'Y': 0.00025194420110965734,
+        ':': 0.00012036277683200988,
+        'Q': 0.00010001709417636208,
+        'Z': 8.619977698342993e-05,
+        'X': 6.572732994986532e-05,
+        ';': 7.41571610813331e-06,
+        '?': 4.626899793963519e-06,
+        '\x7f': 3.1057272589618137e-06,
+        '^': 2.2183766135441526e-06,
+        '&': 2.0282300466689395e-06,
+        '+': 1.5211725350017046e-06,
+        '[': 6.97204078542448e-07,
+        ']': 6.338218895840436e-07,
+        '$': 5.070575116672349e-07,
+        '!': 5.070575116672349e-07,
+        '*': 4.436753227088305e-07,
+        '=': 2.5352875583361743e-07,
+        '~': 1.9014656687521307e-07,
+        '_': 1.2676437791680872e-07,
+        '\t': 1.2676437791680872e-07,
+        '{': 6.338218895840436e-08,
+        '@': 6.338218895840436e-08,
+        '\x05': 6.338218895840436e-08,
+        '\x1b': 6.338218895840436e-08,
         '\x1e': 6.338218895840436e-08
     }
 
@@ -419,23 +373,23 @@ class ASCII_Frequencies:
     }
 
     G4_location = {
-        '0' : 1/17,
-        '1' : 1/17,
-        '2' : 1/17,
-        '3' : 1/17,
-        '4' : 1/17,
-        '5' : 1/17,
-        '6' : 1/17,
-        '7' : 1/17,
-        '8' : 1/17,
-        '9' : 1/17,
-        '.' : 2/17,
-        ' ' : 3/17,
-        ',' : 1/17,
-        'N' : 1/17,
-        'S' : 1/17,
-        'E' : 1/17,
-        'W' : 1/17
+        '0': 1/17,
+        '1': 1/17,
+        '2': 1/17,
+        '3': 1/17,
+        '4': 1/17,
+        '5': 1/17,
+        '6': 1/17,
+        '7': 1/17,
+        '8': 1/17,
+        '9': 1/17,
+        '.': 2/17,
+        ' ': 3/17,
+        ',': 1/17,
+        'N': 1/17,
+        'S': 1/17,
+        'E': 1/17,
+        'W': 1/17
     }
 
     G5_addresses = {
@@ -507,6 +461,7 @@ class ASCII_Frequencies:
         'X': 6.740364350167453e-05
     }
 
+
 encodings = {
     'lower': ASCII_Frequencies.G1_lower_num_punc,
     'airport': ASCII_Frequencies.G2_airport,
@@ -520,10 +475,12 @@ encodings = {
     # 'letters': ASCII_Frequencies.letter_freq_with_space
 }
 
+
 def generate_huffman_code(type):
-    _freq = sorted(encodings[type].items(), key = lambda x : x[1], reverse=True)
+    _freq = sorted(encodings[type].items(), key=lambda x: x[1], reverse=True)
     node = make_tree(_freq)
     return huffman_code(node)
+
 
 # HUFFMAN ENCODING FOR VARIETY OF WORDS
 LOWERCASE_HUFFMAN = generate_huffman_code('lower')
@@ -535,6 +492,7 @@ PRINTTABLE_HUFFMAN = generate_huffman_code('printable')
 # NUMBER_HUFFMAN = generate_huffman_code('number')
 # LETTERS_HUFFMAN = generate_huffman_code('letters')
 
+
 def encode_msg_bin(msg, encoding) -> str:
     """
     takes a string and returns a binary encoding of each letter per 'encoding'
@@ -544,6 +502,7 @@ def encode_msg_bin(msg, encoding) -> str:
     for letter in msg:
         binaries.append(encoding[letter])
     return "".join(binaries)
+
 
 def decode_bin_msg(msg, encoding) -> str:
     """
@@ -558,15 +517,16 @@ def decode_bin_msg(msg, encoding) -> str:
                 output += ch
                 msg = msg[len(binary):]
         if not found_match:
-            break # break and returns partial msg
+            break  # break and returns partial msg
     return output
+
 
 def bin_to_cards(msg_bin):
     """
     takes a binary string and encodes the string into cards
     """
     digit = int(msg_bin, 2)
-    #digit = 16
+    # digit = 16
     m = digit
 
     min_cards = math.inf
@@ -575,7 +535,7 @@ def bin_to_cards(msg_bin):
         if digit < fact:
             min_cards = i
             break
-    #print(min_cards)
+    # print(min_cards)
     permutations = []
     elements = []
     for i in range(min_cards):
@@ -583,7 +543,7 @@ def bin_to_cards(msg_bin):
         permutations.append(0)
     for i in range(min_cards):
         index = m % (min_cards-i)
-        #print(index)
+        # print(index)
         m = m // (min_cards-i)
         permutations[i] = elements[index]
         elements[index] = elements[min_cards-i-1]
@@ -593,6 +553,7 @@ def bin_to_cards(msg_bin):
         remaining_cards.append(i)
 
     random.shuffle(remaining_cards)
+    # print("Num cards used = ", len(permutations))
 
     # print("permutation is ", permutations)
     returned_list = remaining_cards + permutations
@@ -600,8 +561,8 @@ def bin_to_cards(msg_bin):
    # print(permutations)
    # print(returned_list)
 
-
     return returned_list
+
 
 def cards_to_bin(cards):
     """
@@ -621,34 +582,75 @@ def cards_to_bin(cards):
         m = m * (length - i)
         positions[elements[length-i-1]] = positions[cards[i]]
         elements[positions[cards[i]]] = elements[length-i-1]
-     
+
     return format(digit, 'b')
+
 
 class Agent:
 
     def __init__(self):
-       self.pearson8_table = list(range(0, 256))
-       random.shuffle(self.pearson8_table)
-       self.scheme_id_to_encoding = { "001" : LOWERCASE_HUFFMAN,
-                                      "010" : AIRPORT_HUFFMAN,
-                                      "011" : PASSPORT_HUFFMAN,
-                                      "100" : LOCATION_HUFFMAN,
-                                      "101" : ADDRESS_HUFFMAN,
-                                    #   "011" : LETTERS_HUFFMAN,
-                                    #   "100" : NUMBER_HUFFMAN,
-                                      "110" : PRINTTABLE_HUFFMAN
-                                    }
+        self.pearson8_table = list(range(0, 256))
+        random.shuffle(self.pearson8_table)
+        self.english_dict = enchant.Dict("en_US")
+        self.scheme_id_to_encoding = { "000" : LOWERCASE_HUFFMAN,
+                                        "001" : AIRPORT_HUFFMAN,
+                                        "010" : PASSPORT_HUFFMAN,
+                                        "011" : LOCATION_HUFFMAN,
+                                        "100" : ADDRESS_HUFFMAN,
+                                        #   "011" : LETTERS_HUFFMAN,
+                                        #   "100" : NUMBER_HUFFMAN,
+                                        # "110" : PRINTTABLE_HUFFMAN
+                                        }
 
-       self.encoding_to_scheme_id = { "LOWERCASE_HUFFMAN" : "001",
-                                      "AIRPORT_HUFFMAN" : "010",
-                                      "PASSPORT_HUFFMAN" : "011",
-                                      "LOCATION_HUFFMAN" : "100",
-                                      "ADDRESS_HUFFMAN" : "101",
-                                    #   "LETTERS_HUFFMAN" : "011",
-                                    #   "NUMBER_HUFFMAN" : "100",
-                                      "PRINTTABLE_HUFFMAN" : "110"
-                                    }
-        #self.encoding = huffman_code(node)
+        self.encoding_to_scheme_id = { "LOWERCASE_HUFFMAN" : "000",
+                                        "AIRPORT_HUFFMAN" : "001",
+                                        "PASSPORT_HUFFMAN" : "010",
+                                        "LOCATION_HUFFMAN" : "011",
+                                        "ADDRESS_HUFFMAN" : "100",
+                                        #   "LETTERS_HUFFMAN" : "011",
+                                        #   "NUMBER_HUFFMAN" : "100",
+                                        #  "PRINTTABLE_HUFFMAN" : "110"
+                                        }
+
+        # Group 6
+        self.g6_vocab_list = []
+        for ng in range(1, 10):
+            with open("messages/agent6/corpus-ngram-"+str(ng)+".txt", 'r') as f:
+                line = f.readline()
+                while line:
+                    line = line.strip()
+                    words = line.split(" ")
+                    for word in words:
+                        self.g6_vocab_list.append(word)
+                    line = f.readline()
+        # Group 7
+        with open('messages/agent7/30k.txt', 'r') as f:
+            self.g7_vocab_list = []
+            line = f.readline()
+            while line:
+                line = line.strip()
+                if self.english_dict.check(line):
+                    self.g7_vocab_list.append(line)
+                line = f.readline()
+
+        # Group 8
+        self.g8_vocab_list = []
+        with open('messages/agent8/names.txt', 'r') as f:
+            self.g8_vocab_list.extend(f.read().splitlines())
+        with open('messages/agent8/places.txt', 'r') as f:
+            self.g8_vocab_list.extend(f.read().splitlines())
+        
+        self.g6_vocab_set = set(self.g6_vocab_list)
+        self.g7_vocab_set = set(self.g7_vocab_list)
+        self.g8_vocab_set = set(self.g8_vocab_list)
+        
+        
+        self.g6_vocab_list = list(self.g6_vocab_set)
+        self.g7_vocab_list = list(self.g7_vocab_set)
+        self.g8_vocab_list = list(self.g8_vocab_set)
+        self.dict_encoding = DictEncoding(self.g6_vocab_list, self.g7_vocab_list, self.g8_vocab_list)
+        
+
     
     def compute_pearson8_checksum(self, data) -> str:
         if len(data) % 8 != 0:
@@ -707,54 +709,86 @@ class Agent:
                     crc = crc << 1
         return format(crc, '016b')
 
-        
+    
+    def compose_huffman_bin(self, data, checksum, scheme_id, truncated):
+        return "1" + data + checksum + scheme_id + truncated
+    
+    def decompose_huffman_bin(self, msg):
+        msg = msg[1:]
+        data = msg[:-12]
+        checksum = msg[-12:-4]
+        scheme_id = msg[-4:-1]
+        truncated = msg[-1:]
+        if data == "" or scheme_id == "" or truncated == "" or checksum == "":
+            return None
+        else:
+            return data, scheme_id, truncated, checksum
+    
+    def compose_dict_bin(self, data, scheme_id, truncated):
+        return "1" + data + scheme_id + truncated
+    
+    def decompose_dict_bin(self, msg):
+        msg = msg[1:]
+        data = msg[:-4]
+        scheme_id = msg[-4:-1]
+        truncated = msg[-1]
+        # if data == "" or scheme_id == "" or truncated == "":
+        #     return None
+        # else:
+        return data, scheme_id, truncated
 
     def encode(self, message):
         """
         FYI: use 'encode_msg_bin' to compress a message to binary
         """
+        truncated = "0"
         ms = set(message)
-        if ms.issubset(ASCII_Frequencies.G1_lower_num_punc.keys()):
+        tokens = set(message.split())
+        if tokens.issubset(self.g6_vocab_set):
+            #msg_binary, scheme_id, truncated = self.dict_encoding.encode(message, 6)
+            return self.dict_encoding.encode(message, 6)
+        elif tokens.issubset(self.g7_vocab_set):
+            #msg_binary, scheme_id, truncated = self.dict_encoding.encode(message, 7)
+            return self.dict_encoding.encode(message, 7)
+        elif tokens.issubset(self.g8_vocab_set):
+            #msg_binary, scheme_id, truncated = self.dict_encoding.encode(message, 8)
+            return self.dict_encoding.encode(message, 8)
+        elif ms.issubset(ASCII_Frequencies.G1_lower_num_punc.keys()):
             encoding = LOWERCASE_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["LOWERCASE_HUFFMAN"]
+            msg_binary = encode_msg_bin(message, encoding)
         elif ms.issubset(ASCII_Frequencies.G2_airport.keys()):
             encoding = AIRPORT_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["AIRPORT_HUFFMAN"]
+            msg_binary = encode_msg_bin(message, encoding)
         elif ms.issubset(ASCII_Frequencies.G3_password.keys()):
             encoding = PASSPORT_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["PASSPORT_HUFFMAN"]
+            msg_binary = encode_msg_bin(message, encoding)
         elif ms.issubset(ASCII_Frequencies.G4_location.keys()):
             encoding = LOCATION_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["LOCATION_HUFFMAN"]
+            msg_binary = encode_msg_bin(message, encoding)
         elif ms.issubset(ASCII_Frequencies.G5_addresses.keys()):
             encoding = ADDRESS_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["ADDRESS_HUFFMAN"]
+            msg_binary = encode_msg_bin(message, encoding)
         # elif ms.issubset(ASCII_Frequencies.letter_freq_with_space.keys()):
         #     encoding = LETTERS_HUFFMAN
         #     scheme_id = self.encoding_to_scheme_id["LETTERS_HUFFMAN"]
         # elif ms.issubset(ASCII_Frequencies.num_freq.keys()):
         #     encoding = NUMBER_HUFFMAN
         #     scheme_id = self.encoding_to_scheme_id["NUMBER_HUFFMAN"]
-        else: # unlock for the time being
-            encoding = PRINTTABLE_HUFFMAN
-            scheme_id = self.encoding_to_scheme_id["PRINTTABLE_HUFFMAN"]
-        
-        msg_huffman_binary = encode_msg_bin(message, encoding)
-       
-        #print("encoded scheme id is ", scheme_id)
-        
-        
+        # else: # unlock for the time being
+        #     tokens = set(message.split())
+            
+        #print(message)
         # Calculate checksum before prepending the leading 1 bit
         # assert(len(self.compute_crc16_checksum(msg_huffman_binary)) == 16)
-        msg_huffman_binary += self.compute_pearson8_checksum(msg_huffman_binary)
-
-        # Appending 3-bit identifier for encoding scheme
-        msg_huffman_binary += scheme_id
-        
-        msg_huffman_binary = "1" + msg_huffman_binary
-        
-        cards = bin_to_cards(msg_huffman_binary)
-        
+        checksum = self.compute_pearson8_checksum(msg_binary)
+        msg_binary = self.compose_huffman_bin(msg_binary, checksum, scheme_id, truncated)
+        # print("Encoding Group {}".format(int(scheme_id, 2) + 1))
+        cards = bin_to_cards(msg_binary)
         return cards
 
 
@@ -764,31 +798,43 @@ class Agent:
         Given a binary str, use 'decode_bin_msg' to decode it
         see main below
         """
-        #print("after shuffling ", deck)
-      
+        # print("after shuffling ", deck)
+        tmp = []
+        for card in deck:
+            if card < self.dict_encoding.num_cards_used or card >= 50:
+                tmp.append(card)
+        if tmp[-2:] == [50, 51]:
+            deck = tmp[:-2]
+            num = self.dict_encoding.perm_number(deck)
+            num = format(num, 'b')
+            num, scheme_id, truncated = num[:-4], num[-4:-1], num[-1]
+            group_id = int(scheme_id, 2) + 1
+            if num != "" and scheme_id != "" and truncated != "" and group_id in self.dict_encoding.group_vocab:
+                return self.dict_encoding.decode(deck)
+        
         for perm_bound in range(1, 52):
             msg_cards = []
             for c in deck:
                 if c <= perm_bound:
                     msg_cards.append(c)
             bin_raw = cards_to_bin(msg_cards)
-            bin_raw = bin_raw[1:] # remove leading 1
-            bin_message, tail = bin_raw[:-11], bin_raw[-11:]
-            checksum, scheme_id = tail[:-3], tail[-3:]
-
-            if scheme_id in self.scheme_id_to_encoding and checksum == self.compute_pearson8_checksum(bin_message):
-               #print("scheme_id ", scheme_id)
-               decoded_message = decode_bin_msg(bin_message, self.scheme_id_to_encoding[scheme_id])
-               return decoded_message
+            if self.decompose_huffman_bin(bin_raw) is not None:
+                bin_msg, scheme_id, truncated, checksum = self.decompose_huffman_bin(bin_raw)
+                if checksum == self.compute_pearson8_checksum(bin_msg):
+                    if scheme_id in self.scheme_id_to_encoding:
+                        # print("scheme_id ", scheme_id)
+                        decoded_message = decode_bin_msg(bin_msg, self.scheme_id_to_encoding[scheme_id])
+                        if truncated == "1":
+                            decoded_message = "PARTIAL: " + decoded_message
+                        return decoded_message
         return "NULL"
 
 
 if __name__=='__main__':
     agent = Agent()
     encoded = agent.encode('abcd')
-    #print("ENCODED: ", encoded)
+    # print("ENCODED: ", encoded)
     decoded = agent.decode(encoded)
     print('Encoded msg: ', encoded)
     print('Decoded msg: ', decoded)
-    
     
