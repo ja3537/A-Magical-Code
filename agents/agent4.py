@@ -56,7 +56,7 @@ DictionaryPaths = {
 }
 
 EncodedBinary = namedtuple(
-    'EncodedBinary', ['message_bits', 'domain_bits', 'checksum_bits'])
+    'EncodedBinary', ['message_bits', 'domain_bits', 'length_bits', 'checksum_bits'])
 
 
 class Agent:
@@ -383,6 +383,14 @@ class Agent:
     def get_encoded_cards(self, deck: List[int], start_card_num: int) -> List[int]:
         return [c for c in deck if c >= start_card_num]
 
+    def get_num_cards_to_encode(self, int: int) -> int:
+        num_cards_to_encode = 1
+        for n in range(1, 52):
+            if math.factorial(n) >= int:
+                num_cards_to_encode = n
+                break
+        return num_cards_to_encode
+
 
     # -----------------------------------------------------------------------------
     #   Message Helpers
@@ -392,6 +400,9 @@ class Agent:
         hasher = PearsonHasher(1)
         hex_hash = hasher.hash(str(int(bit_string, 2)).encode()).hexdigest()
         return bin(int(hex_hash, 16))[2:].zfill(8)
+
+    def get_message_len_bits(self, message_binary: str) -> str:
+        return bin(self.get_num_cards_to_encode(int(message_binary, 2)))[2:].zfill(6)
 
     def check_decoded_message(self, message: str) -> str:
         if message == '':
@@ -404,9 +415,10 @@ class Agent:
 
     def get_binary_parts(self, binary: str) -> EncodedBinary:
         checksum_bits = binary[-8:]
-        domain_bits = binary[-11:-8]
-        message_bits = binary[:-11]
-        return EncodedBinary(message_bits, domain_bits, checksum_bits)
+        length_bits = binary[-14:-8]
+        domain_bits = binary[-17:-14]
+        message_bits = binary[:-17]
+        return EncodedBinary(message_bits, domain_bits, length_bits, checksum_bits)
 
 
     # -----------------------------------------------------------------------------
@@ -419,17 +431,16 @@ class Agent:
         #     [self.word2abrev[word] if word in self.word2abrev else word for word in message.split(" ")])
 
         domain = self.get_message_domain(message)
-        binary_repr = self.message_to_binary(message, domain)
-        binary_repr = '1' + binary_repr + \
-            self.domain_to_binary(domain) + self.get_hash(binary_repr)
+        
+        message_binary = self.message_to_binary(message, domain)
+        domain_binary = self.domain_to_binary(domain)
+        length_binary = self.get_message_len_bits(message_binary)
+        checksum_binary = self.get_hash(message_binary + domain_binary + length_binary)
+        
+        binary_repr = '1' + message_binary + domain_binary + length_binary + checksum_binary
         integer_repr = int(binary_repr, 2)
 
-        num_cards_to_encode = 1
-        for n in range(1, 52):
-            if math.factorial(n) >= integer_repr:
-                num_cards_to_encode = n
-                break
-        message_start_idx = len(deck) - num_cards_to_encode
+        message_start_idx = len(deck) - self.get_num_cards_to_encode(integer_repr)
         message_cards = self.num_to_cards(
             integer_repr, deck[message_start_idx:])
 
@@ -439,23 +450,22 @@ class Agent:
         message = ''
         domain = None
         match_count = 0
-        for n in range(1, 51):
+        for n in range(3, 51):
             encoded_cards = self.get_encoded_cards(deck, n)
             integer_repr = self.cards_to_num(encoded_cards)
             binary_repr = bin(int(integer_repr))[3:]
             parts = self.get_binary_parts(binary_repr)
             domain_int = int(parts.domain_bits, 2) if parts.domain_bits else MAX_DOMAIN_VALUE + 1
 
-            if (len(parts.domain_bits) + len(parts.checksum_bits) == 11 
-                and domain_int <= MAX_DOMAIN_VALUE 
+            if (domain_int <= MAX_DOMAIN_VALUE 
                 and parts.message_bits 
-                and parts.checksum_bits == self.get_hash(parts.message_bits)
+                and parts.checksum_bits == self.get_hash(parts.message_bits + parts.domain_bits + parts.length_bits)
             ):
                 try:
                     domain = Domain(domain_int)
                     message = self.binary_to_message(parts.message_bits, domain)
                     match_count += 1
-                    if domain == self.get_message_domain(message) and match_count > 3:
+                    if domain == self.get_message_domain(message) and match_count >= 3:
                         break
                 except:
                     continue
