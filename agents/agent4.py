@@ -172,7 +172,7 @@ class Agent:
         elif domain == Domain.WARTIME_NEWS:
             pass
         elif domain == Domain.SENTENCE:
-            return self.binary_to_sentence(message)
+            return self.binary_to_sentence(binary)
         elif domain == Domain.NAME_PLACE:
             return self.binary_to_name_place(binary)
         else:
