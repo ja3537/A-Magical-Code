@@ -436,6 +436,7 @@ class Agent:
     def decode(self, deck: List[int]) -> str:
         message = ''
         domain = None
+        match_count = 0
         for n in range(1, 51):
             encoded_cards = self.get_encoded_cards(deck, n)
             integer_repr = self.cards_to_num(encoded_cards)
@@ -451,7 +452,8 @@ class Agent:
                 try:
                     domain = Domain(domain_int)
                     message = self.binary_to_message(parts.message_bits, domain)
-                    if domain == self.get_message_domain(message):
+                    match_count += 1
+                    if domain == self.get_message_domain(message) and match_count >= 2:
                         break
                 except:
                     continue
