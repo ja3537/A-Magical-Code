@@ -220,6 +220,14 @@ class Agent:
                       for i in range(0, len(binary), bits_per_word)]
         return ' '.join([dict[bits] for bits in words_bits])
 
+    def airport_code_to_binary(self, airport_code: str) -> str:
+        dict = self.word_to_binary_dicts[Domain.AIRPORT]
+        return dict[airport_code]
+
+    def binary_to_airport_code(self, binary: str) -> str:
+        dict = self.binary_to_word_dicts[Domain.AIRPORT]
+        return dict[binary]
+
     def latlong_to_binary(self, message):
         # message: 18.3419 N, 64.9332 W
         # get first number (remove the decimal point), max 7
