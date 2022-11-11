@@ -467,14 +467,18 @@ def coordinate_coders() -> tuple[Callable[[str], str], Callable[[str], str]]:
             _,
         ) = extract_bit_fields(pad(message, 44, allow_over=True), [1, 21, 1, 21])
 
-        lat_deg = (
-            str(Decimal(from_bit_string(lat_deg_bits)) / 10_000).rstrip("0").rstrip(".")
-        )
-        long_deg = (
-            str(Decimal(from_bit_string(long_deg_bits)) / 10_000)
-            .rstrip("0")
-            .rstrip(".")
-        )
+        lat_deg = str(Decimal(from_bit_string(lat_deg_bits)) / 10_000)
+        if not "." in lat_deg:
+            lat_deg += ".0000"
+        else:
+            lat_trailing_zeros = 4 - len(lat_deg[lat_deg.index(".") + 1 :])
+            lat_deg = lat_deg + "0" * lat_trailing_zeros
+        long_deg = str(Decimal(from_bit_string(long_deg_bits)) / 10_000)
+        if not "." in long_deg:
+            long_deg += ".0000"
+        else:
+            long_trailing_zeros = 4 - len(long_deg[long_deg.index(".") + 1 :])
+            long_deg = long_deg + "0" * long_trailing_zeros
 
         lat_dir = "S" if lat_dir_bit == "1" else "N"
         long_dir = "W" if long_dir_bit == "1" else "E"
@@ -793,7 +797,9 @@ class Agent:
                     unshuffled_deck.remove(current_card)
                     unshuffled_deck.append(current_card)
                     new_decoded = to_bit_string(bottom_cards_decode(unshuffled_deck, c))
-                    passes_checksum, encoding_id, message = check_and_remove(new_decoded)
+                    passes_checksum, encoding_id, message = check_and_remove(
+                        new_decoded
+                    )
                     if passes_checksum:
                         self.total_decodes += 1
                         if encoding_id >= len(CHARACTER_ENCODINGS):
