@@ -134,17 +134,21 @@ class Agent:
     def get_domain_frequencies(self, domain: Domain) -> Dict[Domain, Dict[str, float]]:
         return DomainFrequencies[domain] if domain in DomainFrequencies.keys() else DomainFrequencies[Domain.ALL]
 
+    # -----------------------------------------------------------------------------
+    #   Message -> Binary & Binary -> Message
+    # -----------------------------------------------------------------------------
+
     def message_to_binary(self, message: str, domain: Domain) -> str:
         if domain == Domain.ALL:
             return self.huff_string_to_binary(message, domain)
         elif domain == Domain.AIRPORT:
             pass
         elif domain == Domain.PASSWORD:
-            pass
+            return self.huff_string_to_binary(message, domain)
         elif domain == Domain.LAT_LONG:
             return self.lat_long_to_binary(message)
         elif domain == Domain.STREET:
-            pass
+            return self.street_to_binary(message)
         elif domain == Domain.WARTIME_NEWS:
             pass
         elif domain == Domain.SENTENCE:
@@ -160,11 +164,11 @@ class Agent:
         elif domain == Domain.AIRPORT:
             pass
         elif domain == Domain.PASSWORD:
-            pass
+            return self.huff_binary_to_string(binary, domain)
         elif domain == Domain.LAT_LONG:
             return self.binary_to_lat_long(binary)
         elif domain == Domain.STREET:
-            pass
+            return self.binary_to_street(binary)
         elif domain == Domain.WARTIME_NEWS:
             pass
         elif domain == Domain.SENTENCE:
@@ -271,6 +275,12 @@ class Agent:
         long_dir = 'E' if long_dir_bin == '0' else 'W'
 
         return lat_str + " " + lat_dir + ", " + long_str + " " + long_dir
+
+    def street_to_binary(self, message: str) -> str:
+        return self.huff_string_to_binary(message.lower(), Domain.STREET)
+
+    def binary_to_street(self, binary: str) -> str:
+        return self.huff_binary_to_string(binary, Domain.STREET).title()
 
     def deck_encoded(self, message_cards: List[int]) -> List[int]:
         result = []
