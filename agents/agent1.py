@@ -394,6 +394,10 @@ class Agent:
     def verify_msg(self, deck):
         num = self.perm.perm_to_num(deck)
         bit_total = bin(num)[2:]
+        
+        if len(bit_total) <= self.checksum_bits + 2:
+            return None
+        
         if bit_total[1] == "1":
             partial = True
         else:
@@ -426,36 +430,28 @@ class Agent:
         return ds_decks
 
     def decode(self, deck):
+        dque = deque([])
         for i in range(1, len(self.valid_cards_p) + 1):
             valid_cards = self.valid_cards_p[:i]
-                
-            try:
-                seq_encode = [c for c in deck if c in valid_cards]
-
-                # Try to recover message (unscramble if necessary)
-                max_trials = len(self.char_set) ^ 3 + 1  # Greater than depth 3 is ineffective (from our tests)
-                dque = deque([])
-                dque.append(seq_encode)
-                decoded_str = "NULL"
-                while max_trials > 0 and len(dque) > 0:
-
-                    ddeck = dque.popleft()
-                    msg = self.verify_msg(ddeck)
-                    if msg is not None:
-                        decoded_str = msg
-                        break
-                    else:
-                        dque.extend(self.deshuffle1(ddeck))
-                        max_trials -= 1
-
-                # TODO: Add case for partial strings
-                if decoded_str != "NULL":
-                    return decoded_str
             
-            except:
-                continue
-        
-        return "NULL"
+            seq_encode = [c for c in deck if c in valid_cards]
+            dque.append(seq_encode)
+
+        # Try to recover message (unscramble if necessary)
+        max_trials = len(self.char_set) ^ 3 + 1  # Greater than depth 3 is ineffective (from our tests)
+        decoded_str = "NULL"
+        while max_trials > 0 and len(dque) > 0:
+
+            ddeck = dque.popleft()
+            msg = self.verify_msg(ddeck)
+            if msg is not None:
+                decoded_str = msg
+                break
+            else:
+                dque.extend(self.deshuffle1(ddeck))
+                max_trials -= 1
+                
+        return decoded_str
 
 
 if __name__ == "__main__":
