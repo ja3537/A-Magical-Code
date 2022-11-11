@@ -141,7 +141,7 @@ class Agent:
         if domain == Domain.ALL:
             return self.huff_string_to_binary(message, domain)
         elif domain == Domain.AIRPORT:
-            pass
+            return self.airport_to_binary(message)
         elif domain == Domain.PASSWORD:
             return self.huff_string_to_binary(message, domain)
         elif domain == Domain.LAT_LONG:
@@ -161,7 +161,7 @@ class Agent:
         if domain == Domain.ALL:
             return self.huff_binary_to_string(binary, domain)
         elif domain == Domain.AIRPORT:
-            pass
+            return self.binary_to_airport(binary)
         elif domain == Domain.PASSWORD:
             return self.huff_binary_to_string(binary, domain)
         elif domain == Domain.LAT_LONG:
