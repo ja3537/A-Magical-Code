@@ -242,6 +242,29 @@ class Agent:
         dict = self.binary_to_word_dicts[Domain.AIRPORT]
         return dict[binary]
 
+    def airport_to_binary(self, message):
+        # message: MVM 7PRQ 02202025
+        message_list = message.split()
+        code1_bin = self.airport_code_to_binary(message_list[0]) # 11 bits zfilled already
+        code2_bin = self.huff_string_to_binary(message_list[1], Domain.AIRPORT)
+        num_bin = bin(int(message_list[2]))[2:].zfill(24) # max is 12282025, thus 24 bits
+        binary_repr = code1_bin + code2_bin + num_bin
+        return binary_repr
+
+    def binary_to_airport(self, binary):
+        code2_len = len(binary) - 11 - 24
+
+        code1_bin = binary[:11]
+        code2_bin = binary[11:11 + code2_len]
+        num_bin = binary[-24:]
+
+        code1_str = self.binary_to_airport_code(code1_bin)
+        code2_str = self.huff_binary_to_string(code2_bin, Domain.AIRPORT)
+        num_str = str(int(num_bin, 2)).zfill(8)
+
+        message = code1_str + " " + code2_str + ", " + num_str
+        return message
+
     def lat_long_to_binary(self, message: str) -> str:
         # message: 18.3419 N, 64.9332 W
         # get first number (remove the decimal point), max 7
