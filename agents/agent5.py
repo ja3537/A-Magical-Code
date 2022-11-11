@@ -325,43 +325,52 @@ class ASCII_Frequencies:
     }
 
     G3_password = {
-        'e': 0.11424631235218419,
-        't': 0.08398604549695467,
-        'a': 0.0812777813006228,
-        'n': 0.07302683908909208,
-        'i': 0.07272063190532521,
-        'o': 0.0719035187502912,
-        's': 0.06884649289752395,
-        'r': 0.0683668720326455,
-        'l': 0.042701142629641024,
-        'd': 0.04231310639072306,
-        'h': 0.034753800509678114,
-        'c': 0.03317524823302224,
-        'u': 0.02553924338147595,
-        'm': 0.024069600278942047,
-        'p': 0.023037191768114793,
-        'f': 0.02089861926715143,
-        'g': 0.016990083462272265,
-        'y': 0.014454476049316765,
-        'b': 0.013728358822004733,
-        'w': 0.01269258632124321,
-        'v': 0.010374965456028363,
-        '0': 0.007853655000293508,
-        'k': 0.006562303364275874,
-        '1': 0.006551790895731282,
-        '2': 0.00365716165704089,
-        '8': 0.003387201464815777,
-        '5': 0.00335288876748623,
-        '9': 0.0032405315036816346,
-        'x': 0.003060305742953156,
-        '3': 0.002901273118810574,
-        '6': 0.0025474654774737984,
-        '4': 0.002439481400583753,
-        '7': 0.0024206430569518452,
-        'q': 0.001338195195852335,
-        'j': 0.000819467947988006,
-        'z': 0.0007646349120594161,
-        '@': 8.409974835673296e-08
+        'e': 0.11187575637662296,
+        't': 0.08224337548934145,
+        'a': 0.07959130647114558,
+        'n': 0.0715115673379537,
+        'i': 0.07121171380582157,
+        'o': 0.07041155535534208,
+        's': 0.0674179613171649,
+        'r': 0.06694829235431142,
+        'l': 0.041815114479236117,
+        'd': 0.04143512980544933,
+        'h': 0.034032675881885216,
+        'c': 0.03248687780495026,
+        'u': 0.025009316377594737,
+        'm': 0.02357016766185482,
+        'p': 0.022559181130557347,
+        'f': 0.020464982979338436,
+        'g': 0.016637547410582335,
+        'y': 0.014154552630636202,
+        'b': 0.013443501986189937,
+        'w': 0.012429221266129685,
+        'v': 0.01015968991801176,
+        '0': 0.007690695440307446,
+        'k': 0.006426138728994914,
+        '1': 0.006415844389111224,
+        'C': 0.0038816249739038484,
+        '2': 0.0035812773134572965,
+        '8': 0.003316918665244126,
+        '5': 0.0032833179398637606,
+        'A': 0.003219081258989532,
+        '9': 0.003173292035186877,
+        'x': 0.002996805872220889,
+        '3': 0.00284107309846042,
+        'I': 0.0027169645368226476,
+        '-': 0.0026983523703129355,
+        '6': 0.0024946067953349345,
+        '4': 0.0023888633360496666,
+        '7': 0.0023704158789780933,
+        'M': 0.002356333222017205,
+        'P': 0.001804886023127676,
+        'F': 0.0015855754062455347,
+        'D': 0.0014198777114776539,
+        'q': 0.0013104282898342568,
+        'O': 0.0010668230308266066,
+        'j': 0.0008024643826134363,
+        'z': 0.000748769105780107,
+        '@': 8.235471906952343e-08
     }
 
     G4_location = {
@@ -722,30 +731,39 @@ class Agent:
         tokens = set(message.split())
         if tokens.issubset(self.g6_vocab_set):
             #msg_binary, scheme_id, truncated = self.dict_encoding.encode(message, 6)
+            print('word corpus in')
             return self.dict_encoding.encode(message, 6)
         elif tokens.issubset(self.g7_vocab_set):
             #msg_binary, scheme_id, truncated = self.dict_encoding.encode(message, 7)
+            print('30k dict in')
             return self.dict_encoding.encode(message, 7)
         elif tokens.issubset(self.g8_vocab_set):
+            print('name and places in')
             #msg_binary, scheme_id, truncated = self.dict_encoding.encode(message, 8)
             return self.dict_encoding.encode(message, 8)
-        elif ms.issubset(ASCII_Frequencies.G1_lower_num_punc.keys()):
-            encoding = LOWERCASE_HUFFMAN
-            scheme_id = self.encoding_to_scheme_id["LOWERCASE_HUFFMAN"]
-            msg_binary = encode_msg_bin(message, encoding)
         elif ms.issubset(ASCII_Frequencies.G2_airport.keys()):
             encoding = AIRPORT_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["AIRPORT_HUFFMAN"]
+            print('airport in!!')
             msg_binary = encode_msg_bin(message, encoding)
+        elif ms.issubset(ASCII_Frequencies.G1_lower_num_punc.keys()):
+            print('lower&punc in')
+            encoding = LOWERCASE_HUFFMAN
+            scheme_id = self.encoding_to_scheme_id["LOWERCASE_HUFFMAN"]
+            msg_binary = encode_msg_bin(message, encoding)
+        
         elif ms.issubset(ASCII_Frequencies.G3_password.keys()):
             encoding = PASSPORT_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["PASSPORT_HUFFMAN"]
+            print('password in')
             msg_binary = encode_msg_bin(message, encoding)
         elif ms.issubset(ASCII_Frequencies.G4_location.keys()):
+            print('location in')
             encoding = LOCATION_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["LOCATION_HUFFMAN"]
             msg_binary = encode_msg_bin(message, encoding)
         elif ms.issubset(ASCII_Frequencies.G5_addresses.keys()):
+            print('addresses in')
             encoding = ADDRESS_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["ADDRESS_HUFFMAN"]
             msg_binary = encode_msg_bin(message, encoding)
