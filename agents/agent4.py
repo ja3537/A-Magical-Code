@@ -103,7 +103,8 @@ class Agent:
             matching_domains.append(Domain.PASSWORD)
 
         # Domain.LAT_LONG
-        if all([ch in list('NSEW,. ' + string.digits) for ch in message]):
+        if all([ch in list('NSEW,. ' + string.digits) for ch in message]) and \
+               any(ch.isdigit() for ch in message) and (',' in message) and ("." in message) and any(ch in "NSEW" for ch in message):
             matching_domains.append(Domain.LAT_LONG)
 
         # Domain.STREET
