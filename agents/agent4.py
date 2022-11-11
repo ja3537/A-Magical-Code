@@ -73,8 +73,8 @@ class Agent:
         result.extend(message_cards)
         return result
 
-    def get_encoded_cards(self, deck: List[int], start_idx: int) -> List[int]:
-        return [c for c in deck if c > start_idx]
+    def get_encoded_cards(self, deck: List[int], start_card_num: int) -> List[int]:
+        return [c for c in deck if c >= start_card_num]
 
     def cards_to_num(self, cards: List[int]) -> int:
         num_cards = len(cards)
