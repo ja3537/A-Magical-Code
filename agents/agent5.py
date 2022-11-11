@@ -394,72 +394,75 @@ class ASCII_Frequencies:
     }
 
     G5_addresses = {
-        ' ': 0.1718380167599127,
-        'e': 0.08829825299765842,
-        't': 0.06491081366987489,
-        'a': 0.0628176607945765,
-        'n': 0.05644070413082936,
-        'i': 0.056204043893616634,
-        'o': 0.05557251660310336,
-        's': 0.053209814152490174,
-        'r': 0.05283912661257692,
-        'l': 0.03300269582074661,
-        'd': 0.03270279185631389,
-        'h': 0.02686038443476325,
-        'c': 0.025640358987775367,
-        'u': 0.019738672759210717,
-        'm': 0.01860282061823506,
-        'p': 0.017804896676454386,
-        'f': 0.01615204494009558,
-        'g': 0.013131230733981479,
-        '.': 0.011337136840121092,
-        'y': 0.011171520173156514,
-        'b': 0.01061032146728047,
-        'w': 0.009809797577823746,
-        ',': 0.008854706799025669,
-        'v': 0.008018563626407018,
-        '0': 0.006069902843205279,
-        'k': 0.0050718479290604275,
-        '1': 0.005063723092572761,
-        'S': 0.003168491234113913,
-        'T': 0.0031484066383164035,
-        'C': 0.003063583345385174,
-        '2': 0.00282653311602104,
-        '8': 0.002617887315017785,
-        '5': 0.0025913678487220443,
-        'A': 0.0025406688690390103,
-        '9': 0.0025045295963418736,
-        'x': 0.002365237399597333,
-        '3': 0.0022423248732119263,
-        'I': 0.002144371844516629,
-        '-': 0.002129682140146929,
-        '6': 0.00196887537638305,
-        '4': 0.0018854170559817482,
-        '7': 0.0018708573489958514,
-        'M': 0.0018597425726807246,
-        'B': 0.0017830441162371606,
-        'P': 0.0014245113317094492,
-        'E': 0.001326818297781757,
-        'N': 0.001308423667973682,
-        'F': 0.0012514198151762194,
-        'R': 0.0011318872207696819,
-        'D': 0.0011206424470707526,
-        'U': 0.0010692284817768042,
-        'q': 0.001034259185533891,
-        'L': 0.001030099269252206,
-        'G': 0.0009547657853385699,
-        'J': 0.0009039368082717334,
-        'H': 0.0008975669364654035,
-        'O': 0.0008419930548897703,
-        'W': 0.0008253533897630309,
-        'j': 0.0006333472538865155,
-        'z': 0.0005909681067668512,
-        'K': 0.0003905121409431635,
-        'V': 0.0002621397244380457,
-        'Y': 0.0002583698003077688,
-        'Q': 0.0001025679358202916,
-        'Z': 8.839822098580264e-05,
-        'X': 6.740364350167453e-05
+        ' ': 0.17150697380104257,
+        'e': 0.08812814794473378,
+        't': 0.06478576411317542,
+        'a': 0.06269664366058693,
+        'n': 0.056331972093248354,
+        'i': 0.056095767777877906,
+        'o': 0.05546545711373638,
+        's': 0.05310730636841477,
+        'r': 0.052737332951617824,
+        'l': 0.03293911669965808,
+        'd': 0.03263979049501121,
+        'h': 0.02680863837002545,
+        'c': 0.025590963280900648,
+        'u': 0.019700646548494447,
+        'm': 0.018566982606967763,
+        'p': 0.017770595851821464,
+        'f': 0.016120928305665125,
+        'g': 0.013105933645725057,
+        '.': 0.01131529604263381,
+        'y': 0.011149998433305627,
+        'b': 0.01058988086700283,
+        'w': 0.00979089917293458,
+        ',': 0.008837648359956434,
+        'v': 0.008003116002657478,
+        '0': 0.006058209280656333,
+        'k': 0.005062077101992972,
+        '1': 0.00505396791786188,
+        'S': 0.0031623871907067976,
+        'T': 0.0031423412875347377,
+        'C': 0.0030576814052061356,
+        '2': 0.0028210878489973905,
+        '8': 0.0026128440005109437,
+        '5': 0.002586375623507059,
+        'A': 0.0025357743145290436,
+        '9': 0.002499704663513946,
+        'x': 0.002360680810770502,
+        '3': 0.0022380050732353396,
+        'I': 0.0021402407493508924,
+        '-': 0.0021255793444418776,
+        '6': 0.0019650823721193015,
+        '4': 0.001881784832724723,
+        '7': 0.0018672531747618059,
+        'M': 0.001856159810870472,
+        'B': 0.0017796091126729618,
+        "'": 0.0015433399238294605,
+        'P': 0.0014217670353361268,
+        'E': 0.0013242622053438746,
+        'N': 0.001305903012471082,
+        'F': 0.0012490089766073393,
+        'R': 0.0011297066596707114,
+        'D': 0.00111848354883328,
+        'U': 0.0010671686316517288,
+        'q': 0.001032266703151508,
+        'L': 0.0010281148008763888,
+        'G': 0.0009529264456129023,
+        'J': 0.0009021953896887897,
+        'H': 0.0008958377893300135,
+        'O': 0.0008403709698733431,
+        'W': 0.0008237633607728663,
+        'j': 0.0006321271213868962,
+        'z': 0.0005898296169591196,
+        '/': 0.0005318327320535485,
+        'K': 0.0003897598260768137,
+        'V': 0.0002616347168055576,
+        'Y': 0.0002578720553687308,
+        'Q': 0.00010237034047090746,
+        '#': 3.178800179388128e-06,
+        '&': 2.075951137559594e-06,
+        '+': 1.5569633531696952e-06
     }
 
 
@@ -469,11 +472,7 @@ encodings = {
     'password': ASCII_Frequencies.G3_password,
     'location': ASCII_Frequencies.G4_location,
     'address': ASCII_Frequencies.G5_addresses,
-    # 'lower': ASCII_Frequencies.lower_freq_with_space,
-    # 'upper': ASCII_Frequencies.upper_freq_with_space,
     'printable': ASCII_Frequencies.all_printable_ascii,
-    # 'number': ASCII_Frequencies.num_freq,
-    # 'letters': ASCII_Frequencies.letter_freq_with_space
 }
 
 
@@ -490,8 +489,6 @@ PASSPORT_HUFFMAN = generate_huffman_code('password')
 LOCATION_HUFFMAN = generate_huffman_code('location')
 ADDRESS_HUFFMAN = generate_huffman_code('address')
 PRINTTABLE_HUFFMAN = generate_huffman_code('printable')
-# NUMBER_HUFFMAN = generate_huffman_code('number')
-# LETTERS_HUFFMAN = generate_huffman_code('letters')
 
 
 def encode_msg_bin(msg, encoding) -> str:
@@ -731,39 +728,30 @@ class Agent:
         tokens = set(message.split())
         if tokens.issubset(self.g6_vocab_set):
             #msg_binary, scheme_id, truncated = self.dict_encoding.encode(message, 6)
-            print('word corpus in')
             return self.dict_encoding.encode(message, 6)
         elif tokens.issubset(self.g7_vocab_set):
             #msg_binary, scheme_id, truncated = self.dict_encoding.encode(message, 7)
-            print('30k dict in')
             return self.dict_encoding.encode(message, 7)
         elif tokens.issubset(self.g8_vocab_set):
-            print('name and places in')
             #msg_binary, scheme_id, truncated = self.dict_encoding.encode(message, 8)
             return self.dict_encoding.encode(message, 8)
         elif ms.issubset(ASCII_Frequencies.G2_airport.keys()):
             encoding = AIRPORT_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["AIRPORT_HUFFMAN"]
-            print('airport in!!')
             msg_binary = encode_msg_bin(message, encoding)
         elif ms.issubset(ASCII_Frequencies.G1_lower_num_punc.keys()):
-            print('lower&punc in')
             encoding = LOWERCASE_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["LOWERCASE_HUFFMAN"]
             msg_binary = encode_msg_bin(message, encoding)
-        
         elif ms.issubset(ASCII_Frequencies.G3_password.keys()):
             encoding = PASSPORT_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["PASSPORT_HUFFMAN"]
-            print('password in')
             msg_binary = encode_msg_bin(message, encoding)
         elif ms.issubset(ASCII_Frequencies.G4_location.keys()):
-            print('location in')
             encoding = LOCATION_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["LOCATION_HUFFMAN"]
             msg_binary = encode_msg_bin(message, encoding)
-        elif ms.issubset(ASCII_Frequencies.G5_addresses.keys()):
-            print('addresses in')
+        else:
             encoding = ADDRESS_HUFFMAN
             scheme_id = self.encoding_to_scheme_id["ADDRESS_HUFFMAN"]
             msg_binary = encode_msg_bin(message, encoding)
@@ -778,8 +766,6 @@ class Agent:
             return self.encode(message[:-1], truncated="1")
         else:
             return cards
-
-
 
     def decode(self, deck):
         """
