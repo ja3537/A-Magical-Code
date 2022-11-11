@@ -27,6 +27,8 @@ class Domain(Enum):
 
 MAX_DOMAIN_VALUE = max([d.value for d in Domain])
 
+MAX_CARDS_TO_ENCODE = 40
+
 DomainFrequencies = {
     # reference of English letter frequencies: https://pi.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
     # Group 1: lowercase letters, period, space, and numbers
@@ -58,7 +60,7 @@ DictionaryPaths = {
 }
 
 EncodedBinary = namedtuple(
-    'EncodedBinary', ['message_bits', 'domain_bits', 'length_bits', 'checksum_bits'])
+    'EncodedBinary', ['message_bits', 'partial_bit', 'domain_bits', 'length_bits', 'checksum_bits'])
 
 
 class Agent:
@@ -494,8 +496,9 @@ class Agent:
         checksum_bits = binary[-8:]
         length_bits = binary[-14:-8]
         domain_bits = binary[-17:-14]
-        message_bits = binary[:-17]
-        return EncodedBinary(message_bits, domain_bits, length_bits, checksum_bits)
+        partial_bit = binary[-18:-17]
+        message_bits = binary[:-18]
+        return EncodedBinary(message_bits, partial_bit, domain_bits, length_bits, checksum_bits)
 
     # -----------------------------------------------------------------------------
     #   Encode & Decode
@@ -506,29 +509,39 @@ class Agent:
 
         domain = self.get_message_domain(message)
         message = self.message_shorten(message, domain)
+        
+        message_fits = False
+        partial_bit = '0'
+        while not message_fits:
+            message_binary = self.message_to_binary(message, domain)
+            domain_binary = self.domain_to_binary(domain)
+            length_binary = self.get_message_len_bits(message_binary)
+            checksum_binary = self.get_hash(
+                message_binary + partial_bit + domain_binary + length_binary)
 
-        message_binary = self.message_to_binary(message, domain)
-        domain_binary = self.domain_to_binary(domain)
-        length_binary = self.get_message_len_bits(message_binary)
-        checksum_binary = self.get_hash(
-            message_binary + domain_binary + length_binary)
+            binary_repr = '1' + message_binary + \
+                partial_bit + domain_binary + length_binary + checksum_binary
+            integer_repr = int(binary_repr, 2)
 
-        binary_repr = '1' + message_binary + \
-            domain_binary + length_binary + checksum_binary
-        integer_repr = int(binary_repr, 2)
+            num_cards_to_encode = self.get_num_cards_to_encode(integer_repr)
+            if num_cards_to_encode == 1 or num_cards_to_encode > MAX_CARDS_TO_ENCODE:
+                message = message[:-1]
+                partial_bit = '1'
+            else:
+                message_fits = True
+            
+            message_start_idx = len(deck) - num_cards_to_encode
 
-        message_start_idx = len(
-            deck) - self.get_num_cards_to_encode(integer_repr)
-        message_cards = self.num_to_cards(
-            integer_repr, deck[message_start_idx:])
-
+            message_cards = self.num_to_cards(
+                integer_repr, deck[message_start_idx:])
+                
         return self.get_encoded_deck(message_cards)
 
     def decode(self, deck: List[int]) -> str:
         message = ''
         domain = None
         match_count = 0
-        for n in range(3, 51):
+        for n in range(3, MAX_CARDS_TO_ENCODE):
             encoded_cards = self.get_encoded_cards(deck, n)
             integer_repr = self.cards_to_num(encoded_cards)
             binary_repr = bin(int(integer_repr))[3:]
@@ -538,7 +551,7 @@ class Agent:
 
             if (domain_int <= MAX_DOMAIN_VALUE
                         and parts.message_bits
-                        and parts.checksum_bits == self.get_hash(parts.message_bits + parts.domain_bits + parts.length_bits)
+                        and parts.checksum_bits == self.get_hash(parts.message_bits + parts.partial_bit + parts.domain_bits + parts.length_bits)
                     ):
                 try:
                     domain = Domain(domain_int)
@@ -552,4 +565,8 @@ class Agent:
 
         message = self.check_decoded_message(message)
         message = self.message_unshorten(message, domain)
+
+        if parts.partial_bit:
+            message = 'PARTIAL: ' + message
+
         return message
