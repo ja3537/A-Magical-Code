@@ -9,7 +9,7 @@ from math import ceil, factorial, log2
 from operator import indexOf
 from pprint import pprint
 from random import Random
-from string import ascii_letters, digits, punctuation
+from string import ascii_letters, digits, punctuation, ascii_uppercase
 from typing import Callable, Dict, Optional
 
 # ================
@@ -512,6 +512,91 @@ def agent1_coders():
     return encode, decode
 
 
+def flight_coders():
+    PATTERN = re.compile(
+        r"(?P<airport>[A-Z]{3}) (?P<res>[A-Z0-9]{4}) (?P<month>\d{2})(?P<day>\d{2})(?P<year>\d{4})"
+    )
+
+    airports: list[str] = []
+    airport_length: int = 0
+
+    res_domain = ascii_uppercase + digits
+    res_char_length = int(ceil(log2(len(res_domain))))
+
+    month_domain = list(map(str, range(1, 13)))
+    month_length = 4
+    day_domain = list(map(str, range(1, 29)))
+    day_length = 5
+    year_domain = list(map(str, range(2023, 2026)))
+    year_length = 3
+
+    with open(
+        path.join(path.dirname(__file__), "../messages/agent2/airportcodes.txt")
+    ) as airport_dict:
+        airports = [word.strip() for word in airport_dict]
+        airport_length = int(ceil(log2(len(airports))))
+
+    def encode(message: str) -> str:
+        match = PATTERN.search(message)
+        if match is None:
+            raise ValueError()
+        airport_bits = pad(
+            to_bit_string(airports.index(match.group("airport"))), airport_length
+        )
+        res_bits = ""
+        for char in match.group("res"):
+            char_bits = pad(to_bit_string(res_domain.index(char)), res_char_length)
+            res_bits += char_bits
+
+        month_bits = pad(
+            to_bit_string(month_domain.index(match.group("month"))), month_length
+        )
+        day_bits = pad(to_bit_string(day_domain.index(match.group("day"))), day_length)
+        year_bits = pad(
+            to_bit_string(year_domain.index(match.group("year"))), year_length
+        )
+
+        encoded = airport_bits + res_bits + month_bits + day_bits + year_bits
+
+        return encoded
+
+    def decode(message: str) -> str:
+        field_lengths = [
+            year_length,
+            day_length,
+            month_length,
+            4 * res_char_length,
+            airport_length,
+        ]
+        if len(message) != sum(field_lengths):
+            raise ValueError()
+
+        year_bits, day_bits, month_bits, res_bits, airport_bits, _ = extract_bit_fields(
+            message, field_lengths
+        )
+
+        try:
+            airport = airports[from_bit_string(airport_bits)]
+            res = ""
+            for i in range(4):
+                res += res_domain[
+                    from_bit_string(
+                        res_bits[i * res_char_length : (i + 1) * res_char_length]
+                    )
+                ]
+            month = month_domain[from_bit_string(month_bits)]
+            day = day_domain[from_bit_string(day_bits)]
+            year = year_domain[from_bit_string(year_bits)]
+
+            out = f"{airport} {res} {month}{day}{year}"
+
+            return out
+        except IndexError:
+            raise ValueError()
+
+    return encode, decode
+
+
 # ==============
 # Bits <-> Cards
 # ==============
@@ -717,6 +802,7 @@ CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
     dict_coders(),
     coordinate_coders(),
     agent1_coders(),
+    flight_coders(),
 ]
 
 CHECKSUM_BITS = 12
@@ -813,11 +899,12 @@ class Agent:
                     self.failed_decodes += 1
                     print("Failed to decode:", deck)
             else:
-                for i in range(len(encoded)):
+                # for i in range(len(encoded)):
+                for i in range(1):
                     current_card = encoded[i]
                     unshuffled_deck = encoded[:]
-                    unshuffled_deck.remove(current_card)
-                    unshuffled_deck.append(current_card)
+                    # unshuffled_deck.remove(current_card)
+                    # unshuffled_deck.append(current_card)
                     new_decoded = to_bit_string(bottom_cards_decode(unshuffled_deck, c))
                     passes_checksum, encoding_id, message = check_and_remove(
                         new_decoded
