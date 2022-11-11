@@ -14,11 +14,19 @@ DICT_SIZE = 27000
 SENTENCE_LEN = 6
 ENGLISH_DICTIONARY = enchant.Dict("en_US")
 
+# g1 + g4
+# g7 + g6 (1gram)
+# g2
+# g3
+# g5
+# g8
+
 class Domain_Info():
     def __init__(self):
         '''Store all inforamtion about all domains'''
         self.domains = dict()
-        self.dictionary = set()
+        self.dictionary67 = set() # share dictionary between g6 and g7
+        self.dictionary14 = set() # share dictioanry between g1 and g4
         self.add_g1_domain()
         self.add_g2_domain()
         self.add_g3_domain()
@@ -33,8 +41,10 @@ class Domain_Info():
         '''Add a new domain to the domain info object'''
         # So far, g1 didnt provide any domain just yet, assume ascii
         domain = " 0123456789"
-        domain+="abcdefghijklmnopqrstuvwxyz"
+        domain+= "abcdefghijklmnopqrstuvwxyz"
         domain+= "."
+        for c in domain:
+            self.dictionary14.add(c)
         self.domains[Domain.G1] = domain
     
     def add_g2_domain(self):
@@ -143,6 +153,8 @@ class Domain_Info():
                 while line:
                     line = line.strip()
                     self.domains[Domain.NGRAM][i].add(line)
+                    if i == 1:
+                        self.dictionary67.add(line)
                     line = f.readline()
         with open("./messages/agent6/unedited_corpus.txt", "r") as f:
             line = f.readline()
@@ -163,6 +175,7 @@ class Domain_Info():
                 line = line.strip()
                 if ENGLISH_DICTIONARY.check(line):
                     self.domains[Domain.DICTIONARY].append(line)
+                    self.dictionary67.add(line)
                 line = f.readline()
     
     def add_g8_domain(self):
@@ -415,7 +428,7 @@ class Agent:
 
 
 def test_classifier():
-    # - G1
+    # - ASCII
     # - AIRPORT
     # - PASSWORD
     # - LOCATION
@@ -424,6 +437,10 @@ def test_classifier():
     # - DICIONARY
     # - NAME_PLACES
     classifier = Domain_Classifier()
+    # g7_dict = Domain_Classifier().domain_info.get_domain(Domain.DICTIONARY)
+    # g6_dict = Domain_Classifier().domain_info.get_domain(Domain.NGRAM)[1]
+    # overall = g6_dict.union(set(g7_dict))
+    # print(len(g7_dict), len(g6_dict), len(overall))
     # msg = "@pneumatoscope9mesorrhinium5worklessness489"
     # print(f"{msg:>100} -> {classifier.predict(msg)}")
     # msg = "1.1714 S, 36.8356 E"
@@ -451,5 +468,4 @@ def test_classifier():
                 print(prediction, i)
                 msg = f.readline().strip()
     return
-
 test_classifier()
