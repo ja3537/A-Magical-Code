@@ -19,7 +19,7 @@ class Domain(Enum):
     LAT_LONG = 5
 
 
-MAC_DOMAIN_VALUE = max([d.value for d in Domain])
+MAX_DOMAIN_VALUE = max([d.value for d in Domain])
 
 DomainFrequencies = {
     # reference of English letter frequencies: https://pi.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
@@ -183,22 +183,14 @@ class Agent:
             integer_repr = self.cards_to_num(encoded_cards)
             binary_repr = bin(int(integer_repr))[2:]
             parts = self.get_binary_parts(binary_repr)
-            len_metadata_bits = len(parts.domain_bits) + \
-                len(parts.checksum_bits)
+            len_metadata_bits = len(parts.domain_bits) + len(parts.checksum_bits)
+            domain_int = int(parts.domain_bits, 2) if parts.domain_bits else MAX_DOMAIN_VALUE + 1
 
-            if len_metadata_bits == 11 and parts.message_bits and parts.checksum_bits == self.get_hash(parts.message_bits):
-                domain_int = int(parts.domain_bits, 2)
-                if domain_int <= MAC_DOMAIN_VALUE:
-                    domain_type = Domain(domain_int)
-                    message = self.binary_to_string(
-                        parts.message_bits, domain_type)
-
-                    # TODO: ugly hack to fix the checksum, can be improved
-                    if meet_checksum_count > 2:
-                        break
-                    meet_checksum_count += 1
-        if meet_checksum_count < 2:
-            return 'NULL'
+            if len_metadata_bits == 11 and domain_int <= MAX_DOMAIN_VALUE and parts.message_bits and parts.checksum_bits == self.get_hash(parts.message_bits):
+                domain_type = Domain(domain_int)
+                message = self.binary_to_string(
+                    parts.message_bits, domain_type)
+                break
 
         message = self.check_decoded_message(message, domain_type)
         message = ' '.join(
