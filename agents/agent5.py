@@ -83,7 +83,6 @@ class DictEncoding:
         deck = list(range(self.num_cards_used, 50)) + self.nth_perm(num) + [50, 51]
         # print("Encoding group {} deck: {}".format(group_id, deck))
         return deck
-        # return bin_to_cards(full_message)
 
     def decode(self, cards):
         # Pass in only cards from 0 to 27
@@ -536,6 +535,8 @@ def bin_to_cards(msg_bin):
             min_cards = i
             break
     # print(min_cards)
+    if min_cards == math.inf:
+        return None, 1000
     permutations = []
     elements = []
     for i in range(min_cards):
@@ -560,8 +561,8 @@ def bin_to_cards(msg_bin):
 
    # print(permutations)
    # print(returned_list)
-
-    return returned_list
+    
+    return returned_list, len(permutations)
 
 
 def cards_to_bin(cards):
@@ -589,6 +590,7 @@ def cards_to_bin(cards):
 class Agent:
 
     def __init__(self):
+        self.max_perm_len = 30
         self.pearson8_table = list(range(0, 256))
         random.shuffle(self.pearson8_table)
         self.english_dict = enchant.Dict("en_US")
@@ -597,9 +599,6 @@ class Agent:
                                         "010" : PASSPORT_HUFFMAN,
                                         "011" : LOCATION_HUFFMAN,
                                         "100" : ADDRESS_HUFFMAN,
-                                        #   "011" : LETTERS_HUFFMAN,
-                                        #   "100" : NUMBER_HUFFMAN,
-                                        # "110" : PRINTTABLE_HUFFMAN
                                         }
 
         self.encoding_to_scheme_id = { "LOWERCASE_HUFFMAN" : "000",
@@ -607,9 +606,6 @@ class Agent:
                                         "PASSPORT_HUFFMAN" : "010",
                                         "LOCATION_HUFFMAN" : "011",
                                         "ADDRESS_HUFFMAN" : "100",
-                                        #   "LETTERS_HUFFMAN" : "011",
-                                        #   "NUMBER_HUFFMAN" : "100",
-                                        #  "PRINTTABLE_HUFFMAN" : "110"
                                         }
 
         # Group 6
@@ -737,11 +733,11 @@ class Agent:
         # else:
         return data, scheme_id, truncated
 
-    def encode(self, message):
+    def encode(self, message, truncated="0"):
         """
         FYI: use 'encode_msg_bin' to compress a message to binary
         """
-        truncated = "0"
+        # truncated = "0"
         ms = set(message)
         tokens = set(message.split())
         if tokens.issubset(self.g6_vocab_set):
@@ -788,8 +784,11 @@ class Agent:
         checksum = self.compute_pearson8_checksum(msg_binary)
         msg_binary = self.compose_huffman_bin(msg_binary, checksum, scheme_id, truncated)
         # print("Encoding Group {}".format(int(scheme_id, 2) + 1))
-        cards = bin_to_cards(msg_binary)
-        return cards
+        cards, perm_len = bin_to_cards(msg_binary)
+        if perm_len > self.max_perm_len:
+            return self.encode(message[:-1], truncated="1")
+        else:
+            return cards
 
 
 
