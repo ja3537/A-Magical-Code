@@ -30,194 +30,19 @@ DomainFrequencies = {
     # Group 1: lowercase letters, period, space, and numbers
     # Domain.ALL: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, " ": 0.11, "\t": 0.10, ".": 6.97, ",": 5.93, "'": 1.53, "\"": 1.33, ":": 0.90, "-": 0.77, ";": 0.74, "?": 0.43, "!": 0.39, "0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
     Domain.ALL: {
-        "y": 223,
-        "m": 219,
-        "8": 218,
-        "w": 209,
-        "r": 208,
-        "5": 205,
-        "s": 204,
-        "o": 202,
-        "n": 199,
-        "h": 199,
-        "f": 199,
-        "d": 195,
-        "k": 195,
-        "7": 194,
-        "t": 194,
-        "v": 193,
-        "p": 193,
-        "q": 192,
-        "x": 191,
-        "e": 191,
-        "z": 190,
-        "b": 190,
-        "1": 189,
-        "u": 189,
-        "c": 187,
-        "6": 186,
-        "a": 186,
-        "4": 184,
-        "j": 183,
-        "9": 180,
-        "g": 180,
-        "2": 177,
-        "i": 174,
-        "0": 172,
-        "3": 167,
-        " ": 164,
-        "l": 163,
+        "y": 223, "m": 219, "8": 218, "w": 209, "r": 208, "5": 205, "s": 204, "o": 202, "n": 199, "h": 199, "f": 199, "d": 195, "k": 195, "7": 194, "t": 194, "v": 193, "p": 193, "q": 192, "x": 191, "e": 191, "z": 190, "b": 190, "1": 189, "u": 189, "c": 187, "6": 186, "a": 186, "4": 184, "j": 183, "9": 180, "g": 180, "2": 177, "i": 174, "0": 172, "3": 167, " ": 164, "l": 163,
     },
     # Group, 2: random letters/numbers
     Domain.AIRPORT: {
-        "1": 137,
-        "Z": 132,
-        "8": 129,
-        "Y": 126,
-        "I": 126,
-        "Q": 126,
-        "6": 125,
-        "W": 124,
-        "T": 124,
-        "R": 122,
-        "2": 119,
-        "F": 119,
-        "P": 116,
-        "M": 114,
-        "O": 113,
-        "3": 112,
-        "D": 112,
-        "E": 110,
-        "U": 109,
-        "G": 107,
-        "7": 105,
-        "B": 105,
-        "N": 105,
-        "L": 105,
-        "C": 105,
-        "X": 105,
-        "4": 104,
-        "J": 104,
-        "5": 101,
-        "9": 100,
-        "A": 97,
-        "K": 96,
-        "S": 95,
-        "V": 95,
-        "H": 89,
-        "0": 87,
+        "1": 137, "Z": 132, "8": 129, "Y": 126, "I": 126, "Q": 126, "6": 125, "W": 124, "T": 124, "R": 122, "2": 119, "F": 119, "P": 116, "M": 114, "O": 113, "3": 112, "D": 112, "E": 110, "U": 109, "G": 107, "7": 105, "B": 105, "N": 105, "L": 105, "C": 105, "X": 105, "4": 104, "J": 104, "5": 101, "9": 100, "A": 97, "K": 96, "S": 95, "V": 95, "H": 89, "0": 87,
     },
     # Group 3: @ symbol + random words and numbers and -
     Domain.PASSWORD: {
-        "e": 2314,
-        "i": 1759,
-        "a": 1692,
-        "s": 1529,
-        "r": 1486,
-        "n": 1445,
-        "t": 1436,
-        "o": 1288,
-        "l": 1080,
-        "@": 1000,
-        "c": 869,
-        "d": 795,
-        "p": 629,
-        "u": 595,
-        "m": 567,
-        "g": 560,
-        "1": 426,
-        "h": 425,
-        "6": 416,
-        "2": 407,
-        "9": 386,
-        "4": 381,
-        "7": 375,
-        "8": 374,
-        "5": 373,
-        "y": 368,
-        "3": 359,
-        "b": 346,
-        "0": 338,
-        "f": 279,
-        "v": 267,
-        "w": 187,
-        "k": 168,
-        "x": 71,
-        "z": 61,
-        "j": 45,
-        "q": 33,
+        "e": 2314, "i": 1759, "a": 1692, "s": 1529, "r": 1486, "n": 1445, "t": 1436, "o": 1288, "l": 1080, "@": 1000, "c": 869, "d": 795, "p": 629, "u": 595, "m": 567, "g": 560, "1": 426, "h": 425, "6": 416, "2": 407, "9": 386, "4": 381, "7": 375, "8": 374, "5": 373, "y": 368, "3": 359, "b": 346, "0": 338, "f": 279, "v": 267, "w": 187, "k": 168, "x": 71, "z": 61, "j": 45, "q": 33,
     },
     # Group 5: lowercase letters, numbers, space
     Domain.STREET: {
-        " ": 2531,
-        "e": 1911,
-        "t": 1358,
-        "a": 1104,
-        "r": 1005,
-        "o": 882,
-        "n": 806,
-        "1": 685,
-        "0": 596,
-        "i": 546,
-        "d": 546,
-        "u": 483,
-        "s": 482,
-        "l": 455,
-        "2": 445,
-        "S": 421,
-        "5": 420,
-        "v": 376,
-        "h": 365,
-        "3": 353,
-        "6": 282,
-        "4": 278,
-        "R": 274,
-        "A": 263,
-        "7": 231,
-        "9": 206,
-        "8": 192,
-        "W": 172,
-        "B": 170,
-        "M": 169,
-        "y": 157,
-        "g": 148,
-        "k": 138,
-        "w": 130,
-        "c": 123,
-        "N": 122,
-        "P": 119,
-        "E": 117,
-        "C": 109,
-        "m": 93,
-        "H": 83,
-        "F": 75,
-        "D": 66,
-        "L": 62,
-        "-": 60,
-        "p": 52,
-        "T": 49,
-        "f": 48,
-        "G": 46,
-        "b": 45,
-        ".": 35,
-        ",": 33,
-        "J": 25,
-        "O": 23,
-        "K": 21,
-        "z": 16,
-        "I": 14,
-        "V": 13,
-        "x": 12,
-        "U": 12,
-        "Y": 8,
-        "Q": 6,
-        "q": 5,
-        "&": 2,
-        "#": 1,
-        "/": 1,
-        "j": 1,
-        "+": 1,
-        "'": 1,
+        " ": 2531, "e": 1911, "t": 1358, "a": 1104, "r": 1005, "o": 882, "n": 806, "1": 685, "0": 596, "i": 546, "d": 546, "u": 483, "s": 482, "l": 455, "2": 445, "S": 421, "5": 420, "v": 376, "h": 365, "3": 353, "6": 282, "4": 278, "R": 274, "A": 263, "7": 231, "9": 206, "8": 192, "W": 172, "B": 170, "M": 169, "y": 157, "g": 148, "k": 138, "w": 130, "c": 123, "N": 122, "P": 119, "E": 117, "C": 109, "m": 93, "H": 83, "F": 75, "D": 66, "L": 62, "-": 60, "p": 52, "T": 49, "f": 48, "G": 46, "b": 45, ".": 35, ",": 33, "J": 25, "O": 23, "K": 21, "z": 16, "I": 14, "V": 13, "x": 12, "U": 12, "Y": 8, "Q": 6, "q": 5, "&": 2, "#": 1, "/": 1, "j": 1, "+": 1, "'": 1,
     },
 }
 
@@ -247,26 +72,28 @@ class Agent:
             self.abrev2word[shortened] = full
             self.word2abrev[full] = shortened
 
-        self.word_to_binary_dicts = {domain: self.get_word_to_binary_dict(domain) for domain in Domain if domain in DictionaryPaths.keys()}
-        self.binary_to_word_dicts = {domain: self.get_binary_to_word_dict(domain) for domain in Domain if domain in DictionaryPaths.keys()}
+        self.word_to_binary_dicts = {domain: self.get_word_to_binary_dict(
+            domain) for domain in Domain if domain in DictionaryPaths.keys()}
+        self.binary_to_word_dicts = {domain: self.get_binary_to_word_dict(
+            domain) for domain in Domain if domain in DictionaryPaths.keys()}
 
-    # ----------------------------------------------------------------------------- 
+    # -----------------------------------------------------------------------------
     #   Domain Logic
     # -----------------------------------------------------------------------------
     def get_message_domain(self, message: str) -> Domain:
         matching_domains = []
         words = message.split(' ')
-        
+
         # Domain.ALL
         if all([ch in list(string.ascii_lowercase + string.digits + '. ') for ch in message]):
             matching_domains.append(Domain.ALL)
-        
+
         # Domain.AIRPORT
         if (len(words) == 3
             and words[0] in self.word_to_binary_dicts[Domain.AIRPORT].keys()
             and all([ch in list(string.ascii_uppercase + string.digits) for ch in words[1]])
             and all([ch in list(string.digits) for ch in words[1]])
-        ):
+            ):
             matching_domains.append(Domain.AIRPORT)
 
         # Domain.LAT_LONG
@@ -279,13 +106,12 @@ class Agent:
 
         return sorted(matching_domains, key=lambda domain: len(self.message_to_binary(message, domain)))[0]
 
-    
     def domain_to_binary(self, domain_type: Domain) -> str:
         return bin(int(domain_type.value))[2:].zfill(3)
 
     def get_domain_frequencies(self, domain: Domain) -> Dict[Domain, Dict[str, float]]:
         return DomainFrequencies[domain] if domain in DomainFrequencies.keys() else DomainFrequencies[Domain.ALL]
-    
+
     def message_to_binary(self, message: str, domain: Domain) -> str:
         if domain == Domain.ALL:
             return self.huff_string_to_binary(message, domain)
@@ -492,7 +318,8 @@ class Agent:
 
         domain = self.get_message_domain(message)
         binary_repr = self.message_to_binary(message, domain)
-        binary_repr = '1' + binary_repr + self.domain_to_binary(domain) + self.get_hash(binary_repr)
+        binary_repr = '1' + binary_repr + \
+            self.domain_to_binary(domain) + self.get_hash(binary_repr)
         integer_repr = int(binary_repr, 2)
 
         num_cards_to_encode = 1
