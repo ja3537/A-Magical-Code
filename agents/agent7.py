@@ -1,5 +1,7 @@
 from email.headerregistry import Address
 from enum import Enum
+import random
+import string
 import math
 from collections import defaultdict
 import os
@@ -25,53 +27,76 @@ class Domain_Info():
         self.add_g6_domain()
         self.add_g7_domain()
         self.add_g8_domain()
-        
+        return
     
     def add_g1_domain(self):
         '''Add a new domain to the domain info object'''
         # So far, g1 didnt provide any domain just yet, assume ascii
-        self.domains[Domain.G1] = None
+        domain = " 0123456789"
+        domain+="abcdefghijklmnopqrstuvwxyz"
+        domain+= "."
+        self.domains[Domain.G1] = domain
     
     def add_g2_domain(self):
         '''Add a new domain to the domain info object'''
         # AIRPORT: abbreviation, location, number
         # Char: upper case, digit, space
-        self.domains[Domain.AIRPORT] = []
-        with open("./messages/agent2/agent2.txt", "r") as f:
+        self.domains[Domain.AIRPORT] = dict()
+        month = [x for x in range(1, 13)]
+        day = [x for x in range(1, 29)]
+        year = [x for x in range(2023, 2026)]        
+        self.domains[Domain.AIRPORT]['airport_codes'] = []
+        self.domains[Domain.AIRPORT]['time'] = []
+        self.domains[Domain.AIRPORT]['flight_number'] = []
+        for y in year:
+            for m in month:
+                if m < 10:
+                    m = '0' + str(m)
+                for d in day:
+                    if d < 10:
+                        d = '0' + str(d)
+                    time =  str(m) + str(d) + str(y)
+                    self.domains[Domain.AIRPORT]['time'].append(time)
+        for i1 in (string.ascii_uppercase + string.digits):
+            for i2 in (string.ascii_uppercase + string.digits):
+                for i3 in (string.ascii_uppercase + string.digits):
+                    for i4 in (string.ascii_uppercase + string.digits):
+                        self.domains[Domain.AIRPORT]['flight_number'].append(i1+i2+i3+i4)
+        with open("./messages/agent2/airportcodes.txt", "r") as f:
             line = f.readline()
             while line:
                 line = line.strip()
-                abbreviation = line.split("\t")[0]
-                digits = line.split("\t")[2]
-                location = line.strip(abbreviation).strip(digits).strip()
-                self.domains[Domain.AIRPORT].append((abbreviation, location, digits))
+                self.domains[Domain.AIRPORT]['airport_codes'].append(line)
                 line = f.readline()
 
     def add_g3_domain(self):
         '''Add a new domain to the domain info object'''
         # PASSWORD: @, number/words combination
         # Char: upper/lower case, number, "@"
-        self.domains[Domain.PASSWORD] = set()
-        with open("./messages/agent3/password_messages.txt", "r") as f:
+        self.domains[Domain.PASSWORD] = []
+        with open("./messages/agent3/dicts/large_cleaned_long_words.txt", "r") as f:
             line = f.readline()
             while line:
                 line = line.strip()
-                line = line.strip("@")
-                prev_i = 0
-                if line[0].isdigit():
-                    sub_str_digit = True
-                else:
-                    sub_str_digit = False
-                msg = []
-                for i in range(1, len(line)):
-                    if line[i].isdigit() != sub_str_digit:
-                        if not line[prev_i:i].isdigit():
-                            msg += wordninja.split(line[prev_i:i])
-                        prev_i = i
-                        sub_str_digit = not sub_str_digit
-                for m in msg:  
-                    self.domains[Domain.PASSWORD].add(m)
+                self.domains[Domain.PASSWORD].append(line)
                 line = f.readline()
+            # while line:
+            #     line = line.strip()
+            #     prev_i = 0
+            #     if line[0].isdigit():
+            #         sub_str_digit = True
+            #     else:
+            #         sub_str_digit = False
+            #     msg = []
+            #     for i in range(1, len(line)):
+            #         if line[i].isdigit() != sub_str_digit:
+            #             if not line[prev_i:i].isdigit():
+            #                 msg += wordninja.split(line[prev_i:i])
+            #             prev_i = i
+            #             sub_str_digit = not sub_str_digit
+            #     for m in msg:  
+            #         self.domains[Domain.PASSWORD].add(m)
+            #     line = f.readline()
     
     def add_g4_domain(self):
         '''Add a new domain to the domain info object'''
@@ -81,26 +106,31 @@ class Domain_Info():
     
     def add_g5_domain(self):
         '''Add a new domain to the domain info object'''
-        # Address: Address, City, State, Zip
+        # Address: Number, Street suffix, streetname
         # Char: words, digit, space, ",", ".", "/"
-        self.domains[Domain.ADDRESS] = set()
-        with open("./messages/agent5/addresses.txt", "r") as f:
+        self.domains[Domain.ADDRESS] = dict()
+        with open("./messages/agent5/street_name.txt", "r") as f:
             line = f.readline()
+            self.domains[Domain.ADDRESS]["street_name"] = []
             while line:
                 line = line.strip()
-                for i in line.split():
-                    if not i.isdigit():
-                        self.domains[Domain.ADDRESS].add(i)
+                self.domains[Domain.ADDRESS]["street_name"].append(line)
                 line = f.readline()
-        with open("./messages/agent5/addresses_short.txt", "r") as f:
+        with open("./messages/agent5/street_suffix.txt", "r") as f:
             line = f.readline()
+            self.domains[Domain.ADDRESS]["street_suffix"] = []
             while line:
                 line = line.strip()
-                for i in line.split():
-                    if not i.isdigit():
-                        self.domains[Domain.ADDRESS].add(i)
+                self.domains[Domain.ADDRESS]["street_suffix"].append(line)
                 line = f.readline()
-
+        self.domains[Domain.ADDRESS]["number"] = []
+        for i in range(10000):
+            i = str(i)
+            self.domains[Domain.ADDRESS]["number"].append(i)
+            while len(i) < 4:
+                i = '0' + i
+                self.domains[Domain.ADDRESS]["number"].append(i)
+                
     def add_g6_domain(self):
         '''Add a new domain to the domain info object'''
         # N-gram: 1-gram, 2-gram, ..., 9-gram
@@ -114,38 +144,44 @@ class Domain_Info():
                     line = line.strip()
                     self.domains[Domain.NGRAM][i].add(line)
                     line = f.readline()
+        with open("./messages/agent6/unedited_corpus.txt", "r") as f:
+            line = f.readline()
+            self.domains[Domain.NGRAM]["unedited"] = []
+            while line:
+                line = line.strip()
+                self.domains[Domain.NGRAM]["unedited"].append(line)
+                line = f.readline()
+        
 
     def add_g7_domain(self):
         '''Add a new domain to the domain info object'''
         # Duh, this is the domain we are working on
-        self.domains[Domain.DICTIONARY] = set()
+        self.domains[Domain.DICTIONARY] = []
         with open("./messages/agent7/30k.txt", "r") as f:
             line = f.readline()
             while line:
                 line = line.strip()
                 if ENGLISH_DICTIONARY.check(line):
-                    self.domains[Domain.DICTIONARY].add(line)
+                    self.domains[Domain.DICTIONARY].append(line)
                 line = f.readline()
     
     def add_g8_domain(self):
         '''Add a new domain to the domain info object'''
         # Name/Places: Name, places
         # Char: upper/lower case, space
-        self.domains[Domain.NAME_PLACES] = dict()
+        self.domains[Domain.NAME_PLACES] = []
         with open("./messages/agent8/names.txt", "r") as f:
-            self.domains[Domain.NAME_PLACES]["names"] = set()
             line = f.readline()
             while line:
                 line = line.strip()
-                self.domains[Domain.NAME_PLACES]["names"].add(line)
+                self.domains[Domain.NAME_PLACES].append(line)
                 line = f.readline()
                 
         with open("./messages/agent8/places.txt", "r") as f:
-            self.domains[Domain.NAME_PLACES]["places"] = set()
             line = f.readline()
             while line:
                 line = line.strip()
-                self.domains[Domain.NAME_PLACES]["places"].add(line)
+                self.domains[Domain.NAME_PLACES].append(line)
                 line = f.readline()
     
     def get_domain(self, domain_index):
@@ -163,7 +199,19 @@ class Domain(Enum):
     NAME_PLACES = 8
     
 def has_numbers(inputString):
-        return any(char.isdigit() for char in inputString)
+    return any(char.isdigit() for char in inputString)
+
+def composed_of_words(msg, dictionary):
+    """Recursively check if str is composed of words from dictionary."""
+    for i in range(len(msg) + 1):
+        if msg[:i].strip() in dictionary:
+            if i == len(msg):
+                return True
+            if not composed_of_words(msg[i:].strip(), dictionary):
+                continue
+            else:
+                return True
+    return False
     
 class Domain_Classifier():
     def __init__(self) -> None:
@@ -172,19 +220,13 @@ class Domain_Classifier():
     def is_password(self, msg):
         if msg[0] != "@":
             return False
-        THERSHOLD = 0.8
         alphabet_str = ""
         for i in msg:
             if i.isalpha():
                 alphabet_str += i
-        partition = wordninja.split(alphabet_str)
-        is_word = 0
-        for i in partition:
-            if ENGLISH_DICTIONARY.check(i):
-                is_word += 1
-        if THERSHOLD < is_word / len(partition):
-            return True
-        return False
+        pass_dict = self.domain_info.get_domain(Domain.PASSWORD)
+        # check if the string is composed of words from pass_dict
+        return composed_of_words(alphabet_str, pass_dict)
     
     def is_location(self, msg):
         if len(msg.split(",")) != 2:
@@ -196,13 +238,14 @@ class Domain_Classifier():
         return False
 
     def is_airport(self, msg):
-        if len(msg.split("\t")) != 3:
+        if len(msg.split(" ")) != 3:
             return False
         msg = msg.strip()
-        msg = msg.split("\t")
-        abbrev = msg[0]
-        abbrev_list = [x[0] for x in self.domain_info.get_domain(Domain.AIRPORT)]
-        if abbrev in abbrev_list and msg[2].isdigit():
+        msg = msg.split(" ")
+        airport_code = msg[0]
+        if (
+            airport_code in self.domain_info.get_domain(Domain.AIRPORT)['airport_codes']
+            and msg[2].isdigit()):
             return True
         return False
     
@@ -217,6 +260,10 @@ class Domain_Classifier():
 
     def is_ngram(self, msg):
         msg = msg.strip()
+        # check for unedited corpus
+        if msg in self.domain_info.get_domain(Domain.NGRAM)["unedited"]:
+            return True
+        # check for ngram
         msg = msg.split()
         for i in range(9, 0, -1):
             if len(msg) % i != 0:
@@ -234,23 +281,19 @@ class Domain_Classifier():
 
     def is_address(self, msg):
         msg = msg.strip()
-        partition = []
-        for m in msg.split():
-            if not m.isdigit():
-                partition.append(m)
-        for m in partition:
-            if m not in self.domain_info.get_domain(Domain.ADDRESS) \
-                or not ENGLISH_DICTIONARY.check(m):
-                return False
-        return True
+        partition = msg.split()
+        if not partition[0].isdigit():
+            return False
+        address_dict = \
+            self.domain_info.get_domain(Domain.ADDRESS)["street_name"] \
+                + self.domain_info.get_domain(Domain.ADDRESS)["street_suffix"]
+        return composed_of_words(" ".join(partition[1:]), address_dict)
     
     def is_name_places(self, msg):
-        msg = msg.strip()
-        if msg in self.domain_info.get_domain(Domain.NAME_PLACES)["names"]:
-            return True
-        if msg in self.domain_info.get_domain(Domain.NAME_PLACES)["places"]:
-            return True
-        return False
+        for x in msg.strip().split(" "):
+            if x not in self.domain_info.get_domain(Domain.NAME_PLACES):
+                return False
+        return True
     
     def predict(self, msg):
         """
@@ -381,21 +424,23 @@ def test_classifier():
     # - DICIONARY
     # - NAME_PLACES
     classifier = Domain_Classifier()
-    msg = "@apple123orangekillmenow192"
+    msg = "@pneumatoscope9mesorrhinium5worklessness489"
     print(f"{msg:>100} -> {classifier.predict(msg)}")
     msg = "1.1714 S, 36.8356 E"
     print(f"{msg:>100} -> {classifier.predict(msg)}")
-    msg = "ABL	AMBLER  ALASKA  USA                	132"
+    msg = "SWF LX3M 12032025"
     print(f"{msg:>100} -> {classifier.predict(msg)}")
     msg = "the of a apple orange kills"
     print(f"{msg:>100} -> {classifier.predict(msg)}")
-    msg = "6081 Andrews Road Mentor-On-The-Lake Lake OH 44060"
+    msg = "5 East Main Meadow "
     print(f"{msg:>100} -> {classifier.predict(msg)}")
-    msg = "sea grain corridor with russia claiming that the corridor is suspended and"
+    msg = "escalation encourage least kyiv ukrainian environment defeat"
     print(f"{msg:>100} -> {classifier.predict(msg)}")
-    msg = "as98213:}{>asdasd"
+    msg = "As of Monday October 31 Putin had not signed the decree required to officially end mobilization"
     print(f"{msg:>100} -> {classifier.predict(msg)}")
-    msg = "Adwoa"
+    msg = "2uez4cw6tc4"
+    print(f"{msg:>100} -> {classifier.predict(msg)}")
+    msg = "Adwoa Abdullatif Zeona Zephyr"
     print(f"{msg:>100} -> {classifier.predict(msg)}")
     return
 
