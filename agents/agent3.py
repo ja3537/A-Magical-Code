@@ -23,22 +23,25 @@ NULL_MESSAGE = "NULL"
 #   Logging
 # -----------------------------------------------------------------------------
 
-log_level = logging.CRITICAL
-log_file = 'log/agent3.log'
+# log_level = logging.CRITICAL
+# log_file = 'log/agent3.log'
 
-logger = logging.getLogger('Agent 3')
-logger.setLevel(log_level)
-logger.addHandler(logging.FileHandler(log_file))
+# logger = logging.getLogger('Agent 3')
+# logger.setLevel(log_level)
+# logger.addHandler(logging.FileHandler(log_file))
 
 
 def debug(*args) -> None:
-    logger.debug(" ".join(map(str, args)))
+    pass
+    # logger.debug(" ".join(map(str, args)))
 
 def info(*args) -> None:
-    logger.info(" ".join(map(str, args)))
+    pass
+    # logger.info(" ".join(map(str, args)))
 
 def error(*args) -> None:
-    logger.error("error: " + " ".join(map(str, args)))
+    pass
+    # logger.error("error: " + " ".join(map(str, args)))
 
 # if isfile(log_file):
 #     open(log_file, 'w').close()
@@ -1807,7 +1810,7 @@ def test_permutation_converter():
     permutation_converter.to_bits(deck[1], [])
 
 
-if __name__ == "__main__":
-    test_metacodec()
-    test_huffman_codec()
-    test_permutation_converter()
+# if __name__ == "__main__":
+#     test_metacodec()
+#     test_huffman_codec()
+#     test_permutation_converter()
