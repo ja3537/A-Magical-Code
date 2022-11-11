@@ -182,7 +182,7 @@ class Agent:
             matching_domains.append(Domain.STREET)
 
         # Domain.WARTIME_NEWS
-        if all([word in self.word_to_binary_dicts[Domain.WARTIME_NEWS].keys() for word in words]):
+        if message.strip() in self.word_to_binary_dicts[Domain.WARTIME_NEWS].keys():
             matching_domains.append(Domain.WARTIME_NEWS)
 
         # Domain.SENTENCE
@@ -278,7 +278,7 @@ class Agent:
         return message
 
     def get_binary_to_word_dict(self, domain: Domain) -> Dict[str, str]:
-        words = []
+        words = ['']
         for dict_path in DictionaryPaths[domain]:
             with open(dict_path, 'r') as file:
                 line = file.readline()
@@ -289,7 +289,7 @@ class Agent:
         return {bin(idx)[2:].zfill(bits_needed): word for idx, word in enumerate(words)}
 
     def get_word_to_binary_dict(self, domain: Domain) -> Dict[str, str]:
-        words = []
+        words = ['']
         for dict_path in DictionaryPaths[domain]:
             with open(dict_path, 'r') as file:
                 line = file.readline()
@@ -301,7 +301,7 @@ class Agent:
 
     def sentence_to_binary(self, message: str) -> str:
         dict = self.word_to_binary_dicts[Domain.SENTENCE]
-        return ''.join([dict[word] for word in message.split(' ') if word])
+        return ''.join([dict[word] for word in message.split(' ')])
 
     def binary_to_sentence(self, binary: str) -> str:
         dict = self.binary_to_word_dicts[Domain.SENTENCE]
@@ -312,7 +312,7 @@ class Agent:
 
     def name_place_to_binary(self, message: str) -> str:
         dict = self.word_to_binary_dicts[Domain.NAME_PLACE]
-        return ''.join([dict[word] for word in message.split(' ') if word])
+        return ''.join([dict[word] for word in message.split(' ')])
 
     def binary_to_name_place(self, binary: str) -> str:
         dict = self.binary_to_word_dicts[Domain.NAME_PLACE]
@@ -401,11 +401,14 @@ class Agent:
 
     def wartime_news_to_binary(self, message: str) -> str:
         dict = self.word_to_binary_dicts[Domain.WARTIME_NEWS]
-        return dict[message.strip()]
+        return dict[message.strip()] + (dict[''] if message.endswith(' ') else '')
 
     def binary_to_wartime_news(self, binary: str) -> str:
         dict = self.binary_to_word_dicts[Domain.WARTIME_NEWS]
-        return dict[binary]
+        bits_per_word = len(list(dict.keys())[0])
+        words_bits = [binary[i:i+bits_per_word]
+                      for i in range(0, len(binary), bits_per_word)]
+        return ' '.join([dict[bits] for bits in words_bits])
 
     # -----------------------------------------------------------------------------
     #   Binary -> Deck & Deck -> Binary
