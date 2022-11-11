@@ -111,7 +111,7 @@ class Agent:
         elif domain == Domain.STREET:
             abrev2word, word2abrev = self.get_message_shorten_dict(
                 Domain.STREET)
-            print("Not supported yet.")
+            pass
 
         elif domain == Domain.WARTIME_NEWS:
             abrev2word, word2abrev = self.get_message_shorten_dict(
@@ -135,7 +135,7 @@ class Agent:
                 message = message.replace('-' + message_list_[i], message_list[i])
 
         elif domain == Domain.STREET:
-            print("Not supported yet.")
+            pass
 
         elif domain == Domain.WARTIME_NEWS:
             abrev2word, word2abrev = self.get_message_shorten_dict(
