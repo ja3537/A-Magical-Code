@@ -68,7 +68,6 @@
 8 North Farnsworth Glen 
 271 South Main Village 
 5 N Union Hills Drive Burgs 
-0352 Ventur Landing 
 371 Story Rd, Ste Bluff 
 2 Putnam Burg 
 2101 Se Burnside Plains 
@@ -121,6 +120,7 @@
 8859 Carpinteria Unions 
 7081 North Circles 
 2243 West Flagler Crossroad 
+5553 E Rt Extension 
 39 College Pass 
 81 S.W. Teal Village 
 1824 East Redlands Pass 
