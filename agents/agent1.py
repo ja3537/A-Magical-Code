@@ -395,6 +395,8 @@ class Agent:
         num = self.perm.perm_to_num(deck)
         bit_total = bin(num)[2:]
         
+        if len(bit_total) > 0 and bit_total[0] != 0:
+            return None
         if len(bit_total) <= self.checksum_bits + 2:
             return None
         
