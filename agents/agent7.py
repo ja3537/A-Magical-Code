@@ -110,7 +110,7 @@ class Agent:
 
     def encode(self, message):
         print('Encoding "', message, '"')
-
+        message = ' '.join(message.split()[:6])
         x  = self.ed.str_to_num(message)
         checksum = self.ed.set_checksum(x)
         checksum_cards = self.perm_ck.nth_perm(checksum)
