@@ -1,13 +1,13 @@
+from itertools import chain
 from operator import length_hint
 from cards import generate_deck
 import numpy as np
-from typing import List, Dict
+from typing import List, Dict, Union
 import math
 from pearhash import PearsonHasher
 from enum import Enum
 from dahuffman import HuffmanCodec
 from collections import namedtuple
-import requests
 import string
 import re
 import sys
@@ -19,7 +19,8 @@ class Domain(Enum):
     PASSWORD = 2            # Group 3: @ symbol + random words and numbers
     LAT_LONG = 3            # Group 4: number + N/S + ", " + number + E/W
     STREET = 4              # Group 5: numbers, names, and street suffixes
-    WARTIME_NEWS = 5        # Group 6: space delimited english words from wartime correspondences
+    # Group 6: space delimited english words from wartime correspondences
+    WARTIME_NEWS = 5
     SENTENCE = 6            # Group 7: space delimited english words from limited dictionary
     NAME_PLACE = 7          # Group 8: two propper nouns separated by a space
 
@@ -63,24 +64,88 @@ EncodedBinary = namedtuple(
 class Agent:
     def __init__(self):
         self.rng = np.random.default_rng(seed=42)
-        r = requests.get(
-            'https://raw.githubusercontent.com/mwcheng21/minified-text/main/minified.txt')
-        minified_text = r.text
-        self.abrev2word = {}
-        self.word2abrev = {}
-        for line in minified_text.splitlines():
-            [shortened, full] = line.split(' ')
-            self.abrev2word[shortened] = full
-            self.word2abrev[full] = shortened
 
         self.word_to_binary_dicts = {domain: self.get_word_to_binary_dict(
             domain) for domain in Domain if domain in DictionaryPaths.keys()}
         self.binary_to_word_dicts = {domain: self.get_binary_to_word_dict(
             domain) for domain in Domain if domain in DictionaryPaths.keys()}
 
+    def get_message_shorten_dict(self, domain: Domain):
+        if domain == Domain.PASSWORD:
+            filename = 'messages/agent3/dicts/shortened_dicts/passwords_mini.txt'
+        elif domain == Domain.STREET:  # not work right now
+            filename = 'messages/agent3/dicts/shortened_dicts/war_words_mini.txt'
+        elif domain == Domain.WARTIME_NEWS:
+            filename = 'messages/agent3/dicts/shortened_dicts/war_words_mini.txt'
+
+        minified_text = ""
+        with open(filename, 'w') as f:
+            f.write(minified_text)
+
+        abrev2word = {}
+        word2abrev = {}
+        for line in minified_text.splitlines():
+            [shortened, full] = line.split(' ')
+            abrev2word[shortened] = full
+            word2abrev[full] = shortened
+
+        return abrev2word, word2abrev
+
+    def message_shorten(self, message: str, domain: Domain) -> str:
+        ''' LAT_LONG g3: passwords, STREET g5: street address, WARTIME_NEWS g6: war correspondence'''
+        if domain == Domain.PASSWORD:
+            abrev2word, word2abrev = self.get_message_shorten_dict(
+                Domain.PASSWORD)
+            message_list = self.get_password_words(message)
+            for word in message_list:
+                if word in word2abrev.keys():
+                    message_list = message_list.replace(word, word2abrev[word])
+            numbers = [int(s) for s in message.split() if s.isdigit()]
+            message_list = list(chain.from_iterable(
+                zip(message_list, numbers)))
+            message = "@" + ''.join(message_list)
+
+        elif domain == Domain.STREET:
+            abrev2word, word2abrev = self.get_message_shorten_dict(
+                Domain.STREET)
+            print("Not supported yet.")
+
+        elif domain == Domain.WARTIME_NEWS:
+            abrev2word, word2abrev = self.get_message_shorten_dict(
+                Domain.WARTIME_NEWS)
+            message = ' '.join(
+                [word2abrev[word] if word in word2abrev else word for word in message.split(" ")])
+
+        return message
+
+    def message_unshorten(self, message: str, domain: Domain) -> str:
+        if domain == Domain.PASSWORD:
+            abrev2word, word2abrev = self.get_message_shorten_dict(
+                Domain.PASSWORD)
+            message_list = self.get_password_words(message)
+            for word in message_list:
+                if word in abrev2word.keys():
+                    message_list = message_list.replace(word, abrev2word[word])
+
+            numbers = [int(s) for s in message.split() if s.isdigit()]
+            message_list = list(chain.from_iterable(
+                zip(message_list, numbers)))
+            message = "@" + ''.join(message_list)
+
+        elif domain == Domain.STREET:
+            print("Not supported yet.")
+
+        elif domain == Domain.WARTIME_NEWS:
+            abrev2word, word2abrev = self.get_message_shorten_dict(
+                Domain.WARTIME_NEWS)
+            message = ' '.join(
+                [abrev2word[word] if word in abrev2word else word for word in message.split(" ")])
+
+        return message
     # -----------------------------------------------------------------------------
     #   Domain Logic
     # -----------------------------------------------------------------------------
+
     def get_message_domain(self, message: str) -> Domain:
         matching_domains = []
         words = [w for w in message.split(' ') if w]
@@ -98,22 +163,22 @@ class Agent:
             matching_domains.append(Domain.AIRPORT)
 
         # Domain.PASSWORD
-        if (message[0] == '@' 
-            and all([w in self.word_to_binary_dicts[Domain.PASSWORD].keys() for w in self.get_password_words(message)])
-        ):
+        if (message[0] == '@'
+                    and all([w in self.word_to_binary_dicts[Domain.PASSWORD].keys() for w in self.get_password_words(message)])
+                ):
             matching_domains.append(Domain.PASSWORD)
 
         # Domain.LAT_LONG
         if all([ch in list('NSEW,. ' + string.digits) for ch in message]) and \
-               any(ch.isdigit() for ch in message) and (',' in message) and ("." in message) and any(ch in "NSEW" for ch in message):
+                any(ch.isdigit() for ch in message) and (',' in message) and ("." in message) and any(ch in "NSEW" for ch in message):
             matching_domains.append(Domain.LAT_LONG)
 
         # Domain.STREET
         if (words[0].isnumeric() and
-            ((words[-1] in self.word_to_binary_dicts[Domain.STREET].keys()
-            and ' '.join(words[1:-1]) in self.word_to_binary_dicts[Domain.STREET].keys())
-            or ' '.join(words[1:]) in self.word_to_binary_dicts[Domain.STREET].keys())
-        ):
+                    ((words[-1] in self.word_to_binary_dicts[Domain.STREET].keys()
+                      and ' '.join(words[1:-1]) in self.word_to_binary_dicts[Domain.STREET].keys())
+                     or ' '.join(words[1:]) in self.word_to_binary_dicts[Domain.STREET].keys())
+                ):
             matching_domains.append(Domain.STREET)
 
         # Domain.WARTIME_NEWS
@@ -137,7 +202,8 @@ class Agent:
         return DomainFrequencies[domain] if domain in DomainFrequencies.keys() else DomainFrequencies[Domain.ALL]
 
     def get_password_words(self, password: str) -> List[str]:
-        chunks = [w for w in re.split('|'.join(re.findall(r'\d+', password[1:])), password[1:]) if w]
+        chunks = [w for w in re.split(
+            '|'.join(re.findall(r'\d+', password[1:])), password[1:]) if w]
         words = []
         for chunk in chunks:
             j = 0
@@ -194,7 +260,8 @@ class Agent:
     def huff_string_to_binary(self, message: str, domain: Domain) -> str:
         bytes_repr = HuffmanCodec.from_frequencies(
             self.get_domain_frequencies(domain)).encode(message)
-        binary_repr = bin(int.from_bytes(b'\xff' + bytes_repr, byteorder='big'))[2:]
+        binary_repr = bin(int.from_bytes(
+            b'\xff' + bytes_repr, byteorder='big'))[2:]
         return binary_repr
 
     def huff_binary_to_string(self, binary: str, domain: Domain) -> str:
@@ -259,9 +326,11 @@ class Agent:
     def airport_to_binary(self, message):
         # message: MVM 7PRQ 02202025
         message_list = message.split()
-        code1_bin = self.airport_code_to_binary(message_list[0]) # 11 bits zfilled already
+        code1_bin = self.airport_code_to_binary(
+            message_list[0])  # 11 bits zfilled already
         code2_bin = self.huff_string_to_binary(message_list[1], Domain.AIRPORT)
-        num_bin = bin(int(message_list[2]))[2:].zfill(24) # max is 12282025, thus 24 bits
+        num_bin = bin(int(message_list[2]))[2:].zfill(
+            24)  # max is 12282025, thus 24 bits
         binary_repr = code1_bin + code2_bin + num_bin
         return binary_repr
 
@@ -278,6 +347,7 @@ class Agent:
 
         message = code1_str + " " + code2_str + " " + num_str
         return message
+
     def password_to_binary(self, message: str) -> str:
         return self.huff_string_to_binary(message[1:], Domain.PASSWORD)
 
@@ -331,7 +401,6 @@ class Agent:
         dict = self.binary_to_word_dicts[Domain.WARTIME_NEWS]
         return dict[binary]
 
-    
     # -----------------------------------------------------------------------------
     #   Binary -> Deck & Deck -> Binary
     # -----------------------------------------------------------------------------
@@ -368,7 +437,6 @@ class Agent:
 
         return [first_card, *self.num_to_cards(num - sub_list_start, ordered_cards)]
 
-
     # -----------------------------------------------------------------------------
     #   Deck Helpers
     # -----------------------------------------------------------------------------
@@ -391,7 +459,6 @@ class Agent:
                 num_cards_to_encode = n
                 break
         return num_cards_to_encode
-
 
     # -----------------------------------------------------------------------------
     #   Message Helpers
@@ -421,27 +488,28 @@ class Agent:
         message_bits = binary[:-17]
         return EncodedBinary(message_bits, domain_bits, length_bits, checksum_bits)
 
-
     # -----------------------------------------------------------------------------
     #   Encode & Decode
     # -----------------------------------------------------------------------------
 
     def encode(self, message: str) -> List[int]:
         deck = generate_deck(self.rng)
-        # message = ' '.join(
-        #     [self.word2abrev[word] if word in self.word2abrev else word for word in message.split(" ")])
 
         domain = self.get_message_domain(message)
-        
+        # message = self.message_shorten(message, domain)
+
         message_binary = self.message_to_binary(message, domain)
         domain_binary = self.domain_to_binary(domain)
         length_binary = self.get_message_len_bits(message_binary)
-        checksum_binary = self.get_hash(message_binary + domain_binary + length_binary)
-        
-        binary_repr = '1' + message_binary + domain_binary + length_binary + checksum_binary
+        checksum_binary = self.get_hash(
+            message_binary + domain_binary + length_binary)
+
+        binary_repr = '1' + message_binary + \
+            domain_binary + length_binary + checksum_binary
         integer_repr = int(binary_repr, 2)
 
-        message_start_idx = len(deck) - self.get_num_cards_to_encode(integer_repr)
+        message_start_idx = len(
+            deck) - self.get_num_cards_to_encode(integer_repr)
         message_cards = self.num_to_cards(
             integer_repr, deck[message_start_idx:])
 
@@ -456,23 +524,23 @@ class Agent:
             integer_repr = self.cards_to_num(encoded_cards)
             binary_repr = bin(int(integer_repr))[3:]
             parts = self.get_binary_parts(binary_repr)
-            domain_int = int(parts.domain_bits, 2) if parts.domain_bits else MAX_DOMAIN_VALUE + 1
+            domain_int = int(parts.domain_bits,
+                             2) if parts.domain_bits else MAX_DOMAIN_VALUE + 1
 
-            if (domain_int <= MAX_DOMAIN_VALUE 
-                and parts.message_bits 
-                and parts.checksum_bits == self.get_hash(parts.message_bits + parts.domain_bits + parts.length_bits)
-            ):
+            if (domain_int <= MAX_DOMAIN_VALUE
+                    and parts.message_bits
+                    and parts.checksum_bits == self.get_hash(parts.message_bits + parts.domain_bits + parts.length_bits)
+                ):
                 try:
                     domain = Domain(domain_int)
-                    message = self.binary_to_message(parts.message_bits, domain)
+                    message = self.binary_to_message(
+                        parts.message_bits, domain)
                     match_count += 1
                     if domain == self.get_message_domain(message) and match_count >= 3:
                         break
                 except:
                     continue
-        
-        message = self.check_decoded_message(message)
-        # message = ' '.join(
-        #     [self.abrev2word[word] if word in self.abrev2word else word for word in message.split(" ")])
 
+        message = self.check_decoded_message(message)
+        # message = self.message_unshorten(message, domain)
         return message
