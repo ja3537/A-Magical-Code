@@ -63,6 +63,13 @@ if __name__ == '__main__':
         type = int,
         help = "number of runs per message in message file"
     )
+    parser.add_argument(
+        "--csv",
+        "-csv",
+        default=False,
+        action="store_true",
+        help="(boolean) outputs a csv file instead of txt file"
+    )
 
 
 args = parser.parse_args()
