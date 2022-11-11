@@ -8,6 +8,7 @@ from enum import Enum
 from dahuffman import HuffmanCodec
 from collections import namedtuple
 import requests
+import string
 
 
 class Domain(Enum):
@@ -246,6 +247,45 @@ class Agent:
             self.abrev2word[shortened] = full
             self.word2abrev[full] = shortened
 
+        self.word_to_binary_dicts = {domain: self.get_word_to_binary_dict(domain) for domain in Domain if domain in DictionaryPaths.keys()}
+        self.binary_to_word_dicts = {domain: self.get_binary_to_word_dict(domain) for domain in Domain if domain in DictionaryPaths.keys()}
+
+    # ----------------------------------------------------------------------------- 
+    #   Domain Logic
+    # -----------------------------------------------------------------------------
+    def get_message_domain(self, message: str) -> Domain:
+        matching_domains = []
+        words = message.split(' ')
+        
+        # Domain.ALL
+        if all([ch in list(string.ascii_lowercase + string.digits + '. ') for ch in message]):
+            matching_domains.append(Domain.ALL)
+        
+        # Domain.AIRPORT
+        if (len(words) == 3
+            and words[0] in self.word_to_binary_dicts[Domain.AIRPORT].keys()
+            and all([ch in list(string.ascii_uppercase + string.digits) for ch in words[1]])
+            and all([ch in list(string.digits) for ch in words[1]])
+        ):
+            matching_domains.append(Domain.AIRPORT)
+
+        # Domain.LAT_LONG
+        if all([ch in list('NSEW,. ' + string.digits) for ch in message]):
+            matching_domains.append(Domain.LAT_LONG)
+
+        # Domain.NAME_PLACE
+        if all([word in self.word_to_binary_dicts[Domain.NAME_PLACE].keys() for word in words]):
+            matching_domains.append(Domain.NAME_PLACE)
+
+        return sorted(matching_domains, key=lambda domain: len(self.message_to_binary(message, domain)))[0]
+
+    
+    def domain_to_binary(self, domain_type: Domain) -> str:
+        return bin(int(domain_type.value))[2:].zfill(3)
+
+    def get_domain_frequencies(self, domain: Domain) -> Dict[Domain, Dict[str, float]]:
+        return DomainFrequencies[domain] if domain in DomainFrequencies.keys() else DomainFrequencies[Domain.ALL]
+    
     def message_to_binary(self, message: str, domain: Domain) -> str:
         if domain == Domain.ALL:
             return self.huff_string_to_binary(message, domain)
@@ -322,11 +362,11 @@ class Agent:
         return {word: bin(idx)[2:].zfill(bits_needed) for idx, word in enumerate(words)}
 
     def name_place_to_binary(self, message: str) -> str:
-        dict = self.get_word_to_binary_dict(Domain.NAME_PLACE)
+        dict = self.word_to_binary_dicts[Domain.NAME_PLACE]
         return ''.join([dict[word] for word in message.split(' ')])
 
     def binary_to_name_place(self, binary: str) -> str:
-        dict = self.get_binary_to_word_dict(Domain.NAME_PLACE)
+        dict = self.binary_to_word_dicts[Domain.NAME_PLACE]
         bits_per_word = len(list(dict.keys())[0])
         words_bits = [binary[i:i+bits_per_word]
                       for i in range(0, len(binary), bits_per_word)]
@@ -431,27 +471,10 @@ class Agent:
         hex_hash = hasher.hash(str(int(bit_string, 2)).encode()).hexdigest()
         return bin(int(hex_hash, 16))[2:].zfill(8)
 
-    def domain_to_binary(self, domain_type: Domain) -> str:
-        return bin(int(domain_type.value))[2:].zfill(3)
-
-    def get_message_domain(self, message: str) -> Domain:
-        clean_message = "".join(message.split())
-        if self.is_lat_long(clean_message):
-            return Domain.LAT_LONG
-        else:
-            return Domain.ALL
-
-    def get_domain_frequencies(self, domain: Domain) -> Dict[Domain, Dict[str, float]]:
-        return DomainFrequencies[domain] if domain in DomainFrequencies.keys() else DomainFrequencies[Domain.ALL]
-
-    def is_lat_long(self, message: str) -> bool:
-        return all([ch.isdigit() or ch in [",", ".", "N", "E", "S", "W"] for ch in message])
-
     def check_decoded_message(self, message: str) -> str:
-        clean_message = "".join(message.split())
         if message == '':
             return 'NULL'
-        if self.get_message_domain(clean_message) == Domain.ALL:
+        if self.get_message_domain(message) == Domain.ALL:
             if not all(ord(c) < 128 and ord(c) > 32 for c in message):
                 return 'NULL'
         return message
@@ -464,13 +487,12 @@ class Agent:
 
     def encode(self, message: str) -> List[int]:
         deck = generate_deck(self.rng)
-        message = ' '.join(
-            [self.word2abrev[word] if word in self.word2abrev else word for word in message.split(" ")])
+        # message = ' '.join(
+        #     [self.word2abrev[word] if word in self.word2abrev else word for word in message.split(" ")])
 
         domain = self.get_message_domain(message)
         binary_repr = self.message_to_binary(message, domain)
-        binary_repr = binary_repr + \
-            self.domain_to_binary(domain) + self.get_hash(binary_repr)
+        binary_repr = '1' + binary_repr + self.domain_to_binary(domain) + self.get_hash(binary_repr)
         integer_repr = int(binary_repr, 2)
 
         num_cards_to_encode = 1
@@ -489,7 +511,7 @@ class Agent:
         for n in reversed(range(1, 51)):
             encoded_cards = self.get_encoded_cards(deck, n)
             integer_repr = self.cards_to_num(encoded_cards)
-            binary_repr = bin(int(integer_repr))[2:]
+            binary_repr = bin(int(integer_repr))[3:]
             parts = self.get_binary_parts(binary_repr)
             len_metadata_bits = len(parts.domain_bits) + \
                 len(parts.checksum_bits)
@@ -503,8 +525,8 @@ class Agent:
                 break
 
         message = self.check_decoded_message(message)
-        message = ' '.join(
-            [self.abrev2word[word] if word in self.abrev2word else word for word in message.split(" ")])
+        # message = ' '.join(
+        #     [self.abrev2word[word] if word in self.abrev2word else word for word in message.split(" ")])
 
         return message
 
