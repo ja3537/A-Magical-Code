@@ -10,6 +10,7 @@ from collections import namedtuple
 import requests
 import string
 import re
+import sys
 
 
 class Domain(Enum):
@@ -193,14 +194,14 @@ class Agent:
     def huff_string_to_binary(self, message: str, domain: Domain) -> str:
         bytes_repr = HuffmanCodec.from_frequencies(
             self.get_domain_frequencies(domain)).encode(message)
-        binary_repr = bin(int(bytes_repr.hex(), 16))[2:]
+        binary_repr = bin(int.from_bytes(b'\xff' + bytes_repr, byteorder='big'))[2:]
         return binary_repr
 
     def huff_binary_to_string(self, binary: str, domain: Domain) -> str:
         message_byte = int(binary, 2).to_bytes(
             (int(binary, 2).bit_length() + 7) // 8, 'big')
         message = HuffmanCodec.from_frequencies(
-            self.get_domain_frequencies(domain)).decode(message_byte)
+            self.get_domain_frequencies(domain)).decode(message_byte[1:])
         return message
 
     def get_binary_to_word_dict(self, domain: Domain) -> Dict[str, str]:
