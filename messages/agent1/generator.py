@@ -23,15 +23,18 @@ class Generator:
         self.count = count
     
     def create_word(self,word_length)->str:
-        letters_num =np.random.randint(low = 0, high = self.largest_num, size = word_length)
+        letters_num =np.random.randint(low = 0, high = self.largest_num, size = word_length-1)
         word = ""
         word = [self.look_up_dict[num] for num in letters_num]
+        no_space =np.random.randint(low = 1, high = self.largest_num, size = 1)
+        word = [self.look_up_dict[no_space[0]]] + word
         result = "".join(word)
         return result
 
     def create_word_list(self) -> list[str]:
         word_length =np.random.randint(low = self.min_length, high = self.max_length, size = self.count)
         word_list = [self.create_word(i) for i in word_length]
+        
         return word_list
     
 domain = " 0123456789"
