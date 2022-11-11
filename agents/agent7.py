@@ -5,7 +5,6 @@ import string
 import math
 from collections import defaultdict
 import os
-import wordninja
 import enchant
 import hashlib
 
@@ -13,7 +12,7 @@ UNTOK = '*'
 EMPTY = ''
 DICT_SIZE = 27000
 SENTENCE_LEN = 6
-ENGLISH_DICTIONARY = enchant.Dict("en_US")
+ENGLISH_DICTIONARY = enchant.Dict("en_US") # pip install pyenchant
 
 # g1 + g4 + g3
 # g7 + g6 (1gram)
