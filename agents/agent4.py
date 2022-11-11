@@ -454,7 +454,7 @@ class Agent:
                     domain = Domain(domain_int)
                     message = self.binary_to_message(parts.message_bits, domain)
                     match_count += 1
-                    if domain == self.get_message_domain(message) and match_count >= 2:
+                    if domain == self.get_message_domain(message) and match_count > 3:
                         break
                 except:
                     continue
