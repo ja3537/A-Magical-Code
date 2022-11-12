@@ -294,6 +294,8 @@ class Agent:
     def decode_w_vocab(self, b, group, partial=False):
         length = 4 if group == 3 else 3
         short_message = self.codec.decode(b)
+        if len(short_message) < 1:
+            return 'NULL'
         #print(short_message)
         decode_map = get_map(self.codec, 'decode', length, group)
         if group == 3:
@@ -319,10 +321,10 @@ class Agent:
         s = ''
         if group == 5:
             i = 0
-            while short_message[i].isdigit():
+            while i < len(short_message) and short_message[i].isdigit():
                 s += short_message[i]
                 i += 1
-            short_message = short_message[i:]
+            short_message = short_message[i:] if i < len(short_message) else ''
             s += ' '
         #print(s, short_message)
 
@@ -434,15 +436,15 @@ class Agent:
         if n_decode > N_MAX:
             msg = "NULL"
         else:
-            group = g
+            group = choice
             if group == 3 or group >= 5:
                 msg = self.decode_w_vocab(b[:-2], group=group, partial=partial)
             else:
                 msg = self.decode_default(b[:-2], group=group)
-            if partial:
+            if partial and msg != 'NULL':
                 msg  = 'PARTIAL: ' + msg
             else:
-                if group == 2:
+                if group == 2 and msg != 'NULL':
                     msg = msg + "202" + str(year)
         return msg
 
