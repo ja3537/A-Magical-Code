@@ -324,6 +324,9 @@ class Domain_Classifier():
 
         return msg.split(' ')
 
+    def is_g1(self, msg):
+        return [x for x in msg]
+    
     def predict(self, msg):
         """
         Classifies the message into one of the following domains:
@@ -339,18 +342,18 @@ class Domain_Classifier():
         if self.is_password(msg):
             return Domain.PASSWORD, self.is_password(msg)
         elif self.is_location(msg):
-            return Domain.LOCATION
+            return Domain.LOCATION, self.is_location(msg)
         elif self.is_airport(msg):
-            return Domain.AIRPORT
+            return Domain.AIRPORT, self.is_airport(msg)
         elif self.is_address(msg):
-            return Domain.ADDRESS
+            return Domain.ADDRESS, self.is_address(msg)
         elif self.is_name_places(msg):
-            return Domain.NAME_PLACES
+            return Domain.NAME_PLACES, self.is_name_places(msg)
         elif self.is_dictionary(msg):
-            return Domain.DICTIONARY
+            return Domain.DICTIONARY, self.is_dictionary(msg)
         elif self.is_ngram(msg):
-            return Domain.NGRAM
-        return Domain.G1 # default ascii
+            return Domain.NGRAM, self.is_ngram(msg)
+        return Domain.G1, self.is_g1(msg) # default ascii
 
 
     # def binary_predict(self, msg):
