@@ -324,7 +324,7 @@ class Agent:
             while i < len(short_message) and short_message[i].isdigit():
                 s += short_message[i]
                 i += 1
-            short_message = short_message[i:]
+            short_message = short_message[i:] if i < len(short_message) else ''
             s += ' '
         #print(s, short_message)
 
