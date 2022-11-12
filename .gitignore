@@ -3,8 +3,10 @@ output.txt
 
 __pycache__/
 .vscode/
-messages/.DS_Store
+/**/.DS_Store
 .DS_Store
 .idea
 tests/
 
+*.png
+/log/*
