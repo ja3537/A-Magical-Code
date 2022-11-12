@@ -348,7 +348,7 @@ class Agent:
         split_message = message.split()
         if message[0] == "@":
             group = 3
-        elif not split_message[0].isdigit() and len(split_message[0]) == 3 and split_message[0] == split_message[0].upper():
+        elif len(split_message) == 3 and len(split_message[0]) == 3 and (not split_message[0].isdigit()) and split_message[2].isdigit() and split_message[0] == split_message[0].upper():
             group = 2
         else:
             if len(split_message) > 1:
