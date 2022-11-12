@@ -354,11 +354,8 @@ class Encoder():
     
     def encode(self, msg):
         domain_id, tokens = self.classifier.predict(msg)
-        if domain_id == 3:
-            return
-        layout = self.all_domains.layoutDict[domain_id]
-        #domains = self.all_domains.domainDict[domain_id]
-        
+        layout = get_layout(len(tokens), domain_id)
+
         encoding_len = self.get_encoding_length(tokens, layout)
         partial = 0
         # ????
