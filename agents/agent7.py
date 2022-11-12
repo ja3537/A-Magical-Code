@@ -391,7 +391,6 @@ class Encoder():
         print(deck)
         return deck
     
-    # TODO: Encoder
     # TODO: change to work with factorial sums - could be noticeable for small factorials
     def get_encoding_length(self, tokens, layout):
         # if len(self.dict_sizes) == 1:
@@ -406,7 +405,6 @@ class Encoder():
         # message too long
         return 0
 
-    # TODO: Encoder
     # methods to index or retrieve the index of varying domains
     @staticmethod
     def tree_index(factors, max_factors):
@@ -416,7 +414,6 @@ class Encoder():
 
         return index
 
-    # TODO: Encoder
     # get metadata permutation (6 cards currently)
     def encode_metadata(self, encoding_len, num_tokens, domain_idx, partial):
         factors = [encoding_len, num_tokens, domain_idx, partial]
@@ -468,13 +465,12 @@ class Decoder():
 
         message_perm = message_perm[::-1]
         message_perm_num = self.perm_number(message_perm)
-
+        
         layout = None
         max_factors = None
         token_indices = None
         # TODO: WIP
 
-    # TODO: Decoder
     def perm_number(self, permutation):
         n = len(permutation)
         factorials = self.factorials_reverse[-n:]
@@ -487,7 +483,6 @@ class Decoder():
             number += k * factorials[i]
         return number
 
-    # TODO: Decoder
     def nth_perm(self, n, perm_zero):
         perm = []
         items = perm_zero[:]
@@ -500,15 +495,13 @@ class Decoder():
             n %= f
         return perm
 
-    # TODO: Decoder
     def decode_metadata(self, meta_perm):
         max_factors = [ENCODING_MAX_LENGTH, MAX_TOKENS, NUM_DOMAINS, 2]
         meta_idx = self.perm_number(meta_perm)
         factors = self.tree_factors(meta_idx, max_factors)
 
         return factors
-
-    # TODO: Decoder
+    
     @staticmethod
     def tree_factors(index, max_factors):
         factors = []
