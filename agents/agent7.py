@@ -19,9 +19,7 @@ class Domain_Info():
     def __init__(self):
         '''Store all inforamtion about all domains'''
         self.allDomains = list()
-        self.allLayouts = list()
-        self.layoutDict = {}
-        #self.domainDict = {}
+        self.group_to_dicts = []
         self.add_g1_domain()
         self.add_g2_domain()
         self.add_g3_domain()
@@ -40,10 +38,8 @@ class Domain_Info():
         domain_list = []
         for c in domain:
             domain_list.append(c)
-        self.allDomains.append(domain_list)
-        self.allLayouts.append([0])
-        # self.domains[Domain.G1] = [domain_list]
-        self.layoutDict[Domain.G1] = [0]
+        self.allDomains.append([domain_list])
+        self.group_to_dicts.append(0)
 
     def add_g2_domain(self):
         '''Add a new domain to the domain info object'''
@@ -72,26 +68,24 @@ class Domain_Info():
                 # self.domains[Domain.AIRPORT].append(line)
                 line = f.readline()
         self.allDomains.append(domain2_list)
-        self.allLayouts.append([0, 1, 1, 1, 1, 2])
-        self.layoutDict[Domain.AIRPORT] = [0, 1, 1, 1, 1, 2]
+        self.group_to_dicts.append(1)
 
     def add_g3_domain(self):
         '''Add a new domain to the domain info object'''
         # PASSWORD: @, number/words combination
-        # Char: upper/lower case, number, "@"
-        domain3_list = []
-        domain = "0123456789"
-        domain += "abcdefghijklmnopqrstuvwxyz"
-        for c in domain:
-            domain3_list.append(c)
-        self.allDomains.append(domain3_list)
-        self.allLayouts.append([0])
-        self.layoutDict[Domain.PASSWORD] = [0]
+        # Char: upper/lower case, number
+        # domain3_list = []
+        # domain = "0123456789"
+        # domain += "abcdefghijklmnopqrstuvwxyz"
+        # for c in domain:
+        #     domain3_list.append(c)
+        # self.allDomains.append([domain3_list])
+        self.group_to_dicts.append(0)
 
     def add_g4_domain(self):
         '''Add a new domain to the domain info object'''
         # Coordinate: latitude, longitude
-        # Char: digit, N, E, S, W, ".", ",", space
+        # Char: digit, N, E, S, W
         domain4_list = [[], [], []]  # Num before ., Num after ., NEWS
         domain4_list[2].append('NEWS')
         for i in range(0, 180):
@@ -99,8 +93,8 @@ class Domain_Info():
         for i in range(0, 10000):
             domain4_list[1].append(str('{:04}'.format(i)))
         self.allDomains.append(domain4_list)
-        self.allLayouts.append([0, 1, 2, 0, 1, 2])
-        self.layoutDict[Domain.LOCATION] = [0, 1, 2, 0, 1, 2]
+        self.group_to_dicts.append(2)
+
 
     def add_g5_domain(self):
         '''Add a new domain to the domain info object'''
@@ -126,8 +120,7 @@ class Domain_Info():
             i = str(i)
             domain5_list[0].append(i)
         self.allDomains.append(domain5_list)
-        self.allLayouts.append([0, 1, 2])
-        self.layoutDict[Domain.ADDRESS] = [0, 1, 2]
+        self.group_to_dicts.append(3)
 
     def add_g6_domain(self):
         '''Add a new domain to the domain info object'''
@@ -150,32 +143,30 @@ class Domain_Info():
                 domain67_list.add(line)
                 line = f.readline()
 
-        self.allDomains.append(domain67_list)  # for group 6
-        self.allLayouts.append([0])
-        self.layoutDict[Domain.NGRAM] = [0]
+        self.allDomains.append([list(domain67_list)])  # for group 6
+        self.group_to_dicts.append(4)
 
     def add_g7_domain(self):
         '''Add a new domain to the domain info object'''
         # Duh, this is the domain we are working on
-        domain67_list = set()  # IMPORTANT TO AVOID DUPLICATES
-        with open("./messages/agent6/corpus-ngram-" + str(1) + ".txt", "r") as f:
-            line = f.readline()
-            while line:
-                line = line.strip()
-                domain67_list.add(line)
-                line = f.readline()
-        with open("./messages/agent7/30k.txt", "r") as f:
-            line = f.readline()
-            while line:
-                line = line.strip()
-
-                # if ENGLISH_DICTIONARY.check(line):
-                domain67_list.add(line)
-                line = f.readline()
-
-        self.allDomains.append(domain67_list)  # for group 7
-        self.allLayouts.append([0])
-        self.layoutDict[Domain.DICTIONARY] = [0]
+        # domain67_list = set()  # IMPORTANT TO AVOID DUPLICATES
+        # with open("./messages/agent6/corpus-ngram-" + str(1) + ".txt", "r") as f:
+        #     line = f.readline()
+        #     while line:
+        #         line = line.strip()
+        #         domain67_list.add(line)
+        #         line = f.readline()
+        # with open("./messages/agent7/30k.txt", "r") as f:
+        #     line = f.readline()
+        #     while line:
+        #         line = line.strip()
+        #
+        #         # if ENGLISH_DICTIONARY.check(line):
+        #         domain67_list.add(line)
+        #         line = f.readline()
+        #
+        # self.allDomains.append([list(domain67_list)])  # for group 7
+        self.group_to_dicts.append(4)
 
     def add_g8_domain(self):
         '''Add a new domain to the domain info object'''
@@ -195,9 +186,8 @@ class Domain_Info():
                 line = line.strip()
                 domain8_list.append(line)
                 line = f.readline()
-        self.allDomains.append(domain8_list)
-        self.allLayouts.append([0])  # TODO
-        self.layoutDict[Domain.NAME_PLACES] = [0]
+        self.allDomains.append([domain8_list])
+        self.group_to_dicts.append(5)
 
 
 class Domain(Enum):
@@ -323,6 +313,7 @@ class Domain_Classifier():
             return Domain.NGRAM, self.is_ngram(msg)
         return Domain.G1, self.is_g1(msg) # default ascii
 
+
 ENCODING_MAX_LENGTH = 30
 MAX_TOKENS = 14
 NUM_DOMAINS = 6
@@ -390,7 +381,7 @@ class Encoder():
         deck = list(range(0, 52-META_LENGTH-encoding_len)) + perm + metadata_perm
         print(deck)
         return deck
-    
+
     # TODO: change to work with factorial sums - could be noticeable for small factorials
     def get_encoding_length(self, tokens, layout):
         # if len(self.dict_sizes) == 1:
