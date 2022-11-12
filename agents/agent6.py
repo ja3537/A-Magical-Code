@@ -1,9 +1,5 @@
 import numpy as np
 from itertools import permutations
-import nltk
-from nltk.stem import SnowballStemmer
-from nltk import LancasterStemmer
-from nltk.tag import pos_tag
 import string
 from decimal import *
 import math
