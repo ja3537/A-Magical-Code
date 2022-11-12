@@ -43,7 +43,7 @@ def identify_domain(message):
     # check for group 5
     if message_split[0].isdigit():
         # Fairly small file
-        with open("../messages/agent5/street_suffix.txt") as file_in:
+        with open("messages/agent5/street_suffix.txt") as file_in:
             lines = []
             for line in file_in:
                 lines.append(line.rstrip())
@@ -52,13 +52,11 @@ def identify_domain(message):
                 return 5
 
     # check for group 6 // Need to check how expensive this is should be better because we arent loading it all into memory at once
-    with open("../messages/agent6/unedited_corpus.txt") as file_in:
+    with open("messages/agent6/unedited_corpus.txt") as file_in:
         lines = []
         for line in file_in:
-            lines.append(line.rstrip())
-
-        if message in lines:
-            return 6
+            if message in line.lower():
+                return 6
 
     # At this point the only corpus with numbers is group 1 
     if any(char.isdigit() for char in message):
@@ -69,11 +67,11 @@ def identify_domain(message):
     if len(message_split) > 1 and len(message_split) < 6:
         names = []
         places = []
-        with open("../messages/agent8/names.txt") as file_in:
+        with open("messages/agent8/names.txt") as file_in:
             for line in file_in:
                 names.append(line.rstrip())
 
-        with open("../messages/agent8/places.txt") as file_in:
+        with open("messages/agent8/places.txt") as file_in:
             for line in file_in:
                 places.append(line.rstrip())
 
@@ -82,7 +80,7 @@ def identify_domain(message):
 
     # Check group 7 possibly the largest file
     lines = []
-    with open("../messages/agent7/30k.txt") as file_in:
+    with open("messages/agent7/30k.txt") as file_in:
         for line in file_in:
             lines.append(line.rstrip())
 
@@ -240,7 +238,7 @@ class ArtihmaticCodingAgent:
 
         self.domain2_airport_codes_to_num = {}
         self.domain2_num_to_airport_codes = {}
-        with open("../messages/agent2/airportcodes.txt") as file_in:
+        with open("messages/agent2/airportcodes.txt") as file_in:
             line_num = 0
             for line in file_in:
                 self.domain2_airport_codes_to_num[line.rstrip()] = line_num
@@ -249,7 +247,7 @@ class ArtihmaticCodingAgent:
         
         self.domain5_stname_to_num = {}
         self.domain5_num_to_stname = {}
-        with open("../messages/agent5/street_name.txt") as file_in:
+        with open("messages/agent5/street_name.txt") as file_in:
             line_num = 0
             for line in file_in:
                 if line.rstrip() not in self.domain5_stname_to_num:
@@ -259,7 +257,7 @@ class ArtihmaticCodingAgent:
         
         self.domain5_stsuffix_to_num = {}
         self.domain5_num_to_stsuffix = {}
-        with open("../messages/agent5/street_suffix.txt") as file_in:
+        with open("messages/agent5/street_suffix.txt") as file_in:
             line_num = 0
             for line in file_in:
                 if line.rstrip() not in self.domain5_stsuffix_to_num:
@@ -269,7 +267,7 @@ class ArtihmaticCodingAgent:
 
         #domain 3
         self.domain3_freq = {}
-        with open("../messages/agent3/dicts/large_cleaned_long_words.txt") as file_in:
+        with open("messages/agent3/dicts/large_cleaned_long_words.txt") as file_in:
             line_num = 0
             for line in file_in:
                 self.domain3_freq[line.rstrip()] = 1
@@ -281,11 +279,11 @@ class ArtihmaticCodingAgent:
 
         #domain 8
         self.domain8_freq = {}
-        with open("../messages/agent8/names.txt") as file_in:
+        with open("messages/agent8/names.txt") as file_in:
             for line in file_in:
                 self.domain8_freq[line.rstrip()] = 1
 
-        with open("../messages/agent8/places.txt") as file_in:
+        with open("messages/agent8/places.txt") as file_in:
             for line in file_in:
                 self.domain8_freq[line.rstrip()] = 1
 
@@ -295,7 +293,7 @@ class ArtihmaticCodingAgent:
 
         #domain 7
         self.domain7_freq = {}
-        with open("../messages/agent7/30k.txt") as file_in:
+        with open("messages/agent7/30k.txt") as file_in:
             for line in file_in:
                 self.domain7_freq[line.rstrip()] = 1
 
@@ -304,13 +302,13 @@ class ArtihmaticCodingAgent:
 
         #domain 6
         self.domain6_freq = {}
-        with open("../messages/agent6/unedited_corpus.txt") as file_in:
+        with open("messages/agent6/unedited_corpus.txt") as file_in:
             for line in file_in:
                 for word in line.split(" "):
-                    self.domain6_freq[word.rstrip()] = 1
+                    self.domain6_freq[word.rstrip().lower()] = 1
 
         self.domain6_freq[STOP_SYMBOL] = 1
-        self.domain6_boundaries = self.set_arithmatic_boundaries(self.domain7_freq)
+        self.domain6_boundaries = self.set_arithmatic_boundaries(self.domain6_freq)
 
 
         #domain 2
@@ -769,8 +767,8 @@ class ArtihmaticCodingAgent:
             msg = message[1:]
 
             def find_list(password, message_list):
-                print(password)
-                print(message_list)
+                #print(password)
+                #print(message_list)
 
                 if len(password) == 0:
                     return message_list
@@ -944,7 +942,7 @@ class ArtihmaticCodingAgent:
             if len(message_list[-1] ) == 0:
                 message_list.pop()
 
-            print(message_list)
+            #print(message_list)
 
             val = Decimal(self.get_arithmatic_code(message_list, self.domain7_boundaries, stop_symbol=None))
             return str(val)[2:]
@@ -989,7 +987,7 @@ class ArtihmaticCodingAgent:
         
         #padded_cards = list(range(0,PADDING_CARDS))
         #arith_cards = list(range(PADDING_CARDS, 52))
-        print("final val: ", final_val)
+        #print("final val: ", final_val)
         encoded_deck = number_to_cards(final_val, deck)
 
         #add padded cards to the end
@@ -1019,45 +1017,50 @@ class ArtihmaticCodingAgent:
         if message_length is None:
             return None, "NULL"
 
-        if domain == 8:
-            #print("0."+message)
-            return message_length, self.get_word(Decimal("0."+message), self.domain8_boundaries, message_length, delimiter=" ")
+        try:
+            if domain == 8:
+                #print("0."+message)
+                    return message_length, self.get_word(Decimal("0."+message), self.domain8_boundaries, message_length, delimiter=" ")
+                
 
-        elif domain == 7:
-            #print("0."+message)
-            return message_length, self.get_word(Decimal("0."+message), self.domain7_boundaries, message_length, delimiter=" ")
+            elif domain == 7:
+                #print("0."+message)
+                return message_length, self.get_word(Decimal("0."+message), self.domain7_boundaries, message_length, delimiter=" ")
 
-        elif domain == 6:
-            #print("0."+message)
-            return message_length, self.get_word(Decimal("0."+message), self.domain6_boundaries, message_length, delimiter=" ")
+            elif domain == 6:
+                #print("0."+message)
+                return message_length, self.get_word(Decimal("0."+message), self.domain6_boundaries, message_length, delimiter=" ")
 
-        elif domain == 5:
-            return message_length, self.get_word_domain5(Decimal("0."+message), message_length, delimiter=" ")
+            elif domain == 5:
+                return message_length, self.get_word_domain5(Decimal("0."+message), message_length, delimiter=" ")
 
-        elif domain == 4:
-            if len(message) <= 2:
+            elif domain == 4:
+                if len(message) <= 2:
+                    return None, "NULL"
+
+                directions = {1:"NE", 2:"NW", 3:"SE", 4:"SW"}
+
+                if int(message[0]) > 4 or int(message[0]) == 0:
+                    return None, "NULL"
+
+                direct = directions[int(message[0])]
+
+                return message_length, self.get_word_domain4(Decimal("0."+message[1:]), message_length, direct, delimiter=" ")
+
+            elif domain == 3:
+                #print("0."+message)
+                return message_length, self.get_word(Decimal("0."+message), self.domain3_boundaries, message_length, delimiter="", domain_3 = True)
+
+            elif domain == 2:
+                return message_length, self.get_word_domain2(Decimal("0."+message), message_length)
+
+            elif domain == 1:
+                return message_length, self.get_word(Decimal("0."+message), self.domain1_boundaries, message_length, delimiter="")
+
+            else:
                 return None, "NULL"
-
-            directions = {1:"NE", 2:"NW", 3:"SE", 4:"SW"}
-
-            if int(message[0]) > 4 or int(message[0]) == 0:
-                return None, "NULL"
-
-            direct = directions[int(message[0])]
-
-            return message_length, self.get_word_domain4(Decimal("0."+message[1:]), message_length, direct, delimiter=" ")
-
-        elif domain == 3:
-            #print("0."+message)
-            return message_length, self.get_word(Decimal("0."+message), self.domain3_boundaries, message_length, delimiter="", domain_3 = True)
-
-        elif domain == 2:
-            return message_length, self.get_word_domain2(Decimal("0."+message), message_length)
-
-        elif domain == 1:
-            return message_length, self.get_word(Decimal("0."+message), self.domain1_boundaries, message_length, delimiter="")
-
-        else:
+        except:
+            print("Failed to Get Word")
             return None, "NULL"
 
 
