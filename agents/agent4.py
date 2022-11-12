@@ -55,7 +55,7 @@ DictionaryPaths = {
     Domain.PASSWORD: ['messages/agent3/dicts/large_cleaned_long_words.txt'],
     Domain.STREET: ['messages/agent5/street_name.txt', 'messages/agent5/street_suffix.txt'],
     Domain.WARTIME_NEWS: ['messages/agent6/unedited_corpus.txt', 'messages/agent6/corpus-ngram-1.txt', 'messages/agent6/corpus-ngram-2.txt', 'messages/agent6/corpus-ngram-3.txt', 'messages/agent6/corpus-ngram-4.txt', 'messages/agent6/corpus-ngram-5.txt', 'messages/agent6/corpus-ngram-6.txt', 'messages/agent6/corpus-ngram-7.txt', 'messages/agent6/corpus-ngram-8.txt', 'messages/agent6/corpus-ngram-9.txt'],
-    Domain.SENTENCE: ['messages/agent3/dicts/30k_cleaned.txt'],
+    Domain.SENTENCE: ['messages/agent7/30k.txt'],
     Domain.NAME_PLACE: ['messages/agent3/dicts/places_and_names.txt']
 }
 
