@@ -199,10 +199,6 @@ class Domain_Info():
         self.allLayouts.append([0])  # TODO
         self.layoutDict[Domain.NAME_PLACES] = [0]
 
-    def get_domain(self, domain_index):
-        '''Get domain object from domain index'''
-        return self.domains[domain_index]
-
 
 class Domain(Enum):
     G1 = 1
@@ -354,11 +350,7 @@ class Encoder():
     def __init__(self, classifier = Domain_Classifier(), all_domains = Domain_Info()) -> None:
         self.classifier = classifier
         self.all_domains = all_domains
-        
-        # self.domain_idx = domain_idx
-        # self.indices = domains
-        # self.dict_sizes = [len(domain) for domain in domains]
-        # self.dictionaries = []
+        # TODO Initialize these
         self.domain_idx = None
         self.indices = None
         self.dict_sizes = None
@@ -402,8 +394,6 @@ class Encoder():
     # TODO: Encoder
     # TODO: change to work with factorial sums - could be noticeable for small factorials
     def get_encoding_length(self, tokens, layout):
-        return 6
-        
         # if len(self.dict_sizes) == 1:
         #     token_permutation_size = self.dict_sizes[0] ** len(tokens)
         # else:
@@ -453,11 +443,7 @@ class Encoder():
 class Decoder():
     def __init__(self, all_domains = Domain_Info()) -> None:
         self.all_domains = all_domains
-        
-        # self.domain_idx = domain_idx
-        # self.indices = domains
-        # self.dict_sizes = [len(domain) for domain in domains]
-        # self.dictionaries = []
+        # TODO Initialize these
         self.domain_idx = None
         self.indices = None
         self.dict_sizes = None
