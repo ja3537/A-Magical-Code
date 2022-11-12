@@ -99,20 +99,20 @@ for domain in range(1,9):
         args.n = n_values[i]
         messages_file = 'messages/tournament/m_{}_{}.txt'.format(domain, args.batch)
         args.messages = messages_file
-        output_file = "tournament_results/results_{}_{}_{}_{}.csv".format(args.agent, domain, args.batch, args.n)
+        output_file = "tournament_results/results_{}_{}_{}_{}.csv".format(args.agent[0], domain, args.batch, args.n)
         args.output = output_file
 
         mission = Mission(args)
 
         mission.execute_mission()
         tock = time.time()
-        print("mission completed for agent {} in domain {} and batch {} for n value of {} in {:.2f}s".format(args.agent, domain, args.batch, args.n, tock-tick))
+        print("mission completed for agent {} in domain {} and batch {} for n value of {} in {:.2f}s".format(args.agent[0], domain, args.batch, args.n, tock-tick))
     end = time.time()
 
-    print("mission completed for agent {} in domain {} and batch {} in a total time of {:.2f}s".format(args.agent, domain, args.batch, end-start))
+    print("mission completed for agent {} in domain {} and batch {} in a total time of {:.2f}s".format(args.agent[0], domain, args.batch, end-start))
 
 total_end = time.time()
-print("all domains completed for agent {} with batch {} in a total time of {:.2f}s".format(args.agent, args.batch, total_end - total_start))
+print("all domains completed for agent {} with batch {} in a total time of {:.2f}s".format(args.agent[0], args.batch, total_end - total_start))
 
 
 
