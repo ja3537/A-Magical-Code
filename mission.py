@@ -81,6 +81,13 @@ class Mission:
                     else:
                         self.n_values[i].append(n)
                         self.shuffled_decks[i].append(self.s(n, d))
+                else:
+                    if run == 0:
+                        self.n_values.append([n])
+                        self.shuffled_decks.append([d])
+                    else:
+                        self.n_values[i].append(n)
+                        self.shuffled_decks[i].append(d)
 
 
 
