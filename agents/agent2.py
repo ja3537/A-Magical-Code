@@ -321,7 +321,7 @@ class Agent:
         s = ''
         if group == 5:
             i = 0
-            while short_message[i].isdigit():
+            while i < len(short_message) and short_message[i].isdigit():
                 s += short_message[i]
                 i += 1
             short_message = short_message[i:]
