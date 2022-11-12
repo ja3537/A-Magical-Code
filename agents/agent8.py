@@ -9,8 +9,10 @@ from math import ceil, factorial, log2
 from operator import indexOf
 from pprint import pprint
 from random import Random
-from string import ascii_letters, digits, punctuation
+from string import ascii_letters, digits, punctuation, ascii_uppercase, whitespace
 from typing import Callable, Dict, Optional
+
+DEBUG = False
 
 # ================
 # Frequency Distributions
@@ -467,14 +469,18 @@ def coordinate_coders() -> tuple[Callable[[str], str], Callable[[str], str]]:
             _,
         ) = extract_bit_fields(pad(message, 44, allow_over=True), [1, 21, 1, 21])
 
-        lat_deg = (
-            str(Decimal(from_bit_string(lat_deg_bits)) / 10_000).rstrip("0").rstrip(".")
-        )
-        long_deg = (
-            str(Decimal(from_bit_string(long_deg_bits)) / 10_000)
-            .rstrip("0")
-            .rstrip(".")
-        )
+        lat_deg = str(Decimal(from_bit_string(lat_deg_bits)) / 10_000)
+        if not "." in lat_deg:
+            lat_deg += ".0000"
+        else:
+            lat_trailing_zeros = 4 - len(lat_deg[lat_deg.index(".") + 1 :])
+            lat_deg = lat_deg + "0" * lat_trailing_zeros
+        long_deg = str(Decimal(from_bit_string(long_deg_bits)) / 10_000)
+        if not "." in long_deg:
+            long_deg += ".0000"
+        else:
+            long_trailing_zeros = 4 - len(long_deg[long_deg.index(".") + 1 :])
+            long_deg = long_deg + "0" * long_trailing_zeros
 
         lat_dir = "S" if lat_dir_bit == "1" else "N"
         long_dir = "W" if long_dir_bit == "1" else "E"
@@ -482,6 +488,426 @@ def coordinate_coders() -> tuple[Callable[[str], str], Callable[[str], str]]:
         decoded = f"{lat_deg} {lat_dir}, {long_deg} {long_dir}"
 
         return decoded
+
+    return encode, decode
+
+
+def agent1_coders():
+    domain = " 0123456789abcdefghijklmnopqrstuvwxyz."
+    char_length = int(ceil(log2(len(domain))))
+
+    def encode(message: str) -> str:
+        out = ""
+        for char in message:
+            out += pad(to_bit_string(domain.index(char)), char_length)
+        return out
+
+    def decode(message: str) -> str:
+        out = ""
+        for offset in range(0, len(message), char_length):
+            char_code = from_bit_string(message[offset : offset + char_length])
+            if char_code >= len(domain):
+                raise ValueError()
+            out += domain[char_code]
+        return out
+
+    return encode, decode
+
+
+def flight_coders():
+    PATTERN = re.compile(
+        r"(?P<airport>[A-Z]{3}) (?P<res>[A-Z0-9]{4}) (?P<month>\d{2})(?P<day>\d{2})(?P<year>\d{4})"
+    )
+
+    airports: list[str] = []
+    airport_length: int = 0
+
+    res_domain = ascii_uppercase + digits
+    res_char_length = int(ceil(log2(len(res_domain))))
+
+    month_domain = list(map(str, range(1, 13)))
+    month_length = 4
+    day_domain = list(map(str, range(1, 29)))
+    day_length = 5
+    year_domain = list(map(str, range(2023, 2026)))
+    year_length = 3
+
+    with open(
+        path.join(path.dirname(__file__), "../messages/agent2/airportcodes.txt")
+    ) as airport_dict:
+        airports = [word.strip() for word in airport_dict]
+        airport_length = int(ceil(log2(len(airports))))
+
+    def encode(message: str) -> str:
+        match = PATTERN.search(message)
+        if match is None:
+            raise ValueError()
+        airport_bits = pad(
+            to_bit_string(airports.index(match.group("airport"))), airport_length
+        )
+        res_bits = ""
+        for char in match.group("res"):
+            char_bits = pad(to_bit_string(res_domain.index(char)), res_char_length)
+            res_bits += char_bits
+
+        month_bits = pad(
+            to_bit_string(month_domain.index(match.group("month"))), month_length
+        )
+        day_bits = pad(to_bit_string(day_domain.index(match.group("day"))), day_length)
+        year_bits = pad(
+            to_bit_string(year_domain.index(match.group("year"))), year_length
+        )
+
+        encoded = airport_bits + res_bits + month_bits + day_bits + year_bits
+
+        return encoded
+
+    def decode(message: str) -> str:
+        field_lengths = [
+            year_length,
+            day_length,
+            month_length,
+            4 * res_char_length,
+            airport_length,
+        ]
+        if len(message) != sum(field_lengths):
+            raise ValueError()
+
+        year_bits, day_bits, month_bits, res_bits, airport_bits, _ = extract_bit_fields(
+            message, field_lengths
+        )
+
+        try:
+            airport = airports[from_bit_string(airport_bits)]
+            res = ""
+            for i in range(4):
+                res += res_domain[
+                    from_bit_string(
+                        res_bits[i * res_char_length : (i + 1) * res_char_length]
+                    )
+                ]
+            month = month_domain[from_bit_string(month_bits)]
+            day = day_domain[from_bit_string(day_bits)]
+            year = year_domain[from_bit_string(year_bits)]
+
+            out = f"{airport} {res} {month}{day}{year}"
+
+            return out
+        except IndexError:
+            raise ValueError()
+
+    return encode, decode
+
+
+def address_coders():
+    PATTERN = re.compile(r"(?P<number>\d{1,4}) (?P<street>.+) (?P<suffix>\w+)")
+
+    number_characters_length = 4
+    number_length = 14
+
+    streets = []
+    street_length: int = 0
+
+    suffixes = []
+    suffix_length: int = 0
+
+    with open(
+        path.join(path.dirname(__file__), "../messages/agent5/street_name.txt")
+    ) as street_dict:
+        streets = [word.strip() for word in street_dict]
+        street_length = int(ceil(log2(len(streets))))
+
+    with open(
+        path.join(path.dirname(__file__), "../messages/agent5/street_suffix.txt")
+    ) as suffix_dict:
+        suffixes = [word.strip() for word in suffix_dict]
+        suffix_length = int(ceil(log2(len(suffixes))))
+
+    def encode(message) -> str:
+        match = PATTERN.match(message)
+        if match is None:
+            raise ValueError()
+
+        number_character_bits = pad(
+            to_bit_string(len(match.group("number"))), number_characters_length
+        )
+        number_bits = pad(to_bit_string(int(match.group("number"))), number_length)
+        street_bits = pad(
+            to_bit_string(streets.index(match.group("street"))), street_length
+        )
+        suffix_bits = pad(
+            to_bit_string(suffixes.index(match.group("suffix"))), suffix_length
+        )
+
+        trailing_space_bit = "1" if message[-1] == " " else "0"
+
+        encoded = (
+            number_character_bits
+            + number_bits
+            + street_bits
+            + suffix_bits
+            + trailing_space_bit
+        )
+
+        return encoded
+
+    def decode(message) -> str:
+        fields = [
+            1,
+            suffix_length,
+            street_length,
+            number_length,
+            number_characters_length,
+        ]
+        if len(message) != sum(fields):
+            raise ValueError()
+        (
+            trailing_space_bit,
+            suffix_bits,
+            street_bits,
+            number_bits,
+            number_length_bits,
+            _,
+        ) = extract_bit_fields(message, fields)
+
+        try:
+            number_characters = from_bit_string(number_length_bits)
+            number = str(from_bit_string(number_bits))
+            number_leading_zeros = number_characters - len(number)
+            number = "0" * number_leading_zeros + number
+            street = streets[from_bit_string(street_bits)]
+            suffix = suffixes[from_bit_string(suffix_bits)]
+            trailing_space = " " if trailing_space_bit == "1" else ""
+            return f"{number} {street} {suffix}{trailing_space}"
+        except IndexError:
+            raise ValueError()
+
+    return encode, decode
+
+
+def ngram_coders():
+    corpus_length = 4
+
+    dicts = {}
+    for n in range(1, 10):
+        with open(
+            path.join(
+                path.dirname(__file__), f"../messages/agent6/corpus-ngram-{n}.txt"
+            )
+        ) as corpus:
+            forward = {ngram.rstrip("\n"): i for i, ngram in enumerate(corpus)}
+            backward = {i: ngram for ngram, i in forward.items()}
+            dicts[n] = (forward, backward)
+
+    with open(
+        path.join(path.dirname(__file__), "../messages/agent6/unedited_corpus.txt")
+    ) as corpus:
+        forward = {ngram.rstrip("\n"): i for i, ngram in enumerate(corpus)}
+        backward = {i: ngram for ngram, i in forward.items()}
+        dicts[10] = (forward, backward)
+
+    def encode(message: str) -> str:
+        n = len(message.split())
+        corpus = 10 if n > 9 else n
+        while corpus < 11:
+            forward, _ = dicts[corpus]
+
+            if not message in forward:
+                # Sometimes an n-gram is in the n+1-gram corpus
+                corpus += 1
+                continue
+
+            corpus_bits = pad(to_bit_string(corpus), corpus_length)
+            ngram_bits = to_bit_string(forward[message])
+
+            return ngram_bits + corpus_bits
+        raise ValueError()
+
+    def decode(message: str) -> str:
+        corpus_bits, ngram_bits = extract_bit_fields(message, [corpus_length])
+        corpus = from_bit_string(corpus_bits)
+        if corpus not in dicts:
+            raise ValueError()
+        _, backward = dicts[corpus]
+        ngram = from_bit_string(ngram_bits)
+        if ngram not in backward:
+            raise ValueError()
+        return backward[ngram]
+
+    return encode, decode
+
+
+def agent7_coders():
+    dict = {
+        word.strip(): i
+        for i, word in enumerate(
+            open(path.join(path.dirname(__file__), f"../messages/agent7/30k.txt"))
+        )
+    }
+    backward_dict = {i: word for word, i in dict.items()}
+    word_length = int(ceil(log2(len(dict))))
+
+    def encode(message: str) -> str:
+        # G6 ngram trailing whitespace fix
+        if message[-1] in whitespace:
+            raise ValueError()
+        words = message.split()
+        word_bits = ""
+        for word in words:
+            if not word in dict:
+                raise ValueError()
+            word_bits += pad(to_bit_string(dict[word]), word_length)
+        return word_bits
+
+    def decode(message: str) -> str:
+        words = []
+        for offset in range(0, len(message), word_length):
+            word_bits = message[offset : offset + word_length]
+            word_index = from_bit_string(word_bits)
+            if word_index not in backward_dict:
+                raise ValueError()
+            words.append(backward_dict[word_index])
+        return " ".join(words)
+
+    return encode, decode
+
+
+def name_place_coders():
+    names_forward: dict[str, int] = {}
+    names_backward: dict[int, str] = {}
+    name_length: int = 0
+    places_forward: dict[str, int] = {}
+    places_backward: dict[int, str] = {}
+    place_length: int = 0
+
+    with open(
+        path.join(path.dirname(__file__), f"../messages/agent8/names.txt")
+    ) as name_dict:
+        names_forward = {name.strip(): i for i, name in enumerate(name_dict)}
+        name_length = int(ceil(log2(len(names_forward))))
+        names_backward = {i: ngram for ngram, i in names_forward.items()}
+
+    with open(
+        path.join(path.dirname(__file__), f"../messages/agent8/places.txt")
+    ) as place_dict:
+        places_forward = {place.strip(): i for i, place in enumerate(place_dict)}
+        place_length = int(ceil(log2(len(places_forward))))
+        places_backward = {i: ngram for ngram, i in places_forward.items()}
+
+    def encode(message: str) -> str:
+        tokens = message.split()
+        encoded_bits = ""
+        for token in tokens:
+            if token in names_forward:
+                encoded_bits += "0" + pad(
+                    to_bit_string(names_forward[token]), name_length
+                )
+            elif token in places_forward:
+                encoded_bits += "1" + pad(
+                    to_bit_string(places_forward[token]), place_length
+                )
+            else:
+                raise ValueError()
+        return encoded_bits
+
+    def decode(message: str) -> str:
+        offset = 0
+        tokens = []
+        while offset < len(message):
+            if message[offset] == "0":
+                name_bits = message[offset + 1 : offset + 1 + name_length]
+                name_index = from_bit_string(name_bits)
+                if name_index not in names_backward:
+                    raise ValueError()
+                tokens.append(names_backward[name_index])
+                offset += 1 + name_length
+            else:
+                place_bits = message[offset + 1 : offset + 1 + place_length]
+                place_index = from_bit_string(place_bits)
+                if place_index not in places_backward:
+                    raise ValueError()
+                tokens.append(places_backward[place_index])
+                offset += 1 + place_length
+        return " ".join(tokens)
+
+    return encode, decode
+
+
+def password_coders():
+    num_length = 4
+
+    words_forward: dict[str, int] = {}
+    words_backward: dict[int, str] = {}
+    word_length = 0
+    with open(
+        path.join(
+            path.dirname(__file__),
+            f"../messages/agent3/dicts/large_cleaned_long_words.txt",
+        )
+    ) as words_dict:
+        words_forward = {word.strip(): i for i, word in enumerate(words_dict)}
+        word_length = int(ceil(log2(len(words_forward))))
+        words_backward = {i: ngram for ngram, i in words_forward.items()}
+
+    def encode(message: str) -> str:
+        if message[0] != "@":
+            raise ValueError()
+        offset = 1
+        encoded = ""
+        while offset < len(message):
+            if message[offset] in digits:
+                encoded += "0" + pad(to_bit_string(int(message[offset])), num_length)
+                offset += 1
+            else:
+                # # scan forward until digit/end
+                # end = offset + 1
+                # while end < len(message):
+                #     if message[end] not in digits:
+                #         end += 1
+                # # offset to end is now continuous letters
+                # frontier = []
+                # for i in range(offset + 1, end + 1):
+                #     candidate_word = message[offset : i]
+                #     if candidate_word in words_forward:
+                #         frontier.append([candidate_word])
+
+                # while len(frontier) > 0:
+                #     prefix_words = frontier.pop()
+
+                end = len(message)
+                dead = True
+                while end > offset:
+                    candidate_word = message[offset:end]
+                    if candidate_word in words_forward:
+                        dead = False
+                        encoded += "1" + pad(
+                            to_bit_string(words_forward[candidate_word]), word_length
+                        )
+                        offset = end
+                        break
+                    else:
+                        end -= 1
+                if dead:
+                    print(f"Died on {message[offset:]} in {message}")
+                    raise ValueError()
+        return encoded
+
+    def decode(message: str) -> str:
+        offset = 0
+        out = "@"
+        while offset < len(message):
+            if message[offset] == "0":
+                num_bits = message[offset + 1 : offset + 1 + num_length]
+                out += str(from_bit_string(num_bits))
+                offset += 1 + num_length
+            else:
+                word_bits = message[offset + 1 : offset + 1 + word_length]
+                word_index = from_bit_string(word_bits)
+                if word_index not in words_backward:
+                    raise ValueError()
+                out += words_backward[word_index]
+                offset += 1 + word_length
+        return out
 
     return encode, decode
 
@@ -633,28 +1059,26 @@ def extract_bit_fields(bits: str, format: list[int]) -> list[str]:
 
 def check_and_remove(bits: str) -> tuple[bool, int, str]:
     """Returns `(passed_checksum, encoding_id, message)`"""
-    message_checksum, length_byte, encoding_bits, message = extract_bit_fields(
-        pad(bits, CHECKSUM_BITS + LENGTH_BITS + ENCODING_BITS, allow_over=True),
-        [CHECKSUM_BITS, LENGTH_BITS, ENCODING_BITS],
+    message_checksum, encoding_bits, message = extract_bit_fields(
+        bits,
+        [CHECKSUM_BITS, ENCODING_BITS],
     )
 
     # Debug
-    # print("all bits:", bits)
-    # print("message checksum:", message_checksum)
-    # print("length", length_byte)
-    # print("encoding", encoding_bits)
-    # print("message", message)
+    if DEBUG:
+        print("all bits:", bits)
+        print("message checksum:", message_checksum)
+        print("encoding", encoding_bits)
+        print("message", message)
 
-    message_length = from_bit_string(length_byte)
     encoding_id = from_bit_string(encoding_bits)
 
-    if len(message) > message_length:
-        return False, -1, ""
-
-    # Pad message to target length with leading 0's
-    message = pad(message, message_length, allow_over=True)
-    checked_bits = message + encoding_bits + length_byte
+    checked_bits = message + encoding_bits
     checked_checksum = sha_checksum(checked_bits, CHECKSUM_BITS)
+
+    # Strip off leading 1
+    message = message[1:]
+
     return checked_checksum == message_checksum, encoding_id, message
 
 
@@ -686,17 +1110,22 @@ NUMBER_HUFFMAN = make_huffman_encoding(FrequencyDistribution.numbers)
 # [(encode, decode)]
 # Encoding identifier denotes index in this list
 CHARACTER_ENCODINGS: list[tuple[Callable[[str], str], Callable[[str], str]]] = [
-    huffman_coders(LOWERCASE_HUFFMAN),
-    huffman_coders(MIXED_HUFFMAN),
-    huffman_coders(ALPHANUM_HUFFMAN),
+    # huffman_coders(LOWERCASE_HUFFMAN),
+    # huffman_coders(MIXED_HUFFMAN),
+    # huffman_coders(ALPHANUM_HUFFMAN),
+    # huffman_coders(NUMBER_HUFFMAN),
     huffman_coders(ASCII_HUFFMAN),
-    huffman_coders(NUMBER_HUFFMAN),
-    dict_coders(),
     coordinate_coders(),
+    agent1_coders(),
+    flight_coders(),
+    address_coders(),
+    ngram_coders(),
+    agent7_coders(),
+    name_place_coders(),
+    password_coders(),
 ]
 
 CHECKSUM_BITS = 10
-LENGTH_BITS = 8
 ENCODING_BITS = max(int(ceil(log2(len(CHARACTER_ENCODINGS)))), 1)
 
 
@@ -743,9 +1172,10 @@ class Agent:
             print("No domain for message:", e)
             return list(range(52))
 
-        message_length = length_byte(encoded)
+        # Prepend a 1 to retain leading 0's
+        encoded = "1" + encoded
         encoding_bits = pad(to_bit_string(encoding_id), ENCODING_BITS)
-        checked_bits = encoded + encoding_bits + message_length
+        checked_bits = encoded + encoding_bits
         # Checksum checks all other bits
         checksum = sha_checksum(checked_bits, CHECKSUM_BITS)
         with_checksum = checked_bits + checksum
@@ -759,18 +1189,23 @@ class Agent:
             return list(range(52))
 
         # Debugging
-        # print("Message:", encoded)
-        # print("Encoding:", encoding_bits)
-        # print("Length:", message_length)
-        # print("Checksum:", checksum)
-        # print("C:", c)
+        if DEBUG:
+            print("Message:", encoded)
+            print("Encoding:", encoding_bits)
+            print("Checksum:", checksum)
+            print("C:", c)
+            print("all bits:", with_checksum)
 
-        return list(range(c, 52)) + card_encoded
+        deck = list(range(c, 52)) + card_encoded
+
+        return deck
 
     def decode(self, deck: list[int]):
         # Minimum 16 bit suffix for checksum + length
         # log2(9!) > 2 ^ 16
         for c in range(9, 52):
+            if DEBUG:
+                print("C:", c)
             encoded = [card for card in deck if card < c]
             decoded = to_bit_string(bottom_cards_decode(encoded, c))
             passes_checksum, encoding_id, message = check_and_remove(decoded)
@@ -785,6 +1220,32 @@ class Agent:
                 except ValueError:
                     self.failed_decodes += 1
                     print("Failed to decode:", deck)
+            else:
+                # for i in range(len(encoded)):
+                for i in range(1):
+                    current_card = encoded[i]
+                    unshuffled_deck = encoded[:]
+                    # unshuffled_deck.remove(current_card)
+                    # unshuffled_deck.append(current_card)
+                    new_decoded = to_bit_string(bottom_cards_decode(unshuffled_deck, c))
+                    passes_checksum, encoding_id, message = check_and_remove(
+                        new_decoded
+                    )
+                    if passes_checksum:
+                        self.total_decodes += 1
+                        if encoding_id >= len(CHARACTER_ENCODINGS):
+                            continue
+                        try:
+                            _, decode = CHARACTER_ENCODINGS[encoding_id]
+                            out_message = decode(message)
+                            print("Shuffled deck ", encoded)
+                            print("Unshuffled deck:", unshuffled_deck)
+                            print("Actual message", out_message)
+                            return out_message
+                        except ValueError:
+                            self.failed_decodes += 1
+                            print("Failed to decode:", deck)
+
         return "NULL"
 
 
@@ -809,7 +1270,7 @@ if __name__ == "__main__":
         deck = agent.encode(c)
         rted = agent.decode(deck)
         if rted != c:
-            print("Failed to encode:", c)
+            print("Failed to round trip:", c, rted)
 
     for n in range(1, 52):
         assert (

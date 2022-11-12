@@ -1,80 +1,405 @@
+from itertools import chain
 from operator import length_hint
 from cards import generate_deck
 import numpy as np
-from typing import List, Dict
+from typing import List, Dict, Union
 import math
 from pearhash import PearsonHasher
 from enum import Enum
 from dahuffman import HuffmanCodec
 from collections import namedtuple
-import requests
+import string
+import re
+import sys
 
 
 class Domain(Enum):
-    ALL = 0
-    NUM = 1
-    LOWER = 2
-    LOWER_AND_UPPER = 3
-    LETTERS_NUMBERS = 4
-    LAT_LONG = 5
+    ALL = 0                 # Group 1: lowercase letters, period, space, and numbers
+    AIRPORT = 1             # Group 2: airport code + random letters/numbers + number
+    PASSWORD = 2            # Group 3: @ symbol + random words and numbers
+    LAT_LONG = 3            # Group 4: number + N/S + ", " + number + E/W
+    STREET = 4              # Group 5: numbers, names, and street suffixes
+    # Group 6: space delimited english words from wartime correspondences
+    WARTIME_NEWS = 5
+    SENTENCE = 6            # Group 7: space delimited english words from limited dictionary
+    NAME_PLACE = 7          # Group 8: two propper nouns separated by a space
 
 
-MAC_DOMAIN_VALUE = max([d.value for d in Domain])
+MAX_DOMAIN_VALUE = max([d.value for d in Domain])
+
+MAX_CARDS_TO_ENCODE = 40
 
 DomainFrequencies = {
     # reference of English letter frequencies: https://pi.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
-    # password & address
-    Domain.ALL: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, " ": 0.11, "\t": 0.10, ".": 6.97, ",": 5.93, "'": 1.53, "\"": 1.33, ":": 0.90, "-": 0.77, ";": 0.74, "?": 0.43, "!": 0.39, "0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
-    # location
-    Domain.LAT_LONG: {"0": 186, "1": 342, "2": 223, "3": 334, "4": 208, "5": 215, "6": 233, "7": 211, "8": 173, "9": 168, "N": 169, "E": 164, "S": 31, "W": 36, ",": 200, ".": 400, " ": 600},
-    Domain.LOWER: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, " ": 5},
-    # name, places
-    Domain.LOWER_AND_UPPER: {"a": 24356, "b": 1881, "c": 3251, "d": 4489, "e": 20854, "f": 919, "g": 2001, "h": 5997, "i": 14284, "j": 271, "k": 2374, "l": 13159, "m": 3469, "n": 15726, "o": 10679, "p": 1148, "q": 400, "r": 12452, "s": 7567, "t": 7377, "u": 4057, "v": 2469, "w": 1482, "x": 266, "y": 4347, "z": 559, "A": 2020, "B": 1534, "C": 2409, "D": 1689, "E": 918, "F": 601, "G": 869, "H": 928, "I": 321, "J": 1621, "K": 1720, "L": 1894, "M": 2221, "N": 865, "O": 468, "P": 841, "Q": 121, "R": 1409, "S": 2600, "T": 1796, "U": 80, "V": 415, "W": 771, "X": 20, "Y": 230, "Z": 175},
-    # address(common cases)
-    Domain.LETTERS_NUMBERS: {"a": 1594, "b": 67, "c": 181, "d": 768, "e": 2611, "f": 66, "g": 198, "h": 555, "i": 748, "j": 4, "k": 177, "l": 674, "m": 141, "n": 1051, "o": 1265, "p": 79, "q": 6, "r": 1422, "s": 697, "t": 1864, "u": 669, "v": 518, "w": 192, "x": 15, "y": 246, "z": 19, "A": 322, "B": 273, "C": 154, "D": 96, "E": 187, "F": 95, "G": 70, "H": 125, "I": 24, "J": 38, "K": 25, "L": 87, "M": 214, "N": 195, "O": 31, "P": 152, "Q": 5, "R": 383, "S": 566, "T": 69, "U": 14, "V": 27, "W": 261, "X": 3, "Y": 8, "Z": 2, "0": 923, "1": 968, "2": 626, "3": 496, "4": 415, "5": 563, "6": 375, "7": 328, "8": 274, "9": 313, " ": 3577},
-    Domain.NUM: {"0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
+    # Group 1: lowercase letters, period, space, and numbers
+    # Domain.ALL: {"a": 8.12, "b": 1.49, "c": 2.71, "d": 4.32, "e": 12.02, "f": 2.30, "g": 2.03, "h": 5.92, "i": 7.31, "j": 0.10, "k": 0.69, "l": 3.98, "m": 2.61, "n": 6.95, "o": 7.68, "p": 1.82, "q": 0.11, "r": 6.02, "s": 6.28, "t": 9.10, "u": 2.88, "v": 1.11, "w": 2.09, "x": 0.17, "y": 2.11, "z": 0.07, " ": 0.11, "\t": 0.10, ".": 6.97, ",": 5.93, "'": 1.53, "\"": 1.33, ":": 0.90, "-": 0.77, ";": 0.74, "?": 0.43, "!": 0.39, "0": 0.09, "1": 0.08, "2": 0.07, "3": 0.06, "4": 0.05, "5": 0.04, "6": 0.03, "7": 0.02, "8": 0.01, "9": 0.005},
+    Domain.ALL: {
+        "y": 223, "m": 219, "8": 218, "w": 209, "r": 208, "5": 205, "s": 204, "o": 202, "n": 199, "h": 199, "f": 199, "d": 195, "k": 195, "7": 194, "t": 194, "v": 193, "p": 193, "q": 192, "x": 191, "e": 191, "z": 190, "b": 190, "1": 189, "u": 189, "c": 187, "6": 186, "a": 186, "4": 184, "j": 183, "9": 180, "g": 180, "2": 177, "i": 174, "0": 172, "3": 167, " ": 164, "l": 163, ".": 50,
+    },
+    # Group, 2: random letters/numbers
+    Domain.AIRPORT: {
+        "1": 137, "Z": 132, "8": 129, "Y": 126, "I": 126, "Q": 126, "6": 125, "W": 124, "T": 124, "R": 122, "2": 119, "F": 119, "P": 116, "M": 114, "O": 113, "3": 112, "D": 112, "E": 110, "U": 109, "G": 107, "7": 105, "B": 105, "N": 105, "L": 105, "C": 105, "X": 105, "4": 104, "J": 104, "5": 101, "9": 100, "A": 97, "K": 96, "S": 95, "V": 95, "H": 89, "0": 87,
+    },
+    # Group 3: @ symbol + random words and numbers and -
+    Domain.PASSWORD: {
+        "e": 2314, "i": 1759, "a": 1692, "s": 1529, "r": 1486, "n": 1445, "t": 1436, "o": 1288, "l": 1080, "@": 1000, "c": 869, "d": 795, "p": 629, "u": 595, "m": 567, "g": 560, "1": 426, "h": 425, "6": 416, "2": 407, "9": 386, "4": 381, "7": 375, "8": 374, "5": 373, "y": 368, "3": 359, "b": 346, "0": 338, "f": 279, "v": 267, "w": 187, "k": 168, "x": 71, "z": 61, "j": 45, "q": 33, "-": 100,
+    },
+    # Group 5: lowercase letters, numbers, space
+    Domain.STREET: {
+        " ": 2531, "e": 1911, "t": 1358, "a": 1104, "r": 1005, "o": 882, "n": 806, "1": 685, "0": 596, "i": 546, "d": 546, "u": 483, "s": 482, "l": 455, "2": 445, "S": 421, "5": 420, "v": 376, "h": 365, "3": 353, "6": 282, "4": 278, "R": 274, "A": 263, "7": 231, "9": 206, "8": 192, "W": 172, "B": 170, "M": 169, "y": 157, "g": 148, "k": 138, "w": 130, "c": 123, "N": 122, "P": 119, "E": 117, "C": 109, "m": 93, "H": 83, "F": 75, "D": 66, "L": 62, "-": 60, "p": 52, "T": 49, "f": 48, "G": 46, "b": 45, ".": 35, ",": 33, "J": 25, "O": 23, "K": 21, "z": 16, "I": 14, "V": 13, "x": 12, "U": 12, "Y": 8, "Q": 6, "q": 5, "&": 2, "#": 1, "/": 1, "j": 1, "+": 1, "'": 1,
+    },
+}
+
+DictionaryPaths = {
+    Domain.AIRPORT: ['messages/agent2/airportcodes.txt'],
+    Domain.PASSWORD: ['messages/agent3/dicts/large_cleaned_long_words.txt'],
+    Domain.STREET: ['messages/agent5/street_name.txt', 'messages/agent5/street_suffix.txt'],
+    Domain.WARTIME_NEWS: ['messages/agent6/unedited_corpus.txt', 'messages/agent6/corpus-ngram-1.txt', 'messages/agent6/corpus-ngram-2.txt', 'messages/agent6/corpus-ngram-3.txt', 'messages/agent6/corpus-ngram-4.txt', 'messages/agent6/corpus-ngram-5.txt', 'messages/agent6/corpus-ngram-6.txt', 'messages/agent6/corpus-ngram-7.txt', 'messages/agent6/corpus-ngram-8.txt', 'messages/agent6/corpus-ngram-9.txt'],
+    Domain.SENTENCE: ['messages/agent3/dicts/30k_cleaned.txt'],
+    Domain.NAME_PLACE: ['messages/agent3/dicts/places_and_names.txt']
 }
 
 EncodedBinary = namedtuple(
-    'EncodedBinary', ['message_bits', 'domain_bits', 'checksum_bits'])
+    'EncodedBinary', ['message_bits', 'partial_bit', 'domain_bits', 'length_bits', 'checksum_bits'])
 
 
 class Agent:
     def __init__(self):
         self.rng = np.random.default_rng(seed=42)
-        r = requests.get(
-            'https://raw.githubusercontent.com/mwcheng21/minified-text/main/minified.txt')
-        minified_text = r.text
-        self.abrev2word = {}
-        self.word2abrev = {}
+
+        self.word_to_binary_dicts = {domain: self.get_word_to_binary_dict(
+            domain) for domain in Domain if domain in DictionaryPaths.keys()}
+        self.binary_to_word_dicts = {domain: self.get_binary_to_word_dict(
+            domain) for domain in Domain if domain in DictionaryPaths.keys()}
+
+    def get_message_shorten_dict(self, domain: Domain):
+        if domain == Domain.PASSWORD:
+            filename = 'messages/agent3/dicts/shortened_dicts/passwords_mini.txt'
+        elif domain == Domain.STREET:  # not work right now
+            filename = 'messages/agent3/dicts/shortened_dicts/war_words_mini.txt'
+        elif domain == Domain.WARTIME_NEWS:
+            filename = 'messages/agent3/dicts/shortened_dicts/war_words_mini.txt'
+
+        minified_text = ""
+        with open(filename, 'r') as f:
+            minified_text = f.read()
+
+        abrev2word = {}
+        word2abrev = {}
         for line in minified_text.splitlines():
             [shortened, full] = line.split(' ')
-            self.abrev2word[shortened] = full
-            self.word2abrev[full] = shortened
+            abrev2word[shortened] = full
+            word2abrev[full] = shortened
 
-    def string_to_binary(self, message: str, domain: Domain) -> str:
+        return abrev2word, word2abrev
+
+    def message_shorten(self, message: str, domain: Domain) -> str:
+        ''' LAT_LONG g3: passwords, STREET g5: street address, WARTIME_NEWS g6: war correspondence'''
+        if domain == Domain.PASSWORD:
+            abrev2word, word2abrev = self.get_message_shorten_dict(
+                Domain.PASSWORD)
+
+            message_list = self.get_password_words(message)
+            for idx, word in enumerate(message_list):
+                if word in word2abrev.keys():
+                    message_list[idx] = word2abrev[word]
+
+            message_list_ = self.get_password_words(message)
+            for i in range(len(message_list)):
+                message = message.replace(message_list_[i], '-' + message_list[i])
+
+        return message
+
+    def message_unshorten(self, message: str, domain: Domain) -> str:
+        if domain == Domain.PASSWORD:
+            abrev2word, word2abrev = self.get_message_shorten_dict(
+                Domain.PASSWORD)
+            message_list = self.get_password_words(message, True)
+            for idx, word in enumerate(message_list):
+                if word in abrev2word.keys():
+                    message_list[idx] = abrev2word[word]
+
+            message_list_ = self.get_password_words(message, True)
+            for i in range(len(message_list)):
+                message = message.replace('-' + message_list_[i], message_list[i])
+
+        return message
+    # -----------------------------------------------------------------------------
+    #   Domain Logic
+    # -----------------------------------------------------------------------------
+
+    def get_message_domain(self, message: str) -> Domain:
+        matching_domains = []
+        words = [w for w in message.split(' ') if w]
+
+        # Domain.ALL
+        if all([ch in list(string.ascii_lowercase + string.digits + '. ') for ch in message]):
+            matching_domains.append(Domain.ALL)
+
+        # Domain.AIRPORT
+        if (len(words) == 3
+                and words[0] in self.word_to_binary_dicts[Domain.AIRPORT].keys()
+                and all([ch in list(string.ascii_uppercase + string.digits) for ch in words[1]])
+                and all([ch in list(string.digits) for ch in words[2]])
+                ):
+            matching_domains.append(Domain.AIRPORT)
+
+        # Domain.PASSWORD
+        if (message[0] == '@'
+            and all([w in self.word_to_binary_dicts[Domain.PASSWORD].keys() or w == '-' for w in self.get_password_words(message)])
+            ):
+            matching_domains.append(Domain.PASSWORD)
+
+        # Domain.LAT_LONG
+        if all([ch in list('NSEW,. ' + string.digits) for ch in message]) and \
+                any(ch.isdigit() for ch in message) and (',' in message) and ("." in message) and any(ch in "NSEW" for ch in message):
+            matching_domains.append(Domain.LAT_LONG)
+
+        # Domain.STREET
+        if (words[0].isnumeric() and
+            ((words[-1] in self.word_to_binary_dicts[Domain.STREET].keys()
+                      and ' '.join(words[1:-1]) in self.word_to_binary_dicts[Domain.STREET].keys())
+                     or ' '.join(words[1:]) in self.word_to_binary_dicts[Domain.STREET].keys())
+            ):
+            matching_domains.append(Domain.STREET)
+
+        # Domain.WARTIME_NEWS
+        if message.strip() in self.word_to_binary_dicts[Domain.WARTIME_NEWS].keys():
+            matching_domains.append(Domain.WARTIME_NEWS)
+
+        # Domain.SENTENCE
+        if all([word in self.word_to_binary_dicts[Domain.SENTENCE].keys() for word in words]):
+            matching_domains.append(Domain.SENTENCE)
+
+        # Domain.NAME_PLACE
+        if all([word in self.word_to_binary_dicts[Domain.NAME_PLACE].keys() for word in words]):
+            matching_domains.append(Domain.NAME_PLACE)
+
+        return sorted(matching_domains, key=lambda domain: len(self.message_to_binary(message, domain)))[0]
+
+    def domain_to_binary(self, domain_type: Domain) -> str:
+        return bin(int(domain_type.value))[2:].zfill(3)
+
+    def get_domain_frequencies(self, domain: Domain) -> Dict[Domain, Dict[str, float]]:
+        return DomainFrequencies[domain] if domain in DomainFrequencies.keys() else DomainFrequencies[Domain.ALL]
+
+    def get_password_words(self, password: str, shortened_words=False) -> List[str]:
+        dict = self.word_to_binary_dicts[Domain.PASSWORD] if not shortened_words else self.get_message_shorten_dict(Domain.PASSWORD)[0]
+        chunks = [w for w in re.split('-|' +
+            '|'.join(re.findall(r'\d+', password[1:])), password[1:]) if w]
+
+        if shortened_words:
+            return chunks
+        
+        words = []
+        for chunk in chunks:
+            j = 0
+            for i in range(1, len(chunk)+1):
+                if chunk[j:i] in dict and len(chunk[j:i]):
+                    for k in reversed(range(i, len(chunk)+1)):
+                        if chunk[j:k] in dict and len(chunk[j:k]):
+                            words.append(chunk[j:k])
+                            j = k
+                            break
+                    if not words or not words[-1].startswith(chunk[j:i]):
+                        words.append(chunk[j:i])
+                        j = i
+        return words
+
+    # -----------------------------------------------------------------------------
+    #   Message -> Binary & Binary -> Message
+    # -----------------------------------------------------------------------------
+
+    def message_to_binary(self, message: str, domain: Domain) -> str:
+        if domain == Domain.ALL:
+            return self.huff_string_to_binary(message, domain)
+        elif domain == Domain.AIRPORT:
+            return self.airport_to_binary(message)
+        elif domain == Domain.PASSWORD:
+            return self.password_to_binary(message)
+        elif domain == Domain.LAT_LONG:
+            return self.lat_long_to_binary(message)
+        elif domain == Domain.STREET:
+            return self.street_to_binary(message)
+        elif domain == Domain.WARTIME_NEWS:
+            return self.wartime_news_to_binary(message)
+        elif domain == Domain.SENTENCE:
+            return self.sentence_to_binary(message)
+        elif domain == Domain.NAME_PLACE:
+            return self.name_place_to_binary(message)
+        else:
+            return self.huff_string_to_binary(message, Domain.ALL)
+
+    def binary_to_message(self, binary: str, domain: Domain) -> str:
+        if domain == Domain.ALL:
+            return self.huff_binary_to_string(binary, domain)
+        elif domain == Domain.AIRPORT:
+            return self.binary_to_airport(binary)
+        elif domain == Domain.PASSWORD:
+            return self.binary_to_password(binary)
+        elif domain == Domain.LAT_LONG:
+            return self.binary_to_lat_long(binary)
+        elif domain == Domain.STREET:
+            return self.binary_to_street(binary)
+        elif domain == Domain.WARTIME_NEWS:
+            return self.binary_to_wartime_news(binary)
+        elif domain == Domain.SENTENCE:
+            return self.binary_to_sentence(binary)
+        elif domain == Domain.NAME_PLACE:
+            return self.binary_to_name_place(binary)
+        else:
+            return self.huff_string_to_binary(binary, Domain.ALL)
+
+    def huff_string_to_binary(self, message: str, domain: Domain) -> str:
         bytes_repr = HuffmanCodec.from_frequencies(
             self.get_domain_frequencies(domain)).encode(message)
-        binary_repr = bin(int(bytes_repr.hex(), 16))[2:]
+        binary_repr = bin(int.from_bytes(
+            b'\xff' + bytes_repr, byteorder='big'))[2:]
         return binary_repr
 
-    def binary_to_string(self, binary: str, domain: Domain) -> str:
+    def huff_binary_to_string(self, binary: str, domain: Domain) -> str:
         message_byte = int(binary, 2).to_bytes(
             (int(binary, 2).bit_length() + 7) // 8, 'big')
         message = HuffmanCodec.from_frequencies(
-            self.get_domain_frequencies(domain)).decode(message_byte)
+            self.get_domain_frequencies(domain)).decode(message_byte[1:])
         return message
 
-    def deck_encoded(self, message_cards: List[int]) -> List[int]:
-        result = []
-        for i in range(52):
-            if i not in message_cards:
-                result.append(i)
-        result.extend(message_cards)
-        return result
+    def get_binary_to_word_dict(self, domain: Domain) -> Dict[str, str]:
+        words = ['', '-']
+        for dict_path in DictionaryPaths[domain]:
+            with open(dict_path, 'r') as file:
+                line = file.readline()
+                while line:
+                    words.append(line.strip())
+                    line = file.readline()
+        bits_needed = math.ceil(math.log2(len(words)))
+        return {bin(idx)[2:].zfill(bits_needed): word for idx, word in enumerate(words)}
 
-    def get_encoded_cards(self, deck: List[int], start_idx: int) -> List[int]:
-        return [c for c in deck if c > start_idx]
+    def get_word_to_binary_dict(self, domain: Domain) -> Dict[str, str]:
+        words = ['', '-']
+        for dict_path in DictionaryPaths[domain]:
+            with open(dict_path, 'r') as file:
+                line = file.readline()
+                while line:
+                    words.append(line.strip())
+                    line = file.readline()
+        bits_needed = math.ceil(math.log2(len(words)))
+        return {word: bin(idx)[2:].zfill(bits_needed) for idx, word in enumerate(words)}
+
+    def sentence_to_binary(self, message: str) -> str:
+        dict = self.word_to_binary_dicts[Domain.SENTENCE]
+        return ''.join([dict[word] for word in message.split(' ')])
+
+    def binary_to_sentence(self, binary: str) -> str:
+        dict = self.binary_to_word_dicts[Domain.SENTENCE]
+        bits_per_word = len(list(dict.keys())[0])
+        words_bits = [binary[i:i+bits_per_word]
+                      for i in range(0, len(binary), bits_per_word)]
+        return ' '.join([dict[bits] for bits in words_bits])
+
+    def name_place_to_binary(self, message: str) -> str:
+        dict = self.word_to_binary_dicts[Domain.NAME_PLACE]
+        return ''.join([dict[word] for word in message.split(' ')])
+
+    def binary_to_name_place(self, binary: str) -> str:
+        dict = self.binary_to_word_dicts[Domain.NAME_PLACE]
+        bits_per_word = len(list(dict.keys())[0])
+        words_bits = [binary[i:i+bits_per_word]
+                      for i in range(0, len(binary), bits_per_word)]
+        return ' '.join([dict[bits] for bits in words_bits])
+
+    def airport_code_to_binary(self, airport_code: str) -> str:
+        dict = self.word_to_binary_dicts[Domain.AIRPORT]
+        return dict[airport_code]
+
+    def binary_to_airport_code(self, binary: str) -> str:
+        dict = self.binary_to_word_dicts[Domain.AIRPORT]
+        return dict[binary]
+
+    def airport_to_binary(self, message):
+        # message: MVM 7PRQ 02202025
+        message_list = message.split()
+        code1_bin = self.airport_code_to_binary(
+            message_list[0])  # 11 bits zfilled already
+        code2_bin = self.huff_string_to_binary(message_list[1], Domain.AIRPORT)
+        num_bin = bin(int(message_list[2]))[2:].zfill(
+            24)  # max is 12282025, thus 24 bits
+        binary_repr = code1_bin + code2_bin + num_bin
+        return binary_repr
+
+    def binary_to_airport(self, binary):
+        code2_len = len(binary) - 11 - 24
+
+        code1_bin = binary[:11]
+        code2_bin = binary[11:11 + code2_len]
+        num_bin = binary[-24:]
+
+        code1_str = self.binary_to_airport_code(code1_bin)
+        code2_str = self.huff_binary_to_string(code2_bin, Domain.AIRPORT)
+        num_str = str(int(num_bin, 2)).zfill(8)
+
+        message = code1_str + " " + code2_str + " " + num_str
+        return message
+
+    def password_to_binary(self, message: str) -> str:
+        return self.huff_string_to_binary(message[1:], Domain.PASSWORD)
+
+    def binary_to_password(self, binary: str) -> str:
+        return '@' + self.huff_binary_to_string(binary, Domain.PASSWORD)
+
+    def lat_long_to_binary(self, message: str) -> str:
+        # message: 18.3419 N, 64.9332 W
+        # get first number (remove the decimal point), max 7
+        # encode next letter with 0 or 1 to represent N or S
+        # repeat for next number + E/W
+        # pad numbers with zeros on left (once in binary)
+
+        message_list = message.replace(',', '').replace('.', '').split()
+        lat_bin = bin(int(message_list[0]))[2:].zfill(20)
+        long_bin = bin(int(message_list[2]))[2:].zfill(21)
+
+        lat_dir_bin = '0' if message_list[1] == 'N' else '1'
+        long_dir_bin = '0' if message_list[3] == 'E' else '1'
+
+        return lat_bin + lat_dir_bin + long_bin + long_dir_bin
+
+    def binary_to_lat_long(self, binary: str) -> str:
+        # RETURN: string in format 18.3419 N, 64.9332 W
+        lat_bin = binary[:20]
+        lat_dir_bin = binary[20:21]
+        long_bin = binary[21:42]
+        long_dir_bin = binary[42:]
+
+        lat_num = str(int(lat_bin, 2))
+        long_num = str(int(long_bin, 2))
+        lat_str = lat_num[:-4].zfill(1) + "." + lat_num[-4:].zfill(4)
+        long_str = long_num[:-4].zfill(1) + "." + long_num[-4:].zfill(4)
+
+        lat_dir = 'N' if lat_dir_bin == '0' else 'S'
+        long_dir = 'E' if long_dir_bin == '0' else 'W'
+
+        return lat_str + " " + lat_dir + ", " + long_str + " " + long_dir
+
+    def street_to_binary(self, message: str) -> str:
+        return self.huff_string_to_binary(message.lower(), Domain.STREET)
+
+    def binary_to_street(self, binary: str) -> str:
+        return self.huff_binary_to_string(binary, Domain.STREET).title()
+
+    def wartime_news_to_binary(self, message: str) -> str:
+        dict = self.word_to_binary_dicts[Domain.WARTIME_NEWS]
+        return dict[message.strip()] + (dict[''] if message.endswith(' ') else '')
+
+    def binary_to_wartime_news(self, binary: str) -> str:
+        dict = self.binary_to_word_dicts[Domain.WARTIME_NEWS]
+        bits_per_word = len(list(dict.keys())[0])
+        words_bits = [binary[i:i+bits_per_word]
+                      for i in range(0, len(binary), bits_per_word)]
+        return ' '.join([dict[bits] for bits in words_bits])
+
+    # -----------------------------------------------------------------------------
+    #   Binary -> Deck & Deck -> Binary
+    # -----------------------------------------------------------------------------
 
     def cards_to_num(self, cards: List[int]) -> int:
         num_cards = len(cards)
@@ -108,108 +433,131 @@ class Agent:
 
         return [first_card, *self.num_to_cards(num - sub_list_start, ordered_cards)]
 
+    # -----------------------------------------------------------------------------
+    #   Deck Helpers
+    # -----------------------------------------------------------------------------
+
+    def get_encoded_deck(self, message_cards: List[int]) -> List[int]:
+        result = []
+        for i in range(52):
+            if i not in message_cards:
+                result.append(i)
+        result.extend(message_cards)
+        return result
+
+    def get_encoded_cards(self, deck: List[int], start_card_num: int) -> List[int]:
+        return [c for c in deck if c >= start_card_num]
+
+    def get_num_cards_to_encode(self, int: int) -> int:
+        num_cards_to_encode = 1
+        for n in range(1, 52):
+            if math.factorial(n) >= int:
+                num_cards_to_encode = n
+                break
+        return num_cards_to_encode
+
+    # -----------------------------------------------------------------------------
+    #   Message Helpers
+    # -----------------------------------------------------------------------------
+
     def get_hash(self, bit_string: str) -> str:
         hasher = PearsonHasher(1)
         hex_hash = hasher.hash(str(int(bit_string, 2)).encode()).hexdigest()
         return bin(int(hex_hash, 16))[2:].zfill(8)
 
-    def domain_to_binary(self, domain_type: Domain) -> str:
-        return bin(int(domain_type.value))[2:].zfill(3)
+    def get_message_len_bits(self, message_binary: str) -> str:
+        return bin(self.get_num_cards_to_encode(int(message_binary, 2)))[2:].zfill(6)
 
-    def get_domain_type(self, message: str) -> Domain:
-        clean_message = "".join(message.split())
-        if clean_message.isnumeric():
-            return Domain.NUM
-        elif clean_message.isalpha() and clean_message.islower():
-            return Domain.LOWER
-        elif clean_message.isalpha():
-            return Domain.LOWER_AND_UPPER
-        elif clean_message.isalnum():
-            return Domain.LETTERS_NUMBERS
-        elif self.is_lat_long(clean_message):
-            return Domain.LAT_LONG
-        else:
-            return Domain.ALL
-
-    def get_domain_frequencies(self, domain: Domain) -> Dict[Domain, Dict[str, float]]:
-        return DomainFrequencies[domain] if domain in DomainFrequencies.keys() else DomainFrequencies[Domain.ALL]
-
-    def is_lat_long(self, message: str) -> bool:
-        return all([ch.isdigit() or ch in [",", ".", "N", "E", "S", "W"] for ch in message])
-
-    def check_decoded_message(self, message: str, domain_type) -> str:
-        clean_message = "".join(message.split())
+    def check_decoded_message(self, message: str) -> str:
         if message == '':
             return 'NULL'
-        if self.get_domain_type(clean_message) == Domain.ALL:
-            if not all(ord(c) < 128 and ord(c) > 32 for c in message):
-                return 'NULL'
+        try:
+            self.get_message_domain(message)
+        except:
+            return 'NULL'
         return message
 
     def get_binary_parts(self, binary: str) -> EncodedBinary:
         checksum_bits = binary[-8:]
-        domain_bits = binary[-11:-8]
-        message_bits = binary[:-11]
-        return EncodedBinary(message_bits, domain_bits, checksum_bits)
+        length_bits = binary[-14:-8]
+        domain_bits = binary[-17:-14]
+        partial_bit = binary[-18:-17]
+        message_bits = binary[:-18]
+        return EncodedBinary(message_bits, partial_bit, domain_bits, length_bits, checksum_bits)
+
+    # -----------------------------------------------------------------------------
+    #   Encode & Decode
+    # -----------------------------------------------------------------------------
 
     def encode(self, message: str) -> List[int]:
         deck = generate_deck(self.rng)
-        message = ' '.join(
-            [self.word2abrev[word] if word in self.word2abrev else word for word in message.split(" ")])
 
-        domain_type = self.get_domain_type(message)
+        try:
+            domain = self.get_message_domain(message)
+            message = self.message_shorten(message, domain)
+            
+            message_fits = False
+            partial_bit = '0'
+            while not message_fits:
+                message_binary = self.message_to_binary(message, domain)
+                domain_binary = self.domain_to_binary(domain)
+                length_binary = self.get_message_len_bits(message_binary)
+                checksum_binary = self.get_hash(
+                    message_binary + partial_bit + domain_binary + length_binary)
 
-        binary_repr = self.string_to_binary(message, domain_type)
-        binary_repr = binary_repr + \
-            self.domain_to_binary(domain_type) + self.get_hash(binary_repr)
-        integer_repr = int(binary_repr, 2)
+                binary_repr = '1' + message_binary + \
+                    partial_bit + domain_binary + length_binary + checksum_binary
+                integer_repr = int(binary_repr, 2)
 
-        num_cards_to_encode = 1
-        for n in range(1, 52):
-            if math.factorial(n) >= integer_repr:
-                num_cards_to_encode = n
-                break
-        message_start_idx = len(deck) - num_cards_to_encode
-        message_cards = self.num_to_cards(
-            integer_repr, deck[message_start_idx:])
-        return self.deck_encoded(message_cards)
+                num_cards_to_encode = self.get_num_cards_to_encode(integer_repr)
+                if num_cards_to_encode == 1 or num_cards_to_encode > MAX_CARDS_TO_ENCODE:
+                    message = message[:-1]
+                    partial_bit = '1'
+                else:
+                    message_fits = True
+                
+                message_start_idx = len(deck) - num_cards_to_encode
+
+                message_cards = self.num_to_cards(
+                    integer_repr, deck[message_start_idx:])
+                    
+            return self.get_encoded_deck(message_cards)
+        except:
+            return deck
 
     def decode(self, deck: List[int]) -> str:
-        message = ''
-        domain_type = None
-        meet_checksum_count = 0
-        for n in reversed(range(1, 51)):
-            encoded_cards = self.get_encoded_cards(deck, n)
-            integer_repr = self.cards_to_num(encoded_cards)
-            binary_repr = bin(int(integer_repr))[2:]
-            parts = self.get_binary_parts(binary_repr)
-            len_metadata_bits = len(parts.domain_bits) + \
-                len(parts.checksum_bits)
+        try:
+            message = ''
+            domain = None
+            match_count = 0
+            for n in range(3, MAX_CARDS_TO_ENCODE):
+                encoded_cards = self.get_encoded_cards(deck, n)
+                integer_repr = self.cards_to_num(encoded_cards)
+                binary_repr = bin(int(integer_repr))[3:]
+                parts = self.get_binary_parts(binary_repr)
+                domain_int = int(parts.domain_bits,
+                                2) if parts.domain_bits else MAX_DOMAIN_VALUE + 1
 
-            if len_metadata_bits == 11 and parts.message_bits and parts.checksum_bits == self.get_hash(parts.message_bits):
-                domain_int = int(parts.domain_bits, 2)
-                if domain_int <= MAC_DOMAIN_VALUE:
-                    domain_type = Domain(domain_int)
-                    message = self.binary_to_string(
-                        parts.message_bits, domain_type)
+                if (domain_int <= MAX_DOMAIN_VALUE
+                            and parts.message_bits
+                            and parts.checksum_bits == self.get_hash(parts.message_bits + parts.partial_bit + parts.domain_bits + parts.length_bits)
+                        ):
+                    try:
+                        domain = Domain(domain_int)
+                        message = self.binary_to_message(
+                            parts.message_bits, domain)
+                        match_count += 1
+                        if domain == self.get_message_domain(message) and match_count >= 3:
+                            break
+                    except:
+                        continue
 
-                    # TODO: ugly hack to fix the checksum, can be improved
-                    if meet_checksum_count > 2:
-                        break
-                    meet_checksum_count += 1
-        if meet_checksum_count < 2:
+            message = self.check_decoded_message(message)
+            message = self.message_unshorten(message, domain)
+
+            if parts.partial_bit == '1':
+                message = 'PARTIAL: ' + message
+
+            return message
+        except:
             return 'NULL'
-
-        message = self.check_decoded_message(message, domain_type)
-        message = ' '.join(
-            [self.abrev2word[word] if word in self.abrev2word else word for word in message.split(" ")])
-
-        return message
-
-
-if __name__ == "__main__":
-    agent = Agent()
-    message = "Hello"
-    deck = agent.encode(message)
-    print(deck)
-    print(agent.decode(deck))

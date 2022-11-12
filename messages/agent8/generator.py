@@ -16,6 +16,8 @@ def generate(length: int):
 
 
 if __name__ == "__main__":
-    for n in range(5):
-        l = randint(2, 5)
-        print(generate(l))
+    with open(path.join(path.dirname(__file__), "test.txt"), "w+") as f:
+        for n in range(1000):
+            l = randint(2, 5)
+            f.write(generate(l))
+            f.write("\n")
