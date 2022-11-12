@@ -1111,7 +1111,11 @@ class Agent:
         self.agent = ArtihmaticCodingAgent()
 
     def encode(self, message):
-        return self.agent.encode(message)
+        try:
+            return self.agent.encode(message)
+        except:
+            print("message too long...")
+            return range(0, 51)
 
     def decode(self, deck):
         return self.agent.decode(deck)
