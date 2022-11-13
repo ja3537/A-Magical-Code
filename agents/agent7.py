@@ -275,8 +275,6 @@ class Domain_Classifier():
         return msg.split(" ")
 
     def is_dictionary(self, msg):
-        print(msg)
-        print(len(self.domain_info.all_lists))
         if len(msg.split()) > 6 or has_numbers(msg):
             return False
 
@@ -484,7 +482,12 @@ class Decoder:
         dict_sizes = [len(d) for d in index_to_word]
         max_factors = [dict_sizes[dict_idx] for dict_idx in layout]
         word_indices = self.tree_factors(actual_num, max_factors)
-        tokens = [index_to_word[dict_idx][word_index] for word_index, dict_idx in zip(word_indices, layout)]
+        print('w',word_indices)
+        print('l',layout)
+        print(index_to_word)
+        for word_index, dict_idx in zip(word_indices, layout):
+            print(type(word_index), type(dict_idx))
+        tokens = [index_to_word[dict_idx][str(word_index)] for word_index, dict_idx in zip(word_indices, layout)]
         original_message = assemble_message(tokens, domain_id)
 
         return 'PARTIAL: ' if partial else '' + original_message
