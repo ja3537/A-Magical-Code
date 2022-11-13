@@ -19,81 +19,6 @@ ARITH_START = 0
 ############################# HELPER FUNCTIONS #############################
 ############################################################################
 
-# Check for groups in order how simplistic and sure it is to check
-def identify_domain(message):
-
-    message = message.strip()
-
-    # check for group 3
-    if message[0] == '@':
-        return 3
-
-    message_split = message.split(" ")
-    # check for group 2
-    if len(message_split) == 3:
-        if len(message_split[0]) == 3 and len(message_split[1]) == 4 and len(message_split[2]) == 8:
-            return 2
-
-    # check for group 4
-    if len(message_split) == 4 and message.count(".") == 2:
-        # Double check
-        if (len(message_split[0]) >= 6 and len(message_split[0]) <= 8) and (len(message_split[2]) >= 6 and len(message_split[2]) <= 8) and len(message_split[1]) == 2 and len(message_split[3]) == 1:
-            return 4
-
-    # check for group 5
-    if message_split[0].isdigit():
-        # Fairly small file
-        with open("messages/agent5/street_suffix.txt") as file_in:
-            lines = []
-            for line in file_in:
-                lines.append(line.rstrip())
-            #print(message_split[-1])
-            if message_split[-1] in lines:
-                return 5
-
-    # check for group 6 // Need to check how expensive this is should be better because we arent loading it all into memory at once
-    with open("messages/agent6/unedited_corpus.txt") as file_in:
-        lines = []
-        for line in file_in:
-            if message in line.lower():
-                return 6
-
-    # At this point the only corpus with numbers is group 1 
-    if any(char.isdigit() for char in message):
-        return 1
-
-    # check for group 8
-    # All agent 8 are greater than 1 in length and less than 6
-    if len(message_split) > 1 and len(message_split) < 6:
-        names = []
-        places = []
-        with open("messages/agent8/names.txt") as file_in:
-            for line in file_in:
-                names.append(line.rstrip())
-
-        with open("messages/agent8/places.txt") as file_in:
-            for line in file_in:
-                places.append(line.rstrip())
-
-        if all(word in places or word in names for word in message_split):
-            return 8
-
-    # Check group 7 possibly the largest file
-    lines = []
-    with open("messages/agent7/30k.txt") as file_in:
-        for line in file_in:
-            lines.append(line.rstrip())
-
-        if all(word in lines for word in message_split):
-            return 7
-
-    # Check if message should be group 1
-    if len(message) >2 and len(message) < 13:
-        return 1
-
-    #unidentifiable domain
-    return 0
-
 #from Group 4
 def cards_to_number(cards):
     num_cards = len(cards)
@@ -302,8 +227,10 @@ class ArtihmaticCodingAgent:
 
         #domain 6
         self.domain6_freq = {}
+        self.domain6_corpus = []
         with open("messages/agent6/unedited_corpus.txt") as file_in:
             for line in file_in:
+                self.domain6_corpus.append(line.strip())
                 for word in line.split(" "):
                     self.domain6_freq[word.rstrip().lower()] = 1
 
@@ -327,6 +254,59 @@ class ArtihmaticCodingAgent:
         self.domain1_boundaries = self.set_arithmatic_boundaries(self.domain1_freq)
 
         print("Finished initialization of dictionaries....")
+
+    # Check for groups in order how simplistic and sure it is to check
+    def identify_domain(self, message):
+
+        message = message.strip()
+
+        # check for group 3
+        if message[0] == '@':
+            return 3
+
+        message_split = message.split(" ")
+        # check for group 2
+        if len(message_split) == 3:
+            if len(message_split[0]) == 3 and len(message_split[1]) == 4 and len(message_split[2]) == 8:
+                return 2
+
+        # check for group 4
+        if len(message_split) == 4 and message.count(".") == 2:
+            # Double check
+            if (len(message_split[0]) >= 6 and len(message_split[0]) <= 8) and (len(message_split[2]) >= 6 and len(message_split[2]) <= 8) and len(message_split[1]) == 2 and len(message_split[3]) == 1:
+                return 4
+
+        # check for group 5
+        if message_split[0].isdigit():
+            # Fairly small file
+            if message_split[-1] in self.domain5_stsuffix_to_num.keys():
+                return 5
+
+        # check for group 6 // Need to check how expensive this is should be better because we arent loading it all into memory at once
+        for line in self.domain6_corpus:
+            if message in line.lower():
+                return 6
+
+        # At this point the only corpus with numbers is group 1 
+        if any(char.isdigit() for char in message):
+            return 1
+
+        # check for group 8
+        # All agent 8 are greater than 1 in length and less than 6
+        if len(message_split) > 1 and len(message_split) < 6:
+            if all(word in self.domain8_freq.keys() for word in message_split):
+                return 8
+
+        # Check group 7 possibly the largest file
+        if all(word in self.domain7_freq.keys() for word in message_split):
+            return 7
+
+        # Check if message should be group 1
+        if len(message) >2 and len(message) < 13:
+            return 1
+
+        #unidentifiable domain
+        return 0
 
     def change_frequencies(self, freq, maximum):
 
@@ -959,14 +939,12 @@ class ArtihmaticCodingAgent:
         else:
         
             return None
-            
-        
 
     def encode(self, message):
-        print(message)
+        #print(message)
 
-        domain = identify_domain(message)
-        print(domain)
+        domain = self.identify_domain(message)
+        #print(domain)
 
         message_length=len(message)
 
@@ -1089,11 +1067,10 @@ class ArtihmaticCodingAgent:
                     max_word = word
                     message_length = word_length
 
-                if max_word_count >= 5:
+                if max_word_count >= 3:
                     break
                 
-        #print(word_count)
-        if max_word in word_count and word_count[max_word] > 1 and message_length>0:
+        if max_word in word_count and word_count[max_word] > 3 and message_length>0:
             if message_length == len(max_word):
                 return max_word
             else:
@@ -1114,8 +1091,8 @@ class Agent:
         try:
             return self.agent.encode(message)
         except:
-            print("message too long...")
-            return range(0, 51)
+            #print(e)
+            return range(0, 52)
 
     def decode(self, deck):
         return self.agent.decode(deck)
