@@ -590,7 +590,7 @@ def test_encode_decode_file():
                     print("=======================================================")
                     print('pass')
                     print(msg)
-                    print(msg)
+                    print(decode_msg)
                 else:
                     print("=======================================================")
                     print('failed')
@@ -598,4 +598,4 @@ def test_encode_decode_file():
                     print(decode_msg)
                 msg = f.readline()
                 
-test_encode_decode_file()
+#test_encode_decode_file()
