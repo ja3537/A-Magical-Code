@@ -527,7 +527,8 @@ class Decoder:
                 partial = True
                 break
         original_message = assemble_message(tokens, domain_id)
-
+        if domain_id == 4:
+            original_message += " "
         return 'PARTIAL: ' + original_message if partial else '' + original_message
 
     def perm_number(self, permutation):
