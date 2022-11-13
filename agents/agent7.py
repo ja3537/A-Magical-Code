@@ -36,6 +36,7 @@ class Domain_Info():
                     word_to_idx[li[i]] = i
                 dict_dom.append(word_to_idx)
             self.all_dicts.append(dict_dom)
+        # print('LENS: ', len(self.all_lists[3][1]), len(self.all_dicts[3][1]))
 
 
     def add_g1_domain(self):
@@ -115,10 +116,12 @@ class Domain_Info():
         domain5_layout = [0, 1, 2]  # Number, Streetname, Street Suffix
         with open("./messages/agent5/street_name.txt", "r") as f:
             line = f.readline()
+            s = set()
             while line:
                 line = line.strip()
-                domain5_list[1].append(line)
+                s.add(line)
                 line = f.readline()
+            domain5_list[1] = list(s)
         with open("./messages/agent5/street_suffix.txt", "r") as f:
             line = f.readline()
             while line:
@@ -255,8 +258,8 @@ class Domain_Classifier():
         return msg.split(" ")
 
     def is_dictionary(self, msg):
-        print(msg)
-        print(len(self.domain_info.all_lists))
+        # print(msg)
+        # print(len(self.domain_info.all_lists))
         if len(msg.split()) > 6 or has_numbers(msg):
             return False
 
@@ -349,7 +352,7 @@ class Encoder:
         word_indices = [word_to_index[dict_idx][token] for token, dict_idx in zip(tokens, layout)]
         max_indices = [dict_sizes[dict_idx] for dict_idx in layout]
         encoding_len, perm_idx = self.get_encoding_length(word_indices, max_indices)
-        print('input perm idx: ', perm_idx)
+        # print('input perm idx: ', perm_idx)
         partial = 0
 
         while encoding_len == -1:
@@ -358,21 +361,21 @@ class Encoder:
             layout.pop()
             max_indices.pop()
             encoding_len, perm_idx = self.get_encoding_length(word_indices, max_indices)
-        print('input word indices: ', word_indices)
+        # print('input word indices: ', word_indices)
         # get the index of the message
         # num = self.tree_index(word_indices, max_indices)
         perm_zero = list(range(52-META_LENGTH-encoding_len, 52-META_LENGTH))
         perm = self.nth_perm(perm_idx, perm_zero)[::-1]
-        print('input perm: ', perm)
+        # print('input perm: ', perm)
         metadata_perm = self.encode_metadata(encoding_len-1, len(tokens)-1, domain_id.value, partial)
-        print('input meta: ', [encoding_len, len(tokens)-1, domain_id.value, partial])
+        # print('input meta: ', [encoding_len, len(tokens)-1, domain_id.value, partial])
         deck = list(range(0, 52-META_LENGTH-encoding_len)) + perm + metadata_perm
 
         return deck
 
     def get_encoding_length(self, indices, max_indices):
         num = self.tree_index(indices, max_indices)
-        print('input actual num: ', num)
+        # print('input actual num: ', num)
         if num == 0:
             return 0, 0
 
@@ -402,12 +405,12 @@ class Encoder:
     def encode_metadata(self, encoding_len, num_tokens, domain_idx, partial):
         factors = [encoding_len, num_tokens, domain_idx, partial]
         max_factors = [ENCODING_MAX_LENGTH, MAX_TOKENS, NUM_DOMAINS, 2] # partial is just a flag that can only be 0 or 1
-        print('input max factors: ', max_factors)
+        # print('input max factors: ', max_factors)
         meta_idx = self.tree_index(factors, max_factors)
-        print('input meta idx: ', meta_idx)
+        # print('input meta idx: ', meta_idx)
         meta_perm_zero = list(range(52-META_LENGTH, 52))
         meta_perm = self.nth_perm(meta_idx, meta_perm_zero)
-        print('input perm: ', meta_perm)
+        # print('input perm: ', meta_perm)
 
         return meta_perm
     
@@ -459,12 +462,12 @@ class Decoder:
         for card in deck:
             if 52-META_LENGTH <= card < 52:
                 metadata_perm.append(card)
-        print('output perm: ', metadata_perm)
+        # print('output perm: ', metadata_perm)
         factors = self.decode_metadata(metadata_perm)
         encoding_len, message_len, domain_id, partial = factors
         encoding_len += 1
         message_len += 1
-        print('output meta: ', [encoding_len, message_len, domain_id, partial])
+        # print('output meta: ', [encoding_len, message_len, domain_id, partial])
 
         message_perm = []
         for card in deck:
@@ -472,13 +475,13 @@ class Decoder:
                 message_perm.append(card)
 
         message_perm = message_perm[::-1]
-        print('output perm: ', message_perm)
+        # print('output perm: ', message_perm)
 
         if not message_perm:
             message_perm_num = 0
         else:
             message_perm_num = self.perm_number(message_perm)
-            print('output perm number: ', message_perm_num)
+            # print('output perm number: ', message_perm_num)
 
         # reconstruct original index from the factorial sum
         actual_num = sum([math.factorial(i) for i in range(encoding_len)]) + message_perm_num
@@ -486,9 +489,9 @@ class Decoder:
         index_to_word = self.all_domains.all_lists[self.all_domains.group_to_lists[domain_id]]
         dict_sizes = [len(d) for d in index_to_word]
         max_factors = [dict_sizes[dict_idx] for dict_idx in layout]
-        print('out actual num: ', actual_num)
+        # print('out actual num: ', actual_num)
         word_indices = self.tree_factors(actual_num, max_factors)
-        print('output word indices: ', word_indices)
+        # print('output word indices: ', word_indices)
         tokens = []
         for word_index, dict_idx in zip(word_indices, layout):
             try:
@@ -514,9 +517,9 @@ class Decoder:
 
     def decode_metadata(self, meta_perm):
         max_factors = [ENCODING_MAX_LENGTH, MAX_TOKENS, NUM_DOMAINS, 2]
-        print('output max factor: ', max_factors)
+        # print('output max factor: ', max_factors)
         meta_idx = self.perm_number(meta_perm)
-        print('output meta idx: ', meta_idx)
+        # print('output meta idx: ', meta_idx)
         #meta_idx = 4452
         factors = self.tree_factors(meta_idx, max_factors)
 
@@ -555,7 +558,7 @@ class Agent:
 
 def test_encoder_decoder():
     agent = Agent()
-    msg = 'vegetative macho sob elaborated reeve embellishments'
+    msg = 'vegetative macho sob elaborated reeve embellishments more'
     deck = agent.encode(msg)
     msg = agent.decode(deck)
     print('decoded:', msg)
