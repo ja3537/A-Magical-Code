@@ -67,7 +67,7 @@ class Domain_Info():
                     domain2_list[-1].append(time)
         for idx, c in enumerate('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'):
             domain2_list[1].append(c)
-        with open("./messages/agent2/airportcodes.txt", "r") as f:
+        with open("messages/agent2/airportcodes.txt", "r") as f:
             line = f.readline()
             while line:
                 line = line.strip()
@@ -142,7 +142,7 @@ class Domain_Info():
         # Char: words, digit, space
 
         domain67_list = set()  # IMPORTANT TO AVOID DUPLICATES
-        with open("./messages/agent6/corpus-ngram-" + str(1) + ".txt", "r") as f:
+        with open("./messages/agent6/unedited_corpus.txt", "r") as f:
             line = f.readline()
             while line:
                 line = line.strip()
@@ -280,11 +280,10 @@ class Domain_Classifier():
     def is_ngram(self, msg):
 
         msg = msg.strip()
-        for m in msg.split():
-            if m not in self.domain_info.all_lists[4][0]:
-                return False
+        if msg not in self.domain_info.all_lists[4][0]:
+            return False
 
-        return msg.split(' ')
+        return [msg]
 
     def is_g1(self, msg):
         return [x for x in msg]
@@ -596,25 +595,25 @@ def test_encoder_decoder():
 #test_encoder_decoder()
 
 
-def test_encode_decode_file():
-    agent = Agent()
-    for i in range(4, 9):
-        with open(f'./test_classifier/g{i}_example.txt', 'r') as f:
-            msg = f.readline()
-            while msg:
-                msg = msg.strip()
-                deck = agent.encode(msg)
-                decode_msg = agent.decode(deck)
-                if msg == decode_msg:
-                    print("=======================================================")
-                    print('pass')
-                    print(msg)
-                    print(decode_msg)
-                else:
-                    print("=======================================================")
-                    print('failed')
-                    print(msg)
-                    print(decode_msg)
-                msg = f.readline()
+# def test_encode_decode_file():
+#     agent = Agent()
+#     for i in range(4, 9):
+#         with open(f'./messages/tournament/m_6_1.txt', 'r') as f:
+#             msg = f.readline()
+#             while msg:
+#                 msg = msg.strip()
+#                 deck = agent.encode(msg)
+#                 decode_msg = agent.decode(deck)
+#                 if msg == decode_msg:
+#                     print("=======================================================")
+#                     print('pass')
+#                     print(msg)
+#                     print(decode_msg)
+#                 else:
+#                     print("=======================================================")
+#                     print('failed')
+#                     print(msg)
+#                     print(decode_msg)
+#                 msg = f.readline()
 
 #test_encode_decode_file()
