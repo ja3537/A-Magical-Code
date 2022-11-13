@@ -437,12 +437,14 @@ def assemble_message(tokens, domain_id):
     if domain_id == 0:
         return ''.join(tokens)
     elif domain_id == 1:
+        # TODO:
         return '{} {}{}{}{} {}'.format(*tokens)
     elif domain_id == 2:
         return '@' + ''.join(tokens)
     elif domain_id == 3:
-        return '{}.{} {}, {}.{}'.format(*tokens)
-    else: # the rest of the groups
+        # TODO:
+        return '{}.{} {}, {}.{} {}'.format(*tokens)
+    else:   # the rest of the groups
         return ' '.join(tokens)
 
 
@@ -473,7 +475,11 @@ class Decoder:
                 message_perm.append(card)
 
         message_perm = message_perm[::-1]
-        message_perm_num = self.perm_number(message_perm)
+
+        if not message_perm:
+            message_perm_num = 0
+        else:
+            message_perm_num = self.perm_number(message_perm)
 
         # reconstruct original index from the factorial sum
         actual_num = sum([math.factorial(i) for i in range(encoding_len)]) + message_perm_num
