@@ -1,3 +1,4 @@
+# Aditya Kulkarni, Zongyu Chen, Dmitrii Zakharov
 from email.headerregistry import Address
 from enum import Enum
 import random
@@ -5,12 +6,8 @@ import string
 import math
 from collections import defaultdict
 import os
-# import enchant
 import hashlib
 import numpy as np
-
-
-# ENGLISH_DICTIONARY = enchant.Dict("en_US") # pip install pyenchant
 
 class Domain_Info():
     def __init__(self):
@@ -548,7 +545,6 @@ class Decoder:
         # print('output max factor: ', max_factors)
         meta_idx = self.perm_number(meta_perm)
         # print('output meta idx: ', meta_idx)
-        #meta_idx = 4452
         
         factors = self.tree_factors(meta_idx, max_factors)
 
