@@ -257,6 +257,8 @@ class Domain_Classifier():
         return msg.split(" ")
 
     def is_dictionary(self, msg):
+        print(msg)
+        print(len(self.domain_info.all_lists))
         if len(msg.split()) > 6 or has_numbers(msg):
             return False
 
