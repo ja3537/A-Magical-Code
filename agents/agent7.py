@@ -206,7 +206,7 @@ class Domain_Classifier():
     def is_password(self, msg):
         if msg[0] != "@":
             return False
-        return msg[1:]
+        return [x for x in msg[1:]]
 
     def is_location(self, msg):
         if len(msg.split(",")) != 2:
@@ -361,8 +361,8 @@ class Encoder:
         max_indices = [dict_sizes[dict_idx] for dict_idx in layout]
         encoding_len, perm_idx = self.get_encoding_length(word_indices, max_indices)
         # print('input perm idx: ', perm_idx)
-        partial = 0
-
+        partial = 0 
+    
         while encoding_len == -1:
             partial = 1
             word_indices.pop()
@@ -429,7 +429,10 @@ class Encoder:
 
         for f in factorials:
             lehmer = n // f
-            x = items.pop(lehmer)
+            try:
+                x = items.pop(lehmer)
+            except IndexError:
+                print("ERROR")
             perm.append(x)
             n %= f
         return perm
@@ -566,14 +569,14 @@ class Agent:
 
 def test_encoder_decoder():
     agent = Agent()
-    msg = 'vegetative macho sob elaborated reeve embellishments more'
+    msg = 'pneumatoscopes'
     deck = agent.encode(msg)
     msg = agent.decode(deck)
     print('decoded:', msg)
-    msg = '22 West First Street'
-    deck = agent.encode(msg)
-    msg = agent.decode(deck)
-    print('decoded:', msg)
+    # msg = '22 West First Street'
+    # deck = agent.encode(msg)
+    # msg = agent.decode(deck)
+    # print('decoded:', msg)
 
 
 test_encoder_decoder()
@@ -581,7 +584,7 @@ test_encoder_decoder()
 
 def test_encode_decode_file():
     agent = Agent()
-    for i in range(1, 9):
+    for i in range(3, 9):
         with open(f'./test_classifier/g{i}_example.txt', 'r') as f:
             msg = f.readline()
             while msg:
