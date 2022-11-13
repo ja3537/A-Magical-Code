@@ -86,6 +86,7 @@ assert args.runs >= 1, "number of runs must be a positive integer"
 n_values = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 args.csv = True
 
+print("starting agent {} on batch {}".format(args.agent[0], args.batch))
 total_start = time.time()
 for domain in range(1,9):
     start = time.time()
