@@ -388,6 +388,7 @@ class Encoder:
     # methods to index or retrieve the index of varying domains
     @staticmethod
     def tree_index(factors, max_factors):
+        # TODO: possible bugs?
         index = 0
         for i in range(len(factors)):
             n_children = 1
@@ -408,6 +409,7 @@ class Encoder:
         return meta_perm
     
     def nth_perm(self, n, perm_zero):
+        # TODO: possible bug?
         perm = []
         items = perm_zero[:]
         factorials = self.factorials_reverse[-len(items):]
@@ -473,8 +475,7 @@ class Decoder:
             if 52-META_LENGTH < card < 52:
                 metadata_perm.append(card)
         factors = self.decode_metadata(metadata_perm)
-        factors = [26, 6, 6, 0] # Hard code for now
-        # TODO: factors doesnt added up to encode metadata
+        #factors = [26, 6, 6, 0] # Hard code for now
         encoding_len, message_len, domain_id, partial = factors
 
         message_perm = []
@@ -509,6 +510,7 @@ class Decoder:
         return 'PARTIAL: ' if partial else '' + original_message
 
     def perm_number(self, permutation):
+        # TODO: possible bug?
         n = len(permutation)
         factorials = self.factorials_reverse[-n:]
         number = 0
@@ -523,6 +525,7 @@ class Decoder:
     def decode_metadata(self, meta_perm):
         max_factors = [ENCODING_MAX_LENGTH, MAX_TOKENS, NUM_DOMAINS, 2]
         meta_idx = self.perm_number(meta_perm)
+        #meta_idx = 4452
         factors = self.tree_factors(meta_idx, max_factors)
 
         return factors
