@@ -146,13 +146,12 @@ class Domain_Info():
                 line = line.strip()
                 domain67_list.add(line)
                 line = f.readline()
-        with open("./messages/agent7/30k.txt", "r") as f:
+        with open("./messages/agent7/words.txt", "r") as f:
             line = f.readline()
             while line:
                 line = line.strip()
-
-                # if ENGLISH_DICTIONARY.check(line): #TODO fix pyenchant
-                domain67_list.add(line)
+                if ENGLISH_DICTIONARY.check(line):
+                    domain67_list.add(line)
                 line = f.readline()
 
         self.all_lists.append([list(domain67_list)])  # for group 6
@@ -161,23 +160,6 @@ class Domain_Info():
     def add_g7_domain(self):
         '''Add a new domain to the domain info object'''
         # Duh, this is the domain we are working on
-        # domain67_list = set()  # IMPORTANT TO AVOID DUPLICATES
-        # with open("./messages/agent6/corpus-ngram-" + str(1) + ".txt", "r") as f:
-        #     line = f.readline()
-        #     while line:
-        #         line = line.strip()
-        #         domain67_list.add(line)
-        #         line = f.readline()
-        # with open("./messages/agent7/30k.txt", "r") as f:
-        #     line = f.readline()
-        #     while line:
-        #         line = line.strip()
-        #
-        #         # if ENGLISH_DICTIONARY.check(line):
-        #         domain67_list.add(line)
-        #         line = f.readline()
-        #
-        # self.allDomains.append([list(domain67_list)])  # for group 7
         self.group_to_lists.append(4)
 
     def add_g8_domain(self):
@@ -270,19 +252,17 @@ class Domain_Classifier():
         if not msg[0].isupper():
             return False
         for x in msg.strip().split(" "):
-            if x not in self.domain_info.all_lists[6]:
+            if x not in self.domain_info.all_lists[5][0]:
                 return False
         return msg.split(" ")
 
     def is_dictionary(self, msg):
-        print(msg)
-        print(len(self.domain_info.all_lists))
         if len(msg.split()) > 6 or has_numbers(msg):
             return False
 
         msg = msg.strip()
         for m in msg.split():
-            if m not in self.domain_info.all_lists[4]:
+            if m not in self.domain_info.all_lists[4][0]:
                 return False
 
         return msg.split(' ')
@@ -291,7 +271,7 @@ class Domain_Classifier():
 
         msg = msg.strip()
         for m in msg.split():
-            if m not in self.domain_info.all_lists[5]:
+            if m not in self.domain_info.all_lists[4][0]:
                 return False
 
         return msg.split(' ')
@@ -414,6 +394,7 @@ class Encoder:
 
     # get metadata permutation (6 cards currently)
     def encode_metadata(self, encoding_len, num_tokens, domain_idx, partial):
+        # TODO: factors doesnt added up to decode metadata
         factors = [encoding_len, num_tokens, domain_idx, partial]
         max_factors = [ENCODING_MAX_LENGTH, MAX_TOKENS, NUM_DOMAINS, 2] # partial is just a flag that can only be 0 or 1
         meta_idx = self.tree_index(factors, max_factors)
@@ -434,18 +415,41 @@ class Encoder:
             n %= f
         return perm
 
+def assemble_airport(tokens):
+    if len(tokens) == 1:
+        return '{}'.format(*tokens)
+    elif len(tokens) == 2:
+        return '{} {}'.format(*tokens)
+    elif len(tokens) == 3:
+        return '{} {}{}'.format(*tokens)
+    elif len(tokens) == 4:
+        return '{} {}{}{}'.format(*tokens)
+    elif len(tokens) == 5:
+        return '{} {}{}{}{}'.format(*tokens)
+    return '{} {}{}{}{} {}'.format(*tokens)
+
+def assemble_location(tokens):
+    if len(tokens) == 1:
+        return '{}'.format(*tokens)
+    elif len(tokens) == 2:
+        return '{}.{}'.format(*tokens)
+    elif len(tokens) == 3:
+        return '{}.{} {},'.format(*tokens)
+    elif len(tokens) == 4:
+        return '{}.{} {}, {}.'.format(*tokens)
+    elif len(tokens) == 5:
+        return '{}.{} {}, {}.{}'.format(*tokens)
+    return '{}.{} {}, {}.{} {}'.format(*tokens)
 
 def assemble_message(tokens, domain_id):
     if domain_id == 0:
         return ''.join(tokens)
     elif domain_id == 1:
-        # TODO:
-        return '{} {}{}{}{} {}'.format(*tokens)
+        return assemble_airport(tokens)
     elif domain_id == 2:
         return '@' + ''.join(tokens)
     elif domain_id == 3:
-        # TODO:
-        return '{}.{} {}, {}.{} {}'.format(*tokens)
+        return assemble_location(tokens)
     else:   # the rest of the groups
         return ' '.join(tokens)
 
@@ -453,12 +457,7 @@ def assemble_message(tokens, domain_id):
 class Decoder:
     def __init__(self, all_domains = Domain_Info()) -> None:
         self.all_domains = all_domains
-        # TODO Initialize these
-        self.domain_idx = None
-        self.indices = None
-        self.dict_sizes = None
-        self.dictionaries = None
-
+        
         factorials = [0] * 52
         for i in range(52):
             factorials[i] = math.factorial(52 - i - 1)
@@ -469,7 +468,9 @@ class Decoder:
         for card in deck:
             if 52-META_LENGTH < card < 52:
                 metadata_perm.append(card)
-        encoding_len, message_len, domain_id, partial = self.decode_metadata(metadata_perm)
+        factors = self.decode_metadata(metadata_perm)
+        # TODO: factors doesnt added up to encode metadata
+        encoding_len, message_len, domain_id, partial = factors
 
         message_perm = []
         for card in deck:
@@ -490,8 +491,15 @@ class Decoder:
         dict_sizes = [len(d) for d in index_to_word]
         max_factors = [dict_sizes[dict_idx] for dict_idx in layout]
         word_indices = self.tree_factors(actual_num, max_factors)
-        # TODO:
-        tokens = [index_to_word[dict_idx][word_index] for word_index, dict_idx in zip(word_indices, layout)]
+        # TODO:      
+        tokens = []
+        for i in range(len(word_indices)):
+            try:
+                tokens.append(index_to_word[word_indices[i]][layout[i]])
+            except:
+                partial=True
+                break
+        #tokens = [index_to_word[dict_idx][word_index] for word_index, dict_idx in zip(word_indices, layout)]
         original_message = assemble_message(tokens, domain_id)
 
         return 'PARTIAL: ' if partial else '' + original_message
@@ -536,18 +544,16 @@ class Agent:
         self.encoder = Encoder(self.classifier, self.all_domains)
         self.decoder = Decoder(self.all_domains)
         
-    # TODO: move all the logic into Encoder (maybe make a "process message" method that classifies, tokenizes, and retrieves domains)
     def encode(self, message):
         return self.encoder.encode(message)
 
-    # TODO: move all the logic into Decoder (maybe add a "process tokens" method that assembles the tokens into original message based on domain)
     def decode(self, deck):
         return self.decoder.decode(deck)
 
 
 def test_encoder_decoder():
     agent = Agent()
-    msg = 'this concrete house appears extremely gigantic'
+    msg = 'vegetative macho sob elaborated reeve embellishments'
     deck = agent.encode(msg)
     msg = agent.decode(deck)
     print(msg)
