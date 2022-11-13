@@ -36,7 +36,6 @@ class Domain_Info():
                     word_to_idx[li[i]] = i
                 dict_dom.append(word_to_idx)
             self.all_dicts.append(dict_dom)
-        # print('LENS: ', len(self.all_lists[3][1]), len(self.all_dicts[3][1]))
 
 
     def add_g1_domain(self):
@@ -69,7 +68,8 @@ class Domain_Info():
                         d = '0' + str(d)
                     time = str(m) + str(d) + str(y)
                     domain2_list[-1].append(time)
-        domain2_list[1].append('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
+        for idx, c in enumerate('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'):
+            domain2_list[1].append(c)
         with open("./messages/agent2/airportcodes.txt", "r") as f:
             line = f.readline()
             while line:
@@ -233,7 +233,13 @@ class Domain_Classifier():
 
         if (airport_code in self.domain_info.all_lists[1][0]
                 and msg[2].isdigit()):
-            return orig_msg.split(' ')
+            partition = orig_msg.split(' ')
+            return_tokens = []
+            return_tokens.append(partition[0])
+            for i in partition[1]:
+                return_tokens.append(i)
+            return_tokens.append(partition[2])
+            return return_tokens
         return False
 
     def is_address(self, msg):
@@ -258,8 +264,7 @@ class Domain_Classifier():
         return msg.split(" ")
 
     def is_dictionary(self, msg):
-        # print(msg)
-        # print(len(self.domain_info.all_lists))
+
         if len(msg.split()) > 6 or has_numbers(msg):
             return False
 
@@ -349,7 +354,10 @@ class Encoder:
         layout = get_layout(len(tokens), domain_id.value)
         word_to_index = self.all_domains.all_dicts[self.all_domains.group_to_lists[domain_id.value]]
         dict_sizes = [len(d) for d in word_to_index]
-        word_indices = [word_to_index[dict_idx][token] for token, dict_idx in zip(tokens, layout)]
+        try:
+            word_indices = [word_to_index[dict_idx][token] for token, dict_idx in zip(tokens, layout)]
+        except KeyError:
+            print("KeyError")
         max_indices = [dict_sizes[dict_idx] for dict_idx in layout]
         encoding_len, perm_idx = self.get_encoding_length(word_indices, max_indices)
         # print('input perm idx: ', perm_idx)
@@ -569,3 +577,27 @@ def test_encoder_decoder():
 
 
 test_encoder_decoder()
+
+
+def test_encode_decode_file():
+    agent = Agent()
+    for i in range(1, 9):
+        with open(f'./test_classifier/g{i}_example.txt', 'r') as f:
+            msg = f.readline()
+            while msg:
+                msg = msg.strip()
+                deck = agent.encode(msg)
+                decode_msg = agent.decode(deck)
+                if msg == decode_msg:
+                    print("=======================================================")
+                    print('pass')
+                    print(msg)
+                    print(decode_msg)
+                else:
+                    print("=======================================================")
+                    print('failed')
+                    print(msg)
+                    print(decode_msg)
+                msg = f.readline()
+
+#test_encode_decode_file()
