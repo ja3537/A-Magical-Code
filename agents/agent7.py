@@ -5,15 +5,12 @@ import string
 import math
 from collections import defaultdict
 import os
-import enchant
+# import enchant
 import hashlib
 import numpy as np
 
-UNTOK = '*'
-EMPTY = ''
-DICT_SIZE = 27000
-SENTENCE_LEN = 6
-ENGLISH_DICTIONARY = enchant.Dict("en_US") # pip install pyenchant
+
+# ENGLISH_DICTIONARY = enchant.Dict("en_US") # pip install pyenchant
 
 class Domain_Info():
     def __init__(self):
@@ -150,8 +147,8 @@ class Domain_Info():
             line = f.readline()
             while line:
                 line = line.strip()
-                if ENGLISH_DICTIONARY.check(line):
-                    domain67_list.add(line)
+                # if ENGLISH_DICTIONARY.check(line):
+                domain67_list.add(line)
                 line = f.readline()
 
         self.all_lists.append([list(domain67_list)])  # for group 6
@@ -191,8 +188,8 @@ class Domain(Enum):
     LOCATION = 3
     ADDRESS = 4
     NGRAM = 5
-    DICTIONARY = 6
-    NAME_PLACES = 7
+    DICTIONARY = 5  # same as NGRAM
+    NAME_PLACES = 6
 
 
 def has_numbers(inputString):
@@ -311,8 +308,8 @@ class Domain_Classifier():
 
 
 ENCODING_MAX_LENGTH = 30
-MAX_TOKENS = 14
-NUM_DOMAINS = 6
+MAX_TOKENS = 12
+NUM_DOMAINS = 7
 META_LENGTH = 7
 
 def get_layout(num_tokens, did):
@@ -364,7 +361,8 @@ class Encoder:
         # num = self.tree_index(word_indices, max_indices)
         perm_zero = list(range(52-META_LENGTH-ENCODING_MAX_LENGTH, 52-META_LENGTH))
         perm = self.nth_perm(perm_idx, perm_zero)[::-1]
-        metadata_perm = self.encode_metadata(encoding_len, len(tokens), domain_id.value, partial)
+        metadata_perm = self.encode_metadata(encoding_len-1, len(tokens)-1, domain_id.value, partial)
+        print('input meta: ', [encoding_len, len(tokens)-1, domain_id.value, partial])
         deck = list(range(0, 52-META_LENGTH-encoding_len)) + perm + metadata_perm
 
         return deck
@@ -388,7 +386,6 @@ class Encoder:
     # methods to index or retrieve the index of varying domains
     @staticmethod
     def tree_index(factors, max_factors):
-        # TODO: possible bugs?
         index = 0
         for i in range(len(factors)):
             n_children = 1
@@ -399,17 +396,18 @@ class Encoder:
 
     # get metadata permutation (6 cards currently)
     def encode_metadata(self, encoding_len, num_tokens, domain_idx, partial):
-        # TODO: factors doesnt added up to decode metadata
         factors = [encoding_len, num_tokens, domain_idx, partial]
         max_factors = [ENCODING_MAX_LENGTH, MAX_TOKENS, NUM_DOMAINS, 2] # partial is just a flag that can only be 0 or 1
+        print('input max factors: ', max_factors)
         meta_idx = self.tree_index(factors, max_factors)
+        print('input meta idx: ', meta_idx)
         meta_perm_zero = list(range(52-META_LENGTH, 52))
         meta_perm = self.nth_perm(meta_idx, meta_perm_zero)
+        print('input perm: ', meta_perm)
 
         return meta_perm
     
     def nth_perm(self, n, perm_zero):
-        # TODO: possible bug?
         perm = []
         items = perm_zero[:]
         factorials = self.factorials_reverse[-len(items):]
@@ -421,41 +419,24 @@ class Encoder:
             n %= f
         return perm
 
-def assemble_airport(tokens):
-    if len(tokens) == 1:
-        return '{}'.format(*tokens)
-    elif len(tokens) == 2:
-        return '{} {}'.format(*tokens)
-    elif len(tokens) == 3:
-        return '{} {}{}'.format(*tokens)
-    elif len(tokens) == 4:
-        return '{} {}{}{}'.format(*tokens)
-    elif len(tokens) == 5:
-        return '{} {}{}{}{}'.format(*tokens)
-    return '{} {}{}{}{} {}'.format(*tokens)
 
-def assemble_location(tokens):
-    if len(tokens) == 1:
-        return '{}'.format(*tokens)
-    elif len(tokens) == 2:
-        return '{}.{}'.format(*tokens)
-    elif len(tokens) == 3:
-        return '{}.{} {},'.format(*tokens)
-    elif len(tokens) == 4:
-        return '{}.{} {}, {}.'.format(*tokens)
-    elif len(tokens) == 5:
-        return '{}.{} {}, {}.{}'.format(*tokens)
-    return '{}.{} {}, {}.{} {}'.format(*tokens)
+def smart_format(tokens, template):
+    consts = template.split('{}')
+    ret = consts[0]
+    for token, const in zip(tokens, consts[1:]):
+        ret += token + const
+    return ret
+
 
 def assemble_message(tokens, domain_id):
     if domain_id == 0:
         return ''.join(tokens)
     elif domain_id == 1:
-        return assemble_airport(tokens)
+        return smart_format(tokens, '{} {}{}{}{} {}')
     elif domain_id == 2:
         return '@' + ''.join(tokens)
     elif domain_id == 3:
-        return assemble_location(tokens)
+        return smart_format(tokens, '{}.{} {}, {}.{} {}')
     else:   # the rest of the groups
         return ' '.join(tokens)
 
@@ -472,11 +453,14 @@ class Decoder:
     def decode(self, deck):
         metadata_perm = []
         for card in deck:
-            if 52-META_LENGTH < card < 52:
+            if 52-META_LENGTH <= card < 52:
                 metadata_perm.append(card)
+        print('output perm: ', metadata_perm)
         factors = self.decode_metadata(metadata_perm)
-        #factors = [26, 6, 6, 0] # Hard code for now
         encoding_len, message_len, domain_id, partial = factors
+        encoding_len += 1
+        message_len += 1
+        print('output meta: ', [encoding_len, message_len, domain_id, partial])
 
         message_perm = []
         for card in deck:
@@ -502,15 +486,13 @@ class Decoder:
             try:
                 tokens.append(index_to_word[dict_idx][word_index])
             except:
-                partial=True
+                partial = True
                 break
-        #tokens = [index_to_word[dict_idx][word_index] for word_index, dict_idx in zip(word_indices, layout)]
         original_message = assemble_message(tokens, domain_id)
 
         return 'PARTIAL: ' if partial else '' + original_message
 
     def perm_number(self, permutation):
-        # TODO: possible bug?
         n = len(permutation)
         factorials = self.factorials_reverse[-n:]
         number = 0
@@ -524,12 +506,13 @@ class Decoder:
 
     def decode_metadata(self, meta_perm):
         max_factors = [ENCODING_MAX_LENGTH, MAX_TOKENS, NUM_DOMAINS, 2]
+        print('output max factor: ', max_factors)
         meta_idx = self.perm_number(meta_perm)
+        print('output meta idx: ', meta_idx)
         #meta_idx = 4452
         factors = self.tree_factors(meta_idx, max_factors)
 
         return factors
-
     
     @staticmethod
     def tree_factors(index, max_factors):
@@ -538,7 +521,6 @@ class Decoder:
             n_children = 1
             for factor in max_factors[i+1:]:
                 n_children *= factor
-            #n_children = int(np.prod(max_factors[i+1:]))
             factor = index//n_children
             factors.append(factor)
             index %= n_children
@@ -550,7 +532,7 @@ class Decoder:
 # Agent====================================================================
 
 class Agent:
-    def __init__(self, encoding_len=26):
+    def __init__(self):
         self.classifier = Domain_Classifier()
         self.all_domains = Domain_Info()
         self.encoder = Encoder(self.classifier, self.all_domains)
@@ -568,6 +550,11 @@ def test_encoder_decoder():
     msg = 'vegetative macho sob elaborated reeve embellishments'
     deck = agent.encode(msg)
     msg = agent.decode(deck)
-    print(msg)
+    print('decoded:', msg)
+    msg = '22 West First Street'
+    deck = agent.encode(msg)
+    msg = agent.decode(deck)
+    print('decoded:', msg)
+
 
 test_encoder_decoder()
