@@ -471,6 +471,7 @@ class Decoder:
             if 52-META_LENGTH < card < 52:
                 metadata_perm.append(card)
         factors = self.decode_metadata(metadata_perm)
+        #factors = [1, 6, 6, 0] # Hard code for now
         # TODO: factors doesnt added up to encode metadata
         encoding_len, message_len, domain_id, partial = factors
 
@@ -495,9 +496,9 @@ class Decoder:
         word_indices = self.tree_factors(actual_num, max_factors)
         # TODO:      
         tokens = []
-        for i in range(len(word_indices)):
+        for word_index, dict_idx in zip(word_indices, layout):
             try:
-                tokens.append(index_to_word[word_indices[i]][layout[i]])
+                tokens.append(index_to_word[dict_idx][word_index])
             except:
                 partial=True
                 break
