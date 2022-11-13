@@ -18,8 +18,10 @@ ENGLISH_DICTIONARY = enchant.Dict("en_US") # pip install pyenchant
 class Domain_Info():
     def __init__(self):
         '''Store all inforamtion about all domains'''
-        self.allDomains = list()
-        self.group_to_dicts = []
+        self.all_lists = list()
+        self.all_dicts = list()
+        self.group_to_lists = []
+
         self.add_g1_domain()
         self.add_g2_domain()
         self.add_g3_domain()
@@ -28,6 +30,16 @@ class Domain_Info():
         self.add_g6_domain()
         self.add_g7_domain()
         self.add_g8_domain()
+
+        for domain in self.all_lists:
+            dict_dom = []
+            for li in domain:
+                word_to_idx = {}
+                for i in range(len(li)):
+                    word_to_idx[li[i]] = i
+                dict_dom.append(word_to_idx)
+            self.all_dicts.append(dict_dom)
+
 
     def add_g1_domain(self):
         '''Add a new domain to the domain info object'''
@@ -38,8 +50,8 @@ class Domain_Info():
         domain_list = []
         for c in domain:
             domain_list.append(c)
-        self.allDomains.append([domain_list])
-        self.group_to_dicts.append(0)
+        self.all_lists.append([domain_list])
+        self.group_to_lists.append(0)
 
     def add_g2_domain(self):
         '''Add a new domain to the domain info object'''
@@ -67,8 +79,8 @@ class Domain_Info():
                 domain2_list[0].append(line)
                 # self.domains[Domain.AIRPORT].append(line)
                 line = f.readline()
-        self.allDomains.append(domain2_list)
-        self.group_to_dicts.append(1)
+        self.all_lists.append(domain2_list)
+        self.group_to_lists.append(1)
 
     def add_g3_domain(self):
         '''Add a new domain to the domain info object'''
@@ -80,7 +92,7 @@ class Domain_Info():
         # for c in domain:
         #     domain3_list.append(c)
         # self.allDomains.append([domain3_list])
-        self.group_to_dicts.append(0)
+        self.group_to_lists.append(0)
 
     def add_g4_domain(self):
         '''Add a new domain to the domain info object'''
@@ -92,8 +104,8 @@ class Domain_Info():
             domain4_list[0].append(str(i))
         for i in range(0, 10000):
             domain4_list[1].append(str('{:04}'.format(i)))
-        self.allDomains.append(domain4_list)
-        self.group_to_dicts.append(2)
+        self.all_lists.append(domain4_list)
+        self.group_to_lists.append(2)
 
 
     def add_g5_domain(self):
@@ -119,8 +131,8 @@ class Domain_Info():
         for i in range(10000):
             i = str(i)
             domain5_list[0].append(i)
-        self.allDomains.append(domain5_list)
-        self.group_to_dicts.append(3)
+        self.all_lists.append(domain5_list)
+        self.group_to_lists.append(3)
 
     def add_g6_domain(self):
         '''Add a new domain to the domain info object'''
@@ -143,8 +155,8 @@ class Domain_Info():
                 domain67_list.add(line)
                 line = f.readline()
 
-        self.allDomains.append([list(domain67_list)])  # for group 6
-        self.group_to_dicts.append(4)
+        self.all_lists.append([list(domain67_list)])  # for group 6
+        self.group_to_lists.append(4)
 
     def add_g7_domain(self):
         '''Add a new domain to the domain info object'''
@@ -166,7 +178,7 @@ class Domain_Info():
         #         line = f.readline()
         #
         # self.allDomains.append([list(domain67_list)])  # for group 7
-        self.group_to_dicts.append(4)
+        self.group_to_lists.append(4)
 
     def add_g8_domain(self):
         '''Add a new domain to the domain info object'''
@@ -186,19 +198,19 @@ class Domain_Info():
                 line = line.strip()
                 domain8_list.append(line)
                 line = f.readline()
-        self.allDomains.append([domain8_list])
-        self.group_to_dicts.append(5)
+        self.all_lists.append([domain8_list])
+        self.group_to_lists.append(5)
 
 
 class Domain(Enum):
-    G1 = 1
-    AIRPORT = 2
-    PASSWORD = 3
-    LOCATION = 4
-    ADDRESS = 5
-    NGRAM = 6
-    DICTIONARY = 7
-    NAME_PLACES = 8
+    G1 = 0
+    AIRPORT = 1
+    PASSWORD = 2
+    LOCATION = 3
+    ADDRESS = 4
+    NGRAM = 5
+    DICTIONARY = 6
+    NAME_PLACES = 7
 
 
 def has_numbers(inputString):
@@ -237,7 +249,7 @@ class Domain_Classifier():
         msg = msg.split(" ")
         airport_code = msg[0]
 
-        if (airport_code in self.domain_info.allDomains[1][0]
+        if (airport_code in self.domain_info.all_lists[1][0]
                 and msg[2].isdigit()):
             return orig_msg.split(' ')
         return False
@@ -249,7 +261,7 @@ class Domain_Classifier():
             return False
         if not partition[0].isdigit():
             return False
-        if partition[1] not in self.domain_info.allDomains[4][1]:
+        if partition[1] not in self.domain_info.all_lists[4][1]:
             return False
         else:
             return msg.split(" ")
@@ -258,7 +270,7 @@ class Domain_Classifier():
         if not msg[0].isupper():
             return False
         for x in msg.strip().split(" "):
-            if x not in self.domain_info.allDomains[7]:
+            if x not in self.domain_info.all_lists[7]:
                 return False
         return msg.split(" ")
 
@@ -268,7 +280,7 @@ class Domain_Classifier():
 
         msg = msg.strip()
         for m in msg.split():
-            if m not in self.domain_info.allDomains[6]:
+            if m not in self.domain_info.all_lists[6]:
                 return False
 
         return msg.split(' ')
@@ -277,7 +289,7 @@ class Domain_Classifier():
 
         msg = msg.strip()
         for m in msg.split():
-            if m not in self.domain_info.allDomains[6]:
+            if m not in self.domain_info.all_lists[6]:
                 return False
 
         return msg.split(' ')
@@ -320,32 +332,27 @@ NUM_DOMAINS = 6
 META_LENGTH = 7
 
 def get_layout(num_tokens, did):
-        if did == 1:
+        if did == 0:
             return [0] * num_tokens
-        elif did == 2:
+        elif did == 1:
             return [0, 1, 1, 1, 1, 2]
+        elif did == 2:
+            return [0] * num_tokens
         elif did == 3:
-            return [0] * num_tokens
-        elif did == 4:
             return [0, 1, 2, 0, 1, 2]
-        elif did == 5:
+        elif did == 4:
             return [0, 1, 2]
-        elif did == 6:
+        elif did == 5:
             return [0] * num_tokens
-        elif did == 7:
+        elif did == 6:
             return [0] * num_tokens
         else:
             return [0] * num_tokens
 
-class Encoder():
+class Encoder:
     def __init__(self, classifier = Domain_Classifier(), all_domains = Domain_Info()) -> None:
         self.classifier = classifier
         self.all_domains = all_domains
-        # TODO Initialize these
-        self.domain_idx = None
-        self.indices = None
-        self.dict_sizes = None
-        self.dictionaries = None
 
         factorials = [0] * 52
         for i in range(52):
@@ -355,43 +362,42 @@ class Encoder():
     def encode(self, msg):
         domain_id, tokens = self.classifier.predict(msg)
         layout = get_layout(len(tokens), domain_id)
-
-        encoding_len = self.get_encoding_length(tokens, layout)
+        word_to_index = self.all_domains.all_dicts[self.all_domains.group_to_lists[domain_id]]
+        dict_sizes = [len(d) for d in word_to_index]
+        word_indices = [word_to_index[dict_idx][token] for token, dict_idx in zip(tokens, layout)]
+        max_indices = [dict_sizes[dict_idx] for dict_idx in layout]
+        encoding_len, perm_idx = self.get_encoding_length(word_indices, max_indices)
         partial = 0
-        # ????
-        while encoding_len == 0:
-            partial = 1
-            tokens.pop()
-            layout.pop()
-            encoding_len = self.get_encoding_length(tokens, layout)
 
-        # self.dict_sizes not initialized
-        max_indices = [self.dict_sizes[dict_idx] for dict_idx in layout]
-        word_indices = [self.dictionaries[dict_idx][token] for token, dict_idx in zip(tokens, layout)]
+        while encoding_len == -1:
+            partial = 1
+            word_indices.pop()
+            layout.pop()
+            max_indices.pop()
+            encoding_len, perm_idx = self.get_encoding_length(word_indices, max_indices)
 
         # get the index of the message
-        num = self.tree_index(word_indices, max_indices)
+        # num = self.tree_index(word_indices, max_indices)
         perm_zero = list(range(52-META_LENGTH-ENCODING_MAX_LENGTH, 52-META_LENGTH))
-        perm = self.nth_perm(num, perm_zero)[::-1]
-        metadata_perm = self.encode_metadata(encoding_len, domain_id.value, len(tokens), partial)
-
+        perm = self.nth_perm(perm_idx, perm_zero)[::-1]
+        metadata_perm = self.encode_metadata(encoding_len, len(tokens), domain_id.value, partial)
         deck = list(range(0, 52-META_LENGTH-encoding_len)) + perm + metadata_perm
-        print(deck)
+
         return deck
 
-    # TODO: change to work with factorial sums - could be noticeable for small factorials
-    def get_encoding_length(self, tokens, layout):
-        # if len(self.dict_sizes) == 1:
-        #     token_permutation_size = self.dict_sizes[0] ** len(tokens)
-        # else:
-        token_permutation_size = int(np.prod([self.dict_sizes[idx] for idx in layout]))
+    def get_encoding_length(self, indices, max_indices):
+        num = self.tree_index(indices, max_indices)
+        s = 0
 
         for i in range(2, ENCODING_MAX_LENGTH):
-            if math.factorial(i) > token_permutation_size:
-                return i
+            t = s
+            s += math.factorial(i)
+            if s >= num:
+                card_deck_idx = num - t
+                return i, card_deck_idx
 
         # message too long
-        return 0
+        return -1, -1
 
     # methods to index or retrieve the index of varying domains
     @staticmethod
@@ -423,9 +429,22 @@ class Encoder():
             perm.append(x)
             n %= f
         return perm
-    
 
-class Decoder():
+
+def assemble_message(tokens, domain_id):
+    if domain_id == 0:
+        return ''.join(tokens)
+    elif domain_id == 1:
+        return '{} {}{}{}{} {}'.format(*tokens)
+    elif domain_id == 2:
+        return '@' + ''.join(tokens)
+    elif domain_id == 3:
+        return '{}.{} {}, {}.{}'.format(*tokens)
+    else: # the rest of the groups
+        return ' '.join(tokens)
+
+
+class Decoder:
     def __init__(self, all_domains = Domain_Info()) -> None:
         self.all_domains = all_domains
         # TODO Initialize these
@@ -444,20 +463,28 @@ class Decoder():
         for card in deck:
             if 52-META_LENGTH < card < 52:
                 metadata_perm.append(card)
-        message_len, domain, partial = self.decode_metadata(metadata_perm)
+        encoding_len, message_len, domain_id, partial = self.decode_metadata(metadata_perm)
 
         message_perm = []
         for card in deck:
-            if 52-message_len-META_LENGTH < card < 52-META_LENGTH:
+            if 52-encoding_len-META_LENGTH < card < 52-META_LENGTH:
                 message_perm.append(card)
 
         message_perm = message_perm[::-1]
         message_perm_num = self.perm_number(message_perm)
-        
-        layout = None
-        max_factors = None
-        token_indices = None
-        # TODO: WIP
+
+        # reconstruct original index from the factorial sum
+        actual_num = sum([math.factorial(i) for i in range(encoding_len)]) + message_perm_num
+        layout = get_layout(message_len, domain_id)
+        index_to_word = self.all_domains.all_dicts[self.all_domains.group_to_lists[domain_id]]
+        dict_sizes = [len(d) for d in index_to_word]
+        max_factors = [dict_sizes[dict_idx] for dict_idx in layout]
+        word_indices = self.tree_factors(actual_num, max_factors)
+        tokens = [index_to_word[dict_idx][word_index] for word_index, dict_idx in zip(word_indices, layout)]
+        # TODO: write assemble message
+        original_message = assemble_message(tokens, domain_id)
+
+        return 'PARTIAL: ' if partial else '' + original_message
 
     def perm_number(self, permutation):
         n = len(permutation)
@@ -470,18 +497,6 @@ class Decoder():
                     k += 1
             number += k * factorials[i]
         return number
-
-    def nth_perm(self, n, perm_zero):
-        perm = []
-        items = perm_zero[:]
-        factorials = self.factorials_reverse[-len(items):]
-
-        for f in factorials:
-            lehmer = n // f
-            x = items.pop(lehmer)
-            perm.append(x)
-            n %= f
-        return perm
 
     def decode_metadata(self, meta_perm):
         max_factors = [ENCODING_MAX_LENGTH, MAX_TOKENS, NUM_DOMAINS, 2]
