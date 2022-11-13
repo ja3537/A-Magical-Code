@@ -364,7 +364,7 @@ class Encoder:
     def encode(self, msg):
         domain_id, tokens = self.classifier.predict(msg)
         layout = get_layout(len(tokens), domain_id)
-        word_to_index = self.all_domains.all_dicts[self.all_domains.group_to_lists[domain_id]]
+        word_to_index = self.all_domains.all_dicts[self.all_domains.group_to_lists[domain_id.value]]
         dict_sizes = [len(d) for d in word_to_index]
         word_indices = [word_to_index[dict_idx][token] for token, dict_idx in zip(tokens, layout)]
         max_indices = [dict_sizes[dict_idx] for dict_idx in layout]
