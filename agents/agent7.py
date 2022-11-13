@@ -97,7 +97,8 @@ class Domain_Info():
         # Coordinate: latitude, longitude
         # Char: digit, N, E, S, W
         domain4_list = [[], [], []]  # Num before ., Num after ., NEWS
-        domain4_list[2].append('NEWS')
+        for i in 'NEWS':
+            domain4_list[2].append(i)
         for i in range(0, 180):
             domain4_list[0].append(str(i))
         for i in range(0, 10000):
@@ -124,13 +125,17 @@ class Domain_Info():
             domain5_list[1] = list(s)
         with open("./messages/agent5/street_suffix.txt", "r") as f:
             line = f.readline()
+            s = set()
             while line:
                 line = line.strip()
-                domain5_list[2].append(line)
+                s.add(line)
                 line = f.readline()
-        for i in range(10000):
-            i = str(i)
-            domain5_list[0].append(i)
+            domain5_list[2] = list(s)
+        for i in range(0, 10000): 
+            domain5_list[0].append(str(i))
+            while len(str(i)) < 4:
+                i = '0' + str(i)
+                domain5_list[0].append(i)
         self.all_lists.append(domain5_list)
         self.group_to_lists.append(3)
 
@@ -221,7 +226,7 @@ class Domain_Classifier():
                 tokens.append(left)
                 tokens.append(lspace)
                 tokens.append(rspace)
-            return tokens
+            return [x.strip() for x in tokens]
         return False
 
     def is_airport(self, msg):
@@ -351,6 +356,10 @@ class Encoder:
     
     def encode(self, msg):
         domain_id, tokens = self.classifier.predict(msg)
+        partial = 0 
+        if len(tokens) > MAX_TOKENS:
+            partial = 1
+            tokens = tokens[:MAX_TOKENS]
         layout = get_layout(len(tokens), domain_id.value)
         word_to_index = self.all_domains.all_dicts[self.all_domains.group_to_lists[domain_id.value]]
         dict_sizes = [len(d) for d in word_to_index]
@@ -359,9 +368,11 @@ class Encoder:
         except KeyError:
             print("KeyError")
         max_indices = [dict_sizes[dict_idx] for dict_idx in layout]
-        encoding_len, perm_idx = self.get_encoding_length(word_indices, max_indices)
+        try:
+            encoding_len, perm_idx = self.get_encoding_length(word_indices, max_indices)
+        except KeyError:
+            print("KeyError")
         # print('input perm idx: ', perm_idx)
-        partial = 0 
     
         while encoding_len == -1:
             partial = 1
@@ -418,7 +429,7 @@ class Encoder:
         # print('input meta idx: ', meta_idx)
         meta_perm_zero = list(range(52-META_LENGTH, 52))
         meta_perm = self.nth_perm(meta_idx, meta_perm_zero)
-        # print('input perm: ', meta_perm)
+        print('input perm: ', meta_perm)
 
         return meta_perm
     
@@ -473,7 +484,7 @@ class Decoder:
         for card in deck:
             if 52-META_LENGTH <= card < 52:
                 metadata_perm.append(card)
-        # print('output perm: ', metadata_perm)
+        print('output perm: ', metadata_perm)
         factors = self.decode_metadata(metadata_perm)
         encoding_len, message_len, domain_id, partial = factors
         encoding_len += 1
@@ -512,7 +523,7 @@ class Decoder:
                 break
         original_message = assemble_message(tokens, domain_id)
 
-        return 'PARTIAL: ' if partial else '' + original_message
+        return 'PARTIAL: ' + original_message if partial else '' + original_message
 
     def perm_number(self, permutation):
         n = len(permutation)
@@ -532,6 +543,7 @@ class Decoder:
         meta_idx = self.perm_number(meta_perm)
         # print('output meta idx: ', meta_idx)
         #meta_idx = 4452
+        
         factors = self.tree_factors(meta_idx, max_factors)
 
         return factors
@@ -579,12 +591,12 @@ def test_encoder_decoder():
     # print('decoded:', msg)
 
 
-test_encoder_decoder()
+#test_encoder_decoder()
 
 
 def test_encode_decode_file():
     agent = Agent()
-    for i in range(3, 9):
+    for i in range(8, 9):
         with open(f'./test_classifier/g{i}_example.txt', 'r') as f:
             msg = f.readline()
             while msg:
@@ -603,4 +615,4 @@ def test_encode_decode_file():
                     print(decode_msg)
                 msg = f.readline()
 
-#test_encode_decode_file()
+test_encode_decode_file()
