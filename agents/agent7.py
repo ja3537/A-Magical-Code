@@ -437,12 +437,14 @@ def assemble_message(tokens, domain_id):
     if domain_id == 0:
         return ''.join(tokens)
     elif domain_id == 1:
+        # TODO:
         return '{} {}{}{}{} {}'.format(*tokens)
     elif domain_id == 2:
         return '@' + ''.join(tokens)
     elif domain_id == 3:
-        return '{}.{} {}, {}.{}'.format(*tokens)
-    else: # the rest of the groups
+        # TODO:
+        return '{}.{} {}, {}.{} {}'.format(*tokens)
+    else:   # the rest of the groups
         return ' '.join(tokens)
 
 
@@ -482,6 +484,7 @@ class Decoder:
         dict_sizes = [len(d) for d in index_to_word]
         max_factors = [dict_sizes[dict_idx] for dict_idx in layout]
         word_indices = self.tree_factors(actual_num, max_factors)
+        # TODO:
         tokens = [index_to_word[dict_idx][word_index] for word_index, dict_idx in zip(word_indices, layout)]
         original_message = assemble_message(tokens, domain_id)
 
