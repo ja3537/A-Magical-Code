@@ -431,7 +431,7 @@ class Encoder:
         # print('input meta idx: ', meta_idx)
         meta_perm_zero = list(range(52-META_LENGTH, 52))
         meta_perm = self.nth_perm(meta_idx, meta_perm_zero)
-        print('input perm: ', meta_perm)
+        #print('input perm: ', meta_perm)
 
         return meta_perm
     
@@ -486,7 +486,7 @@ class Decoder:
         for card in deck:
             if 52-META_LENGTH <= card < 52:
                 metadata_perm.append(card)
-        print('output perm: ', metadata_perm)
+        #print('output perm: ', metadata_perm)
         factors = self.decode_metadata(metadata_perm)
         encoding_len, message_len, domain_id, partial = factors
         encoding_len += 1
@@ -620,4 +620,4 @@ def test_encode_decode_file():
                     print(decode_msg)
                 msg = f.readline()
 
-test_encode_decode_file()
+#test_encode_decode_file()
