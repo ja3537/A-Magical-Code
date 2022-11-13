@@ -387,9 +387,11 @@ class Encoder:
 
     def get_encoding_length(self, indices, max_indices):
         num = self.tree_index(indices, max_indices)
-        s = 0
+        if num == 0:
+            return 0, 0
 
-        for i in range(2, ENCODING_MAX_LENGTH):
+        s = 1
+        for i in range(1, ENCODING_MAX_LENGTH+1):
             t = s
             s += math.factorial(i)
             if s >= num:
@@ -481,7 +483,6 @@ class Decoder:
         max_factors = [dict_sizes[dict_idx] for dict_idx in layout]
         word_indices = self.tree_factors(actual_num, max_factors)
         tokens = [index_to_word[dict_idx][word_index] for word_index, dict_idx in zip(word_indices, layout)]
-        # TODO: write assemble message
         original_message = assemble_message(tokens, domain_id)
 
         return 'PARTIAL: ' if partial else '' + original_message
