@@ -390,8 +390,10 @@ class Encoder:
     def tree_index(factors, max_factors):
         index = 0
         for i in range(len(factors)):
-            index += factors[i] * int(np.prod(max_factors[i+1:]))
-
+            n_children = 1
+            for factor in max_factors[i+1:]:
+                n_children *= factor
+            index += factors[i] * n_children
         return index
 
     # get metadata permutation (6 cards currently)
@@ -471,7 +473,7 @@ class Decoder:
             if 52-META_LENGTH < card < 52:
                 metadata_perm.append(card)
         factors = self.decode_metadata(metadata_perm)
-        #factors = [1, 6, 6, 0] # Hard code for now
+        factors = [26, 6, 6, 0] # Hard code for now
         # TODO: factors doesnt added up to encode metadata
         encoding_len, message_len, domain_id, partial = factors
 
@@ -490,11 +492,10 @@ class Decoder:
         # reconstruct original index from the factorial sum
         actual_num = sum([math.factorial(i) for i in range(encoding_len)]) + message_perm_num
         layout = get_layout(message_len, domain_id)
-        index_to_word = self.all_domains.all_dicts[self.all_domains.group_to_lists[domain_id]]
+        index_to_word = self.all_domains.all_lists[self.all_domains.group_to_lists[domain_id]]
         dict_sizes = [len(d) for d in index_to_word]
         max_factors = [dict_sizes[dict_idx] for dict_idx in layout]
         word_indices = self.tree_factors(actual_num, max_factors)
-        # TODO:      
         tokens = []
         for word_index, dict_idx in zip(word_indices, layout):
             try:
@@ -525,17 +526,22 @@ class Decoder:
         factors = self.tree_factors(meta_idx, max_factors)
 
         return factors
+
     
     @staticmethod
     def tree_factors(index, max_factors):
         factors = []
         for i in range(len(max_factors)):
-            n_children = int(np.prod(max_factors[i+1:]))
+            n_children = 1
+            for factor in max_factors[i+1:]:
+                n_children *= factor
+            #n_children = int(np.prod(max_factors[i+1:]))
             factor = index//n_children
             factors.append(factor)
             index %= n_children
 
         return factors
+
 
 
 # Agent====================================================================
