@@ -261,7 +261,7 @@ class Domain_Classifier():
             return False
         if not partition[0].isdigit():
             return False
-        if partition[1] not in self.domain_info.all_lists[4][1]:
+        if partition[1] not in self.domain_info.all_lists[3][1]:
             return False
         else:
             return msg.split(" ")
@@ -270,17 +270,19 @@ class Domain_Classifier():
         if not msg[0].isupper():
             return False
         for x in msg.strip().split(" "):
-            if x not in self.domain_info.all_lists[7]:
+            if x not in self.domain_info.all_lists[6]:
                 return False
         return msg.split(" ")
 
     def is_dictionary(self, msg):
+        print(msg)
+        print(len(self.domain_info.all_lists))
         if len(msg.split()) > 6 or has_numbers(msg):
             return False
 
         msg = msg.strip()
         for m in msg.split():
-            if m not in self.domain_info.all_lists[6]:
+            if m not in self.domain_info.all_lists[4]:
                 return False
 
         return msg.split(' ')
@@ -289,7 +291,7 @@ class Domain_Classifier():
 
         msg = msg.strip()
         for m in msg.split():
-            if m not in self.domain_info.all_lists[6]:
+            if m not in self.domain_info.all_lists[5]:
                 return False
 
         return msg.split(' ')
@@ -362,7 +364,7 @@ class Encoder:
     def encode(self, msg):
         domain_id, tokens = self.classifier.predict(msg)
         layout = get_layout(len(tokens), domain_id)
-        word_to_index = self.all_domains.all_dicts[self.all_domains.group_to_lists[domain_id]]
+        word_to_index = self.all_domains.all_dicts[self.all_domains.group_to_lists[domain_id.value]]
         dict_sizes = [len(d) for d in word_to_index]
         word_indices = [word_to_index[dict_idx][token] for token, dict_idx in zip(tokens, layout)]
         max_indices = [dict_sizes[dict_idx] for dict_idx in layout]
