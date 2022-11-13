@@ -172,20 +172,20 @@ class Domain_Info():
         # Name/Places: Name, places
         # Char: upper/lower case, space
         domain8_list = []
+        s = set()
         with open("./messages/agent8/names.txt", "r") as f:
             line = f.readline()
             while line:
                 line = line.strip()
-                domain8_list.append(line)
+                s.add(line)
                 line = f.readline()
-
         with open("./messages/agent8/places.txt", "r") as f:
             line = f.readline()
             while line:
                 line = line.strip()
-                domain8_list.append(line)
+                s.add(line)
                 line = f.readline()
-        self.all_lists.append([domain8_list])
+        self.all_lists.append([list(s)])
         self.group_to_lists.append(5)
 
 
@@ -197,7 +197,7 @@ class Domain(Enum):
     ADDRESS = 4
     NGRAM = 5
     DICTIONARY = 5  # same as NGRAM
-    NAME_PLACES = 6
+    NAME_PLACES = 7
 
 
 def has_numbers(inputString):
@@ -422,6 +422,8 @@ class Encoder:
 
     # get metadata permutation (6 cards currently)
     def encode_metadata(self, encoding_len, num_tokens, domain_idx, partial):
+        if domain_idx == 7:
+            domain_idx = 6
         factors = [encoding_len, num_tokens, domain_idx, partial]
         max_factors = [ENCODING_MAX_LENGTH, MAX_TOKENS, NUM_DOMAINS, 2] # partial is just a flag that can only be 0 or 1
         # print('input max factors: ', max_factors)
@@ -508,7 +510,10 @@ class Decoder:
         # reconstruct original index from the factorial sum
         actual_num = sum([math.factorial(i) for i in range(encoding_len)]) + message_perm_num
         layout = get_layout(message_len, domain_id)
-        index_to_word = self.all_domains.all_lists[self.all_domains.group_to_lists[domain_id]]
+        if domain_id == 6:
+            index_to_word = self.all_domains.all_lists[self.all_domains.group_to_lists[7]]
+        else:
+            index_to_word = self.all_domains.all_lists[self.all_domains.group_to_lists[domain_id]]
         dict_sizes = [len(d) for d in index_to_word]
         max_factors = [dict_sizes[dict_idx] for dict_idx in layout]
         # print('out actual num: ', actual_num)
@@ -596,7 +601,7 @@ def test_encoder_decoder():
 
 def test_encode_decode_file():
     agent = Agent()
-    for i in range(8, 9):
+    for i in range(4, 9):
         with open(f'./test_classifier/g{i}_example.txt', 'r') as f:
             msg = f.readline()
             while msg:
