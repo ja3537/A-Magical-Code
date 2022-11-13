@@ -240,10 +240,11 @@ class Domain_Classifier():
             return False
         if not partition[0].isdigit():
             return False
-        if partition[1] not in self.domain_info.all_lists[3][1]:
+        if ' '.join(partition[1:-1]) not in self.domain_info.all_lists[3][1]:
             return False
         else:
-            return msg.split(" ")
+            li = msg.split(' ')
+            return [li[0]] + [' '.join(li[1:-1])] + [li[-1]]
 
     def is_name_places(self, msg):
         if not msg[0].isupper():
@@ -342,12 +343,13 @@ class Encoder:
     
     def encode(self, msg):
         domain_id, tokens = self.classifier.predict(msg)
-        layout = get_layout(len(tokens), domain_id)
+        layout = get_layout(len(tokens), domain_id.value)
         word_to_index = self.all_domains.all_dicts[self.all_domains.group_to_lists[domain_id.value]]
         dict_sizes = [len(d) for d in word_to_index]
         word_indices = [word_to_index[dict_idx][token] for token, dict_idx in zip(tokens, layout)]
         max_indices = [dict_sizes[dict_idx] for dict_idx in layout]
         encoding_len, perm_idx = self.get_encoding_length(word_indices, max_indices)
+        print('input perm idx: ', perm_idx)
         partial = 0
 
         while encoding_len == -1:
@@ -356,11 +358,12 @@ class Encoder:
             layout.pop()
             max_indices.pop()
             encoding_len, perm_idx = self.get_encoding_length(word_indices, max_indices)
-
+        print('input word indices: ', word_indices)
         # get the index of the message
         # num = self.tree_index(word_indices, max_indices)
-        perm_zero = list(range(52-META_LENGTH-ENCODING_MAX_LENGTH, 52-META_LENGTH))
+        perm_zero = list(range(52-META_LENGTH-encoding_len, 52-META_LENGTH))
         perm = self.nth_perm(perm_idx, perm_zero)[::-1]
+        print('input perm: ', perm)
         metadata_perm = self.encode_metadata(encoding_len-1, len(tokens)-1, domain_id.value, partial)
         print('input meta: ', [encoding_len, len(tokens)-1, domain_id.value, partial])
         deck = list(range(0, 52-META_LENGTH-encoding_len)) + perm + metadata_perm
@@ -369,6 +372,7 @@ class Encoder:
 
     def get_encoding_length(self, indices, max_indices):
         num = self.tree_index(indices, max_indices)
+        print('input actual num: ', num)
         if num == 0:
             return 0, 0
 
@@ -464,15 +468,17 @@ class Decoder:
 
         message_perm = []
         for card in deck:
-            if 52-encoding_len-META_LENGTH < card < 52-META_LENGTH:
+            if 52-encoding_len-META_LENGTH <= card < 52-META_LENGTH:
                 message_perm.append(card)
 
         message_perm = message_perm[::-1]
+        print('output perm: ', message_perm)
 
         if not message_perm:
             message_perm_num = 0
         else:
             message_perm_num = self.perm_number(message_perm)
+            print('output perm number: ', message_perm_num)
 
         # reconstruct original index from the factorial sum
         actual_num = sum([math.factorial(i) for i in range(encoding_len)]) + message_perm_num
@@ -480,7 +486,9 @@ class Decoder:
         index_to_word = self.all_domains.all_lists[self.all_domains.group_to_lists[domain_id]]
         dict_sizes = [len(d) for d in index_to_word]
         max_factors = [dict_sizes[dict_idx] for dict_idx in layout]
+        print('out actual num: ', actual_num)
         word_indices = self.tree_factors(actual_num, max_factors)
+        print('output word indices: ', word_indices)
         tokens = []
         for word_index, dict_idx in zip(word_indices, layout):
             try:
